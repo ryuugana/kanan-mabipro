@@ -1,5 +1,5 @@
 # Kanan for MabiPro [![Build status](https://ci.appveyor.com/api/projects/status/frp20d9y14rpxha0?svg=true)](https://ci.appveyor.com/project/cursey/kanan-new)
-A fork of the Kanan for Mabinogi for use with MabiPro
+A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) for use with MabiPro
 
 ## Download
 Downloads for the latest _official_ releases are located [here](https://github.com/ryuugana/kanan-mabipro/releases).
@@ -44,6 +44,3 @@ I may periodically release official binaries for those who don't want to build t
 * MNG
 * Noginogi-Party
 * DataCami
-
-## Link to original Kanan
-* [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) - Mods for the official version of Mabinogi
