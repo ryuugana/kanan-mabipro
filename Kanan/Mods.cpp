@@ -7,11 +7,11 @@
 #include <Config.hpp>
 
 #include "PatchMod.hpp"
-#include "RangedAttackSwap.hpp"
+//#include "RangedAttackSwap.hpp"
 #include "AutoSetMTU.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
-#include "EnableMultiClient.hpp"
+/*#include "EnableMultiClient.hpp"
 #include "EntityViewer.hpp"
 #include "ColorAltText.hpp"
 #include "EquipmentOverride.hpp"
@@ -26,7 +26,7 @@
 #include "AutoChangeChannels.hpp"
 #include "ChangeChannelHotkey.hpp"
 #include "Currtarget.hpp"
-#include "CookingMod.hpp"
+#include "CookingMod.hpp"*/
 
 #include "Log.hpp"
 
@@ -50,8 +50,8 @@ namespace kanan {
     void Mods::loadTimeCriticalMods() {
         log("[Mods] Loading time critical mods...");
 
-        addMod(make_unique<UseDataFolder>());
-        addMod(make_unique<LoginScreen>());
+        //addMod(make_unique<UseDataFolder>());
+        //addMod(make_unique<LoginScreen>());
 
         // Time critical mods need to have their settings loaded from the config
         // right away.
@@ -97,10 +97,10 @@ namespace kanan {
             }
         }
 
-        addPatchMod("Quality of Life", make_unique<RangedAttackSwap>());
+        /*addPatchMod("Quality of Life", make_unique<RangedAttackSwap>());
         addPatchMod("Speedup", make_unique<DontMoveToSquadChat>());
 		addPatchMod("Text", make_unique<TTFFontSize>());
-        addPatchMod("Text", make_unique<ColorAltText>());
+        addPatchMod("Text", make_unique<ColorAltText>());*/
 
         for (auto& categories : m_patchMods) {
             auto& mods = categories.second;
@@ -113,7 +113,7 @@ namespace kanan {
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
         addMod(make_unique<BorderlessWindow>());
-        addMod(make_unique<EnableMultiClient>());
+        /*addMod(make_unique<EnableMultiClient>());
         addMod(make_unique<EntityViewer>());
         addMod(make_unique<CookingMod>());
         addMod(make_unique<EquipmentOverride>());
@@ -123,7 +123,7 @@ namespace kanan {
         addMod(make_unique<StatusUI>());
         addMod(make_unique<AutoChangeChannels>());
         addMod(make_unique<ChangeChannelHotkey>());
-        addMod(make_unique<Currtarget>());
+        addMod(make_unique<Currtarget>());*/
 
         log("[Mods] Finished loading mods.");
     }

@@ -105,7 +105,7 @@ namespace kanan {
         //
         log("Creating the Game object...");
 
-        m_game = make_unique<Game>();
+        //m_game = make_unique<Game>();
 
         //
         // Initialize all the mods.
@@ -471,6 +471,7 @@ namespace kanan {
         }
 
         ImGui::Text("Kanan's New Mabinogi Mod");
+		ImGui::Text("Modified for MabiPro by Acros");
         ImGui::Text("https://github.com/cursey/kanan-new");
         ImGui::Spacing();
         ImGui::TextWrapped(

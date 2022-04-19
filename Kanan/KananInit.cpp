@@ -9,6 +9,26 @@ using namespace std;
 using namespace kanan;
 
 TCHAR g_dllPath[MAX_PATH]{ 0 };
+HINSTANCE mHinstDLL = 0;
+
+extern "C" UINT_PTR  mProcs[12] = { 0 };
+
+LPCSTR mImportNames[] = { "DirectSoundCaptureCreate",
+						  "DirectSoundCaptureCreate8",
+						  "DirectSoundCaptureEnumerateA",
+						  "DirectSoundCaptureEnumerateW",
+						  "DirectSoundCreate",
+						  "DirectSoundCreate8",
+						  "DirectSoundEnumerateA",
+						  "DirectSoundEnumerateW",
+						  "DirectSoundFullDuplexCreate",
+						  "DllCanUnloadNow",
+						  "DllGetClassObject",
+						  "GetDeviceID" };
+
+typedef int(CALLBACK *DirectSoundEnumerate)(LPVOID, LPVOID);
+typedef HRESULT(WINAPI *DirectSoundCreate)(LPCGUID, LPVOID, LPVOID);
+typedef HRESULT(WINAPI *DirectSoundCreate8)(LPCGUID, LPVOID, LPVOID);
 
 //
 // This is the entrypoint for kanan. It's only responsible for setting up the global
@@ -35,6 +55,14 @@ DWORD WINAPI kananInit(LPVOID params) {
 
 BOOL APIENTRY DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_ATTACH) {
+		TCHAR expandedPath[MAX_PATH];
+		ExpandEnvironmentStrings(L"%WINDIR%\\System32\\dsound.dll", expandedPath, MAX_PATH);
+		mHinstDLL = LoadLibrary(expandedPath);
+		if (!mHinstDLL)
+			return (FALSE);
+		for (int i = 0; i < 12; i++)
+			mProcs[i] = (UINT_PTR)GetProcAddress(mHinstDLL, mImportNames[i]);
+
         // We don't need DllMain getting invoked for thread attach/detach reasons.
         DisableThreadLibraryCalls(module);
 
@@ -46,4 +74,17 @@ BOOL APIENTRY DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
     }
 
     return TRUE;
+}
+
+
+HRESULT WINAPI DirectSoundCreate_wrapper(LPCGUID lpGuid, LPVOID *ppDS, LPUNKNOWN pUnkOuter)
+{
+	DirectSoundCreate dsound = (DirectSoundCreate)mProcs[4];
+	return dsound(lpGuid, ppDS, pUnkOuter);
+}
+HRESULT WINAPI DirectSoundCreate8_wrapper(LPCGUID lpGuid, LPVOID *ppDS8, LPUNKNOWN pUnkOuter)
+{
+	DirectSoundCreate8 dsound = (DirectSoundCreate8)mProcs[5];
+	HRESULT result = dsound(lpGuid, ppDS8, pUnkOuter);
+	return result;
 }

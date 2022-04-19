@@ -306,4 +306,9 @@
   <ItemGroup>
     <CopyFileToFolders Include="Patches.json" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="dsound.def">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

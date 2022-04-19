@@ -16,10 +16,10 @@ namespace kanan {
         log("Entering Game constructor.");
 
         // Find the games global renderer pointer.
-        auto rendererAddress = scan("client.exe", "8B 0D ? ? ? ? 8D 45 DC 6A ? 6A ? 50");
+        auto rendererAddress = scan("client.exe", "A1 ? ? ? ? 8D ? ? 52 8D");
 
         if (rendererAddress) {
-            m_rendererPtr = *(CRendererPtr**)(*rendererAddress + 2);
+            m_rendererPtr = *(CRendererPtr**)(*rendererAddress + 1);
 
             log("Got CRendererPtr %p", m_rendererPtr);
         }
@@ -40,7 +40,7 @@ namespace kanan {
         }
 
         // Find the games global world pointer.
-        auto worldAddress = scan("client.exe", "A1 ? ? ? ? 8B 48 1C E8 ? ? ? ? 0F B6 C0");
+        auto worldAddress = scan("Pleione.dll", "A1 ? ? ? ? 8B 48 1C E8 ? ? ? ? 0F B6 C0");
 
         if (worldAddress) {
             m_worldPtr = *(CWorldPtr**)(*worldAddress + 1);
