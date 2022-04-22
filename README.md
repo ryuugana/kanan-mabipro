@@ -1,4 +1,3 @@
-# Kanan for MabiPro [![Build status](https://ci.appveyor.com/api/projects/status/frp20d9y14rpxha0?svg=true)](https://ci.appveyor.com/project/cursey/kanan-new)
 A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) for use with MabiPro
 
 ## Download
