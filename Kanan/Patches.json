@@ -49,6 +49,19 @@
       ]
     },
     {
+      "name": "Disable Skill Locks",
+      "desc": "Allows you to use other skills after using flameburst",
+      "category": "Quality of Life",
+      "patches": [
+        {
+		  "location": "Pleione.dll",
+		  "offset": 4,
+          "pattern": "59 59 84 C0 0F 84 93 ? ? ? 8B 1D",
+          "patch": "E9 94 02 00 00 90"
+        }
+      ]
+    },
+    {
       "name": "Keep Pet Window Open",
       "desc": "After summoning a pet, prevent the pet window from closing.",
       "category": "Interface",
