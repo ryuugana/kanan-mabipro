@@ -1,3 +1,4 @@
+# Kanan for MabiPro
 A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) for use with MabiPro
 
 ## Download
