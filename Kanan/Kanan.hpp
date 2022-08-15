@@ -64,6 +64,8 @@ namespace kanan {
 
         void loadConfig();
         void saveConfig();
+        void housingBoard();
+        void viewAstralWorld();
 
         void drawUI();
         void drawAbout();

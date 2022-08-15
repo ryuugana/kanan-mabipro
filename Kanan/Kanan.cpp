@@ -3,6 +3,7 @@
 #include <imgui_impl_dx9.h>
 #include <imgui_impl_win32.h>
 
+#include <Scan.hpp>
 #include <Config.hpp>
 #include <String.hpp>
 #include <Utility.hpp>
@@ -380,10 +381,26 @@ namespace kanan {
         log("Config saving done.");
     }
 
+    //6A 08 B8 D9 34 D4 63 E8 67 89 3F 00 8B 0D 38 DF
+    void Kanan::housingBoard() {
+
+        static auto housing = (char(__thiscall*)())scan("Pleione.dll", "6A 08 B8 D9 34 D4 63 E8 67 89 3F 00 8B 0D 38 DF").value_or(0);
+        housing();
+    }
+
+    void Kanan::viewAstralWorld() {
+        HMENU systemHMenu = GetSystemMenu(m_wnd, FALSE);
+        //HMENU astralSubHMenu = GetSubMenu(systemHMenu, 8);
+        LPARAM cmd = TrackPopupMenuEx(systemHMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+            0, 0, m_wnd, NULL);
+        if (cmd) 
+            SendMessage(m_wnd, WM_SYSCOMMAND, cmd, 0);
+    }
+
     void Kanan::drawUI() {
         ImGui::SetNextWindowSize(ImVec2{ 450.0f, 200.0f }, ImGuiCond_FirstUseEver);
 
-        if (!ImGui::Begin("Kanan's New Mabinogi Mod", &m_isUIOpen, ImGuiWindowFlags_MenuBar)) {
+        if (!ImGui::Begin("Kanan's New Mabinogi Mod Modified for MabiPro", &m_isUIOpen, ImGuiWindowFlags_MenuBar)) {
             ImGui::End();
             return;
         }
@@ -404,6 +421,12 @@ namespace kanan {
 
             if (ImGui::BeginMenu("View")) {
                 ImGui::MenuItem("Show Log", nullptr, &m_isLogOpen);
+                if (ImGui::MenuItem("AstralWorld")) {
+                    viewAstralWorld();
+                }
+                if (ImGui::MenuItem("Housing Board")) {
+                    housingBoard();
+                }
                 ImGui::EndMenu();
             }
 
@@ -425,9 +448,9 @@ namespace kanan {
         // Rest of the UI
         //
         ImGui::TextWrapped(
-            "Input to the game is blocked while interacting with this UI. "
-            "Press the INSERT key to toggle this UI. "
-            "Configuration is saved every time the INSERT key is used to close the UI. "
+            "Input to the game is blocked while interacting with this UI. \n"
+            "Press the INSERT key to toggle this UI. \n"
+            "Configuration is saved every time the INSERT key is used to close the UI. \n"
             "You can also save the configuration by using File->Save Config. "
         );
         ImGui::Spacing();
@@ -471,8 +494,9 @@ namespace kanan {
         }
 
         ImGui::Text("Kanan's New Mabinogi Mod");
-		ImGui::Text("Modified for MabiPro by Acros");
         ImGui::Text("https://github.com/cursey/kanan-new");
+		ImGui::Text("Modified for MabiPro by Acros");
+        ImGui::Text("https://github.com/ryuugana/kanan-mabipro");
         ImGui::Spacing();
         ImGui::TextWrapped(
             "Please come by the repository and let us know if there are "
