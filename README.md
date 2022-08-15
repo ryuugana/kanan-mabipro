@@ -3,6 +3,10 @@ A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) for us
 
 ## Download
 Downloads for the latest _official_ releases are located [here](https://github.com/ryuugana/kanan-mabipro/releases).
+* Make sure to download the newest KananMabiPro.zip!
+
+## Install
+Put dsound.dll and patches.json into your MabiPro folder. Press the Insert button in game to enable and disable mods.
 
 ## Requirements
 You need the Microsoft Visual C++ Redistributable for Visual Studio 2017 available at the bottom of [this page](https://www.visualstudio.com/downloads/). Make sure to choose the x86 version of the download!
@@ -22,9 +26,6 @@ You need the Microsoft Visual C++ Redistributable for Visual Studio 2017 availab
 
 ## Build requirements
 * Visual Studio 2017
-
-## Usage
-Put dsound.dll and patches.json into your MabiPro folder. Press the Insert button in game to enable and disable mods.
 
 ## This project is still a work in progress
 I may periodically release official binaries for those who don't want to build the project themselves.
