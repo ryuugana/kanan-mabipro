@@ -6,7 +6,7 @@ Downloads for the latest _official_ releases are located [here](https://github.c
 * Make sure to download the newest KananMabiPro.zip!
 
 ## Install
-Put dsound.dll and patches.json into your MabiPro folder. Press the Insert button in game to enable and disable mods.
+Put dsound.dll and patches.json into your MabiPro folder. Press the INSERT key on your keyboard while in game to enable and disable mods. Pressing INSERT to close the Kanan window will also save your mod selection.
 
 ## Requirements
 You need the Microsoft Visual C++ Redistributable for Visual Studio 2017 available at the bottom of [this page](https://www.visualstudio.com/downloads/). Make sure to choose the x86 version of the download!
