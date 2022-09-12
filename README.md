@@ -1,5 +1,5 @@
 # Kanan for MabiPro
-A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) for use with MabiPro
+A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) that provides a variety of mods for G13 Mabinogi and fully supports [AstralWorld Patcher](https://github.com/slargi/FantasiaG13).
 
 ## Download
 Downloads for the latest _official_ releases are located [here](https://github.com/ryuugana/kanan-mabipro/releases).
