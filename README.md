@@ -35,9 +35,11 @@ I may periodically release official binaries for those who don't want to build t
 ## Todo
 * Add more patches and mods
 * Integrate features from original Kanan that do not currently work on MabiPro
+* Vulkan support for use with [dxvk](https://github.com/doitsujin/dxvk)
 
-## Preview from the very first public version
-![Preview](preview.png)
+## Preview
+![preview](https://user-images.githubusercontent.com/20805020/189742323-83c6554f-4ae7-4fc6-8238-7dacb33e5218.png)
+
 
 ## Many original patches/ideas came from the following projects:
 * Fantasia
