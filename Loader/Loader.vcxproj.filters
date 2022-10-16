@@ -20,6 +20,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Loader.txt" />
+    <CopyFileToFolders Include="Loader.txt" />
   </ItemGroup>
 </Project>

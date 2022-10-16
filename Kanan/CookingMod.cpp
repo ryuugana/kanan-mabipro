@@ -64,26 +64,6 @@ namespace kanan {
     }
 
 
-    //write a call to the custom code eg the hook
-    bool Hookcall(void* toHook, void* ourFunct, int len)
-    {
-        if (len < 5)
-        {
-            return false;
-        }
-        DWORD curProtection;
-        VirtualProtect(toHook, len, PAGE_EXECUTE_READWRITE, &curProtection);
-        memset(toHook, 0x90, len);
-
-        DWORD relativeAddress = ((DWORD)ourFunct - (DWORD)toHook) - 5;
-        *(BYTE*)toHook = 0xE8;
-        *(DWORD*)((DWORD)toHook + 1) = relativeAddress;
-
-        DWORD temp;
-        VirtualProtect(toHook, len, curProtection, &temp);
-    }
-
-
     //find the addresses we need for patching
     CookingMod::CookingMod() {
         auto cookingAddress = scan("client.exe", "0F 83 ? ? ? ? 8B 75 ? 8D 04");

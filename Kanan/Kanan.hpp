@@ -9,6 +9,7 @@
 #include "D3D9Hook.hpp"
 #include "DInputHook.hpp"
 #include "WindowsMessageHook.hpp"
+#include "MabiMessageHook.hpp"
 #include "Game.hpp"
 #include "Mods.hpp"
 
@@ -40,6 +41,7 @@ namespace kanan {
         std::unique_ptr<D3D9Hook> m_d3d9Hook;
         std::unique_ptr<DInputHook> m_dinputHook;
         std::unique_ptr<WindowsMessageHook> m_wmHook;
+        std::unique_ptr<MabiMessageHook> m_mesHook;
         std::unique_ptr<Game> m_game;
         Mods m_mods;
 

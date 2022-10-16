@@ -31,6 +31,7 @@ namespace kanan {
         m_uiConfigPath{ m_path + "/ui.ini" },
         m_d3d9Hook{ nullptr },
         m_dinputHook{ nullptr },
+        m_mesHook{ nullptr },
         m_wmHook{ nullptr },
         m_game{ nullptr },
         m_mods{ m_path },
@@ -205,6 +206,8 @@ namespace kanan {
 
         m_mods.loadTimeCriticalMods();
 
+        m_mesHook = make_unique<MabiMessageHook>();
+
         m_isInitialized = true;
     }
 
@@ -312,6 +315,7 @@ namespace kanan {
     }
 
     bool Kanan::onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam) {
+
         if (m_isUIOpen) {
             if (ImGui_ImplWin32_WndProcHandler(wnd, message, wParam, lParam) != 0) {
                 // If the user is interacting with the UI we block the message from going to the game.

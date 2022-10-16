@@ -14,7 +14,7 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{6E38DCE9-6753-4175-B28F-33A2021CFDC3}</ProjectGuid>
     <RootNamespace>Kanan</RootNamespace>
-    <WindowsTargetPlatformVersion>7.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -44,6 +44,10 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetName>dsound</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <TargetName>dsound</TargetName>
+    <ExtensionsToDeleteOnClean>*.lib,*.cdf;*.cache;*.obj;*.obj.enc;*.ilk;*.ipdb;*.iobj;*.resources;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;*.tlog;*.manifest;*.res;*.pch;*.exp;*.idb;*.rep;*.xdc;*.pdb;*_manifest.rc;*.bsc;*.sbr;*.xml;*.metagen;*.bi</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -91,10 +95,11 @@
       <PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>
       </RuntimeTypeInfo>
+      <AdditionalOptions>-DDEBUG %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(OutDir);$(SolutionDir)Dependencies\FreeType;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;dsound.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>dsound.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -131,6 +136,8 @@
     <ClCompile Include="KItem.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="LoginScreen.cpp" />
+    <ClCompile Include="MabiMessageHook.cpp" />
+    <ClCompile Include="MessageView.cpp" />
     <ClCompile Include="metrics_gui\metrics_gui.cpp" />
     <ClCompile Include="metrics_gui\ProggyTiny.cpp" />
     <ClCompile Include="Mods.cpp" />
@@ -182,6 +189,8 @@
     <ClInclude Include="Mabinogi\Matrix4x4.hpp" />
     <ClInclude Include="Mabinogi\Vector3.hpp" />
     <ClInclude Include="Mabinogi\Vector4.hpp" />
+    <ClInclude Include="MabiMessageHook.hpp" />
+    <ClInclude Include="MessageView.hpp" />
     <ClInclude Include="metrics_gui\countof.h" />
     <ClInclude Include="metrics_gui\metrics_gui.h" />
     <ClInclude Include="metrics_gui\perf_timer.h" />
