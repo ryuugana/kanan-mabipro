@@ -14,8 +14,12 @@
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
 #include "BlockSkillSpam.hpp"
-//#include "RangedAttackSwap.hpp"
-/*#include "EnableMultiClient.hpp"
+#include "MessageViewer.hpp"
+#include "ScrollingMessageToChat.hpp"
+#include "ChooseLoginNode.hpp"
+
+/*#include "RangedAttackSwap.hpp"
+#include "EnableMultiClient.hpp"
 #include "EntityViewer.hpp"
 #include "ColorAltText.hpp"
 #include "EquipmentOverride.hpp"
@@ -111,7 +115,10 @@ namespace kanan {
             });
         }
 
+        addMessageMod(make_unique<ChooseLoginNode>());
+        addMessageMod(make_unique<ScrollingMessageToChat>());
         addMessageMod(make_unique<BlockSkillSpam>());
+        addMessageMod(make_unique<MessageViewer>());
 
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());

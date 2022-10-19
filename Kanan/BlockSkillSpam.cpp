@@ -35,14 +35,28 @@ namespace kanan {
 		cfg.set<bool>("BlockSkillSpam.Enabled", m_isEnabled);
 	}
 
-	void BlockSkillSpam::onRecv(MabiMessage mabiMessage) {
+	unsigned long BlockSkillSpam::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
 		if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0) {
+			/* Alternative
+			// Hide >skill spam
+			PacketData data;
+			data.type = 1;
+			data.byte8 = 0;
+			recvPacket.SetElement(&data, 0);
+			BYTE* p;
+			int tmpSizw = recvPacket.BuildPacket(&p);
+
+			memcpy(mabiMessage.buffer, p, tmpSizw);
+			*/
+
 			// Remove >skill spam
 			memset(mabiMessage.buffer, 0, mabiMessage.size);
-			return;
+			return 0;
 		}
+
+		return recvPacket.GetOP();
 	}
 }
