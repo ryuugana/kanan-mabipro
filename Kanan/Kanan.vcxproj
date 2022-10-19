@@ -114,6 +114,7 @@
   <ItemGroup>
     <ClCompile Include="AutoChangeChannels.cpp" />
     <ClCompile Include="AutoSetMTU.cpp" />
+    <ClCompile Include="BlockSkillSpam.cpp" />
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
     <ClCompile Include="ColorAltText.cpp" />
@@ -137,7 +138,7 @@
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="LoginScreen.cpp" />
     <ClCompile Include="MabiMessageHook.cpp" />
-    <ClCompile Include="MessageView.cpp" />
+    <ClCompile Include="MabiPacket.cpp" />
     <ClCompile Include="metrics_gui\metrics_gui.cpp" />
     <ClCompile Include="metrics_gui\ProggyTiny.cpp" />
     <ClCompile Include="Mods.cpp" />
@@ -152,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="AutoChangeChannels.hpp" />
     <ClInclude Include="AutoSetMTU.hpp" />
+    <ClInclude Include="BlockSkillSpam.hpp" />
     <ClInclude Include="BorderlessWindow.hpp" />
     <ClInclude Include="ChangeChannelHotkey.hpp" />
     <ClInclude Include="ColorAltText.hpp" />
@@ -190,7 +192,8 @@
     <ClInclude Include="Mabinogi\Vector3.hpp" />
     <ClInclude Include="Mabinogi\Vector4.hpp" />
     <ClInclude Include="MabiMessageHook.hpp" />
-    <ClInclude Include="MessageView.hpp" />
+    <ClInclude Include="MabiPacket.h" />
+    <ClInclude Include="MessageMod.hpp" />
     <ClInclude Include="metrics_gui\countof.h" />
     <ClInclude Include="metrics_gui\metrics_gui.h" />
     <ClInclude Include="metrics_gui\perf_timer.h" />

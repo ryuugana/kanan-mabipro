@@ -9,30 +9,25 @@
 #include "Scan.hpp"
 #include "Log.hpp"
 #include <Patch.hpp>
-#include "MessageView.hpp"
 
 
 namespace kanan {
-	typedef DWORD(__thiscall* MabiRecvListenerSignature)(LPVOID Buffer, LONG Size);
-	struct MabiRecvListener {
-		uint32_t					op;
-		MabiRecvListenerSignature	start;
-	};
-
+	typedef DWORD(__thiscall* MabiRecvListenerSignature)(MabiMessage mabiMessage);
 	const int PACKET_BUFFER_SIZE = 64 * 1024;
 	BYTE packetBuffer[PACKET_BUFFER_SIZE];
 	bool g_mabiMessageHook = false;
-	std::vector<MabiRecvListener> mabiRecvListeners;
+	std::vector<std::unique_ptr<MessageMod>>* mabiRecvListeners = nullptr;
 
 	VOID ListenDownstream(LPVOID Buffer, LONG Size);
 
 
 
-	MabiMessageHook::MabiMessageHook()
+	MabiMessageHook::MabiMessageHook(std::vector<std::unique_ptr<MessageMod>>* mabiRecvMods)
 	{
 		if (g_mabiMessageHook == false) {
 			if (DoInjection()) {
 				g_mabiMessageHook = true;
+				mabiRecvListeners = mabiRecvMods;
 				log("MabiMessage hooked successfully.");
 			}
 			else {
@@ -43,7 +38,7 @@ namespace kanan {
 	}
 
 	BOOL MabiMessageHook::DoInjection() {
-		bool result = true;
+		BOOL result = true;
 
 		log("Initializing MabiMessageHook...");
 
@@ -56,19 +51,6 @@ namespace kanan {
 		log(result ? "...success" : "...failed");
 
 		return result;
-	}
-
-	BOOL MabiMessageHook::addRecvListener(void* funcPtr, uint32_t op) {
-		if (funcPtr == nullptr || op < 1)
-			return false;
-
-		MabiRecvListener tmpListener;
-		tmpListener.op = op;
-		tmpListener.start = (MabiRecvListenerSignature)funcPtr;
-
-		mabiRecvListeners.push_back(tmpListener);
-
-		return true;
 	}
 
 	//
@@ -123,54 +105,68 @@ namespace kanan {
 		}
 	}
 
+	template<typename T>
+	T swapEndian(T x) {
+		static_assert(sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8, "Type must be 2, 4 or 8 bytes to swap endianess");
+
+		if constexpr (sizeof(T) == 2) {
+			return (T)_byteswap_ushort((unsigned short)x);
+		}
+		else if constexpr (sizeof(T) == 4) {
+			return (T)_byteswap_ulong((unsigned long)x);
+		}
+		else {
+			return (T)_byteswap_uint64((unsigned long long)x);
+		}
+	}
+
 	VOID ListenDownstream(LPVOID Buffer, LONG Size) {
-		std::vector<uint8_t> v((BYTE*)Buffer, (BYTE*)Buffer + Size);
+		MabiMessage mabiMessage;
+		mabiMessage.buffer = (unsigned char*)Buffer;
+		mabiMessage.size = Size;
+		/*if (recvPacket.GetOP() == 21101) {
+			if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0) {
+				// Remove >skill spam
+				memset(Buffer, 0, Size);
+				return;
+			}
+		}*/
 
-		MessageView msg{ v };
-
-		for (int i = 0; i < mabiRecvListeners.size(); i++) {
-			if (msg.op() == mabiRecvListeners[i].op) {
-				mabiRecvListeners[i].start(Buffer, Size);
+		uint32_t op = swapEndian(*(uint32_t*)(Buffer));
+		for (uint32_t i = 0; i < mabiRecvListeners->size(); i++) {
+			if ((*mabiRecvListeners)[i]->m_isEnabled) {
+				if (op == (*mabiRecvListeners)[i]->getOp()) {
+					log("op matched %d", mabiMessage.size);
+					((MabiRecvListenerSignature)(*mabiRecvListeners)[i]->getFuncPtr())(mabiMessage);
+					break;
+				}
 			}
 		}
 
 
 		std::ostringstream ss{};
 
-
-		// TODO: Turn this into a mod
-		if (msg.op() == 21101) {
-			while (msg.peek() != MessageElementType::NONE) {
-				if (msg.peek() == MessageElementType::STRING) {
-					if (strcmp((*msg.get<std::string>()).c_str(), "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0) {
-						// Remove >skill spam
-						memset(Buffer, 0, Size);
-						return;
-					}
-				}
-				else {
-					msg.skip();
-				}
-			}
-		}
-		else {
-#ifdef DEBUG
-			ss << "OP: " << msg.op() << "\n";
-			ss << "ID: " << msg.id() << "\n";
-			while (msg.peek() != MessageElementType::NONE) {
-				switch (msg.peek()) {
-				case MessageElementType::BYTE: ss << "BYTE: " << (int)*msg.get<uint8_t>() << "\n"; break;
-				case MessageElementType::SHORT: ss << "SHORT: " << *msg.get<uint16_t>() << "\n"; break;
-				case MessageElementType::INT: ss << "INT: " << *msg.get<int32_t>() << "\n"; break;
-				case MessageElementType::LONG: ss << "LONG: " << *msg.get<uint64_t>() << "\n"; break;
-				case MessageElementType::FLOAT: ss << "FLOAT: " << *msg.get<float>() << "\n"; break;
-				case MessageElementType::STRING: ss << "STRING: " << *msg.get<std::string>() << "\n"; break;
-				case MessageElementType::BIN: ss << "BINARY BLOB: ...\n"; msg.skip(); break;
+//#ifdef DEBUG
+		/*try {
+			ss << "OP: " << recvPacket.GetOP() << "\n";
+			ss << "ID: " << recvPacket.GetReciverId() << "\n";
+			for (int i = 0; i < recvPacket.GetElementNum(); i++) {
+				switch (recvPacket.GetElement(i)->type) {
+				case T_BYTE: ss << "BYTE: " << recvPacket.GetElement(i)->byte8 << "\n"; break;
+				case T_SHORT: ss << "SHORT: " << recvPacket.GetElement(i)->word16 << "\n"; break;
+				case T_INT: ss << "INT: " << recvPacket.GetElement(i)->int32 << "\n"; break;
+				case T_LONG: ss << "LONG: " << recvPacket.GetElement(i)->ID << "\n"; break;
+				case T_FLOAT: ss << "FLOAT: " << recvPacket.GetElement(i)->float32 << "\n"; break;
+				case T_STRING: ss << "STRING: " << recvPacket.GetElement(i)->str << "\n"; break;
+				case T_BIN: ss << "BINARY BLOB: ..." << "\n"; break;
 				}
 			}
-			log("%s", ss.str().c_str());
-#endif
+			log("%s\n", ss.str().c_str());
 		}
+		catch (const char* msg) {
+			log(msg);
+		}*/
+//#endif
 
 
 	}
@@ -180,8 +176,6 @@ namespace kanan {
 	//
 
 	BOOL MabiMessageHook::PatchReadFromNetworkBuffer() {
-		WCHAR Str[2048];
-
 		std::optional<uintptr_t> ReadFromNetworkBufferFunctionAddressPtr = kanan::scan("Mint.dll", "55 8B EC 83 EC 1C 53 8B D9");
 		DWORD ReadFromNetworkBufferFunctionAddress = *ReadFromNetworkBufferFunctionAddressPtr;
 		LONG ReadFromNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&ReadFromNetworkBufferFunctionAddress);
@@ -199,8 +193,6 @@ namespace kanan {
 	}
 
 	BOOL MabiMessageHook::FindWriteToNetworkBuffer() {
-		char Str[2048];
-
 		std::optional<uintptr_t> WriteToNetworkBufferFunctionAddressPtr = kanan::scan("Mint.dll", "55 8B EC 83 EC 18 53 56 8B F1 8B 46 08 57");
 		DWORD WriteToNetworkBufferFunctionAddress = *WriteToNetworkBufferFunctionAddressPtr;
 		LONG WriteToNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&WriteToNetworkBufferFunctionAddress);

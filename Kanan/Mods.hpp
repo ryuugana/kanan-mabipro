@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Mod.hpp"
+#include "MessageMod.hpp"
 #include "PatchMod.hpp"
 
 namespace kanan {
@@ -26,6 +27,8 @@ namespace kanan {
             return m_patchMods;
         }
 
+        std::vector<std::unique_ptr<MessageMod>> m_messageMods;
+
     private:
         std::string m_filepath;
         std::vector<std::unique_ptr<Mod>> m_mods;
@@ -34,5 +37,6 @@ namespace kanan {
 
         void addMod(std::unique_ptr<Mod>&& mod);
         void addPatchMod(const std::string& category, std::unique_ptr<PatchMod>&& mod);
+        void addMessageMod(std::unique_ptr<MessageMod>&& mod);
     };
 }

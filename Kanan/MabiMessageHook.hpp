@@ -7,17 +7,15 @@
 // Header Files:
 #include <windows.h>
 #include <stdint.h>
-#include <Shlwapi.h>
+#include <vector>
 
-#pragma comment(lib, "Shlwapi.lib")
+#include "MessageMod.hpp"
 
 
 namespace kanan {
 	class MabiMessageHook {
 	public:
-		MabiMessageHook();
-
-		BOOL addRecvListener(void* funcPtr, uint32_t op);
+		MabiMessageHook(std::vector<std::unique_ptr<MessageMod>>* mabiRecvMods);
 
 	private:
 		//

@@ -11,6 +11,7 @@
 #include "FontData.hpp"
 #include "Log.hpp"
 #include "Kanan.hpp"
+#include "MabiMessageHook.hpp"
 #include "../Kanan/metrics_gui/metrics_gui.h"
 
 using namespace std;
@@ -206,7 +207,7 @@ namespace kanan {
 
         m_mods.loadTimeCriticalMods();
 
-        m_mesHook = make_unique<MabiMessageHook>();
+        m_mesHook = make_unique<MabiMessageHook>(&(m_mods.m_messageMods));
 
         m_isInitialized = true;
     }
@@ -348,6 +349,10 @@ namespace kanan {
             mod->onConfigLoad(cfg);
         }
 
+        for (auto& mod : m_mods.m_messageMods) {
+            mod->onConfigLoad(cfg);
+        }
+
         // Patch mods.
         for (auto& mods : m_mods.getPatchMods()) {
             for (auto& mod : mods.second) {
@@ -368,6 +373,10 @@ namespace kanan {
         cfg.set<bool>("UI.OpenByDefault", m_isUIOpenByDefault);
 
         for (auto& mod : m_mods.getMods()) {
+            mod->onConfigSave(cfg);
+        }
+
+        for (auto& mod : m_mods.m_messageMods) {
             mod->onConfigSave(cfg);
         }
 
@@ -480,6 +489,10 @@ namespace kanan {
                     ImGui::TreePop();
                 }
             }
+        }
+
+        for (const auto& mod : m_mods.m_messageMods) {
+            mod->onUI();
         }
 
         for (const auto& mod : m_mods.getMods()) {

@@ -6,11 +6,15 @@
 #include <String.hpp>
 #include <Config.hpp>
 
+#include "Mods.hpp"
+#include "Log.hpp"
+
 #include "PatchMod.hpp"
-//#include "RangedAttackSwap.hpp"
 #include "AutoSetMTU.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
+#include "BlockSkillSpam.hpp"
+//#include "RangedAttackSwap.hpp"
 /*#include "EnableMultiClient.hpp"
 #include "EntityViewer.hpp"
 #include "ColorAltText.hpp"
@@ -28,9 +32,6 @@
 #include "Currtarget.hpp"
 #include "CookingMod.hpp"*/
 
-#include "Log.hpp"
-
-#include "Mods.hpp"
 
 using namespace std;
 using namespace std::filesystem;
@@ -110,9 +111,12 @@ namespace kanan {
             });
         }
 
+        addMessageMod(make_unique<BlockSkillSpam>());
+
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
         addMod(make_unique<BorderlessWindow>());
+
         /*addMod(make_unique<EnableMultiClient>());
         addMod(make_unique<EntityViewer>());
         addMod(make_unique<CookingMod>());
@@ -124,7 +128,7 @@ namespace kanan {
         addMod(make_unique<AutoChangeChannels>());
         addMod(make_unique<ChangeChannelHotkey>());
         addMod(make_unique<Currtarget>());*/
-
+        
         log("[Mods] Finished loading mods.");
     }
 
@@ -138,5 +142,16 @@ namespace kanan {
         scoped_lock<mutex> _{ m_modsMutex };
 
         m_patchMods[category].emplace_back(move(mod));
+    }
+
+    void Mods::addMessageMod(std::unique_ptr<MessageMod>&& mod) {
+        if (!mod->getFuncPtr()) {
+            log("Empty function pointer for %d", mod->getOp());
+            return;
+        }
+        scoped_lock<mutex> _{ m_modsMutex };
+
+        m_messageMods.emplace_back(move(mod));
+
     }
 }

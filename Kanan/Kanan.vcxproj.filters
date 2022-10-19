@@ -144,11 +144,14 @@
     <ClCompile Include="CookingMod.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
-    <ClCompile Include="MessageView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MabiMessageHook.cpp">
       <Filter>Source Files\Hooks</Filter>
+    </ClCompile>
+    <ClCompile Include="MabiPacket.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BlockSkillSpam.cpp">
+      <Filter>Source Files\Mods</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -308,11 +311,17 @@
     <ClInclude Include="Currtarget.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
-    <ClInclude Include="MessageView.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MabiMessageHook.hpp">
       <Filter>Header Files\Hooks</Filter>
+    </ClInclude>
+    <ClInclude Include="MabiPacket.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageMod.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BlockSkillSpam.hpp">
+      <Filter>Header Files\Mods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

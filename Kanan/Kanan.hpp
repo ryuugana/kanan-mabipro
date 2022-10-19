@@ -8,8 +8,8 @@
 
 #include "D3D9Hook.hpp"
 #include "DInputHook.hpp"
-#include "WindowsMessageHook.hpp"
 #include "MabiMessageHook.hpp"
+#include "WindowsMessageHook.hpp"
 #include "Game.hpp"
 #include "Mods.hpp"
 
