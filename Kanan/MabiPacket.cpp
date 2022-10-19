@@ -111,6 +111,21 @@ namespace kanan {
 		}
 	}
 
+	void CMabiPacket::SetElement(const PacketData* popd, unsigned int n) {
+		PacketData data;
+
+		if (popd == NULL)
+			return;
+
+		data = popd[0];
+		if (data.type == 6 || data.type == 7) {
+			data.str = new char[data.len];
+			memcpy(data.str, popd[0].str, data.len);
+		}
+
+		vect_pkt_data_[n] = data;
+}
+
 	void CMabiPacket::SetSource(unsigned char* src, int len) {
 
 		if (len)

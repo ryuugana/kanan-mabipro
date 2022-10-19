@@ -40,6 +40,12 @@
     <Filter Include="Header Files\Metrics">
       <UniqueIdentifier>{2850a10f-2ec6-4fe2-bbb0-c4c5191d1569}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\MessageMods">
+      <UniqueIdentifier>{46cfc9bf-e1b0-438f-9cae-e81c527f82b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\MessageMods">
+      <UniqueIdentifier>{abfdf516-58b4-4d4a-b292-a6c9935eecf6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="KananInit.cpp">
@@ -151,7 +157,19 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BlockSkillSpam.cpp">
-      <Filter>Source Files\Mods</Filter>
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageViewer.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ScrollingMessageToChat.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ChatLog.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ChooseLoginNode.cpp">
+      <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -321,7 +339,19 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BlockSkillSpam.hpp">
-      <Filter>Header Files\Mods</Filter>
+      <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageViewer.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ChatLog.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ScrollingMessageToChat.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ChooseLoginNode.hpp">
+      <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

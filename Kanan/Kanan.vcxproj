@@ -117,6 +117,8 @@
     <ClCompile Include="BlockSkillSpam.cpp" />
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
+    <ClCompile Include="ChatLog.cpp" />
+    <ClCompile Include="ChooseLoginNode.cpp" />
     <ClCompile Include="ColorAltText.cpp" />
     <ClCompile Include="CookingMod.cpp" />
     <ClCompile Include="Currtarget.cpp" />
@@ -127,6 +129,7 @@
     <ClCompile Include="EnableMultiClient.cpp" />
     <ClCompile Include="EntityViewer.cpp" />
     <ClCompile Include="EquipmentOverride.cpp" />
+    <ClCompile Include="ScrollingMessageToChat.cpp" />
     <ClCompile Include="FieldOfView.cpp" />
     <ClCompile Include="FreezeTimeOfDay.cpp" />
     <ClCompile Include="Game.cpp" />
@@ -139,6 +142,7 @@
     <ClCompile Include="LoginScreen.cpp" />
     <ClCompile Include="MabiMessageHook.cpp" />
     <ClCompile Include="MabiPacket.cpp" />
+    <ClCompile Include="MessageViewer.cpp" />
     <ClCompile Include="metrics_gui\metrics_gui.cpp" />
     <ClCompile Include="metrics_gui\ProggyTiny.cpp" />
     <ClCompile Include="Mods.cpp" />
@@ -156,6 +160,8 @@
     <ClInclude Include="BlockSkillSpam.hpp" />
     <ClInclude Include="BorderlessWindow.hpp" />
     <ClInclude Include="ChangeChannelHotkey.hpp" />
+    <ClInclude Include="ChatLog.hpp" />
+    <ClInclude Include="ChooseLoginNode.hpp" />
     <ClInclude Include="ColorAltText.hpp" />
     <ClInclude Include="CookingMod.hpp" />
     <ClInclude Include="Currtarget.hpp" />
@@ -166,6 +172,7 @@
     <ClInclude Include="EnableMultiClient.hpp" />
     <ClInclude Include="EntityViewer.hpp" />
     <ClInclude Include="EquipmentOverride.hpp" />
+    <ClInclude Include="ScrollingMessageToChat.hpp" />
     <ClInclude Include="FieldOfView.hpp" />
     <ClInclude Include="FontData.hpp" />
     <ClInclude Include="FreezeTimeOfDay.hpp" />
@@ -194,6 +201,7 @@
     <ClInclude Include="MabiMessageHook.hpp" />
     <ClInclude Include="MabiPacket.h" />
     <ClInclude Include="MessageMod.hpp" />
+    <ClInclude Include="MessageViewer.hpp" />
     <ClInclude Include="metrics_gui\countof.h" />
     <ClInclude Include="metrics_gui\metrics_gui.h" />
     <ClInclude Include="metrics_gui\perf_timer.h" />

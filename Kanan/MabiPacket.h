@@ -60,6 +60,7 @@ namespace kanan {
 		void FreePacket(unsigned char* p) { delete[] p; }
 		void AddElement(const PacketData*, unsigned int n = 1);
 		const PacketData* GetElement(unsigned int n)const { return &vect_pkt_data_.at(n); }
+		void SetElement(const PacketData*, unsigned int n);
 		PacketData* GetElement(unsigned int n) { return &vect_pkt_data_.at(n); }
 		int GetElementNum() const { return static_cast<int>(vect_pkt_data_.size()); }
 		void FreeElement(unsigned int n);
