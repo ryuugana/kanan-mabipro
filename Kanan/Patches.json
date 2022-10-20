@@ -49,6 +49,28 @@
       ]
     },
     {
+      "name": "Disable Character Alpha Transparancy",
+      "desc": "Disables alpha transparancy on characters when zooming in.",
+      "category": "Graphics",
+      "patches": [
+        {
+		  "location": "Renderer2.dll",
+          "pattern": "4F F7 DF 1B FF 81 E7 FE 07 00 00 47 47",
+          "patch": "4F F7 DF 1B FF 81 C7 F0 0F 00 00 47 47"
+        },
+        {
+		  "location": "Renderer2.dll",
+          "pattern": "74 ? 57 53 6A 02",
+          "patch": "74 ? 57 53 6A 05"
+        },
+        {
+		  "location": "Renderer2.dll",
+          "pattern": "74 ? 57 53 6A 02",
+          "patch": "74 ? 57 53 6A 05"
+        }
+      ]
+    },
+    {
       "name": "Disable Skill Locks",
       "desc": "Allows you to use other skills after using flameburst",
       "category": "Quality of Life",
