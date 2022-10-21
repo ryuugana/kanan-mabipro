@@ -13,7 +13,7 @@ namespace kanan {
 
 	void ScrollingMessageToChat::onUI() {
 		if (ImGui::CollapsingHeader("Scrolling Message To Chat")) {
-			ImGui::Text("This mod moves scrolling messages from the top to chat as <System> messages.");
+			ImGui::TextWrapped("This mod moves scrolling messages from the top of the screen to the middle of the screen and chat as <System> messages.");
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 			ImGui::Checkbox("Enable Scrolling Message To Chat", &m_isEnabled);
 		}
@@ -30,6 +30,9 @@ namespace kanan {
 	unsigned long ScrollingMessageToChat::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
+
+		if (recvPacket.GetElement(0)->byte8 == 7 || recvPacket.GetElement(0)->byte8 == 4 || recvPacket.GetElement(0)->byte8 == 10)
+			return recvPacket.GetOP();
 
 		PacketData data;
 		data.type = 1;

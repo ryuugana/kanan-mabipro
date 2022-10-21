@@ -15,7 +15,7 @@ namespace kanan {
 
 	void ChooseLoginNode::onUI() {
 		if (ImGui::CollapsingHeader("Choose Login Node")) {
-			ImGui::Text("This mod allows the user to choose which node they connect to on login.");
+			ImGui::TextWrapped("This mod allows you to choose which node to connect to on login.");
 
 
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
