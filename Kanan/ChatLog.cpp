@@ -1,60 +1,171 @@
+#include <cstdarg>
+#include <memory>
+#include <vector>
+
+#include <Windows.h>
+
+#include <imgui.h>
+#include <String.hpp>
+
+#include "Kanan.hpp"
 #include "ChatLog.hpp"
-#include "MabiPacket.h"
-#include "imgui.h"
-#include "Log.hpp"
-#include <sstream>
+
+using namespace std;
 
 namespace kanan {
-	ChatLog::ChatLog()
-	{
-		m_funcPtr = onRecv;
-		m_isEnabled = false;
-		m_op = -1;
-	}
+    struct ChatLog {
+    public:
+        ChatLog(const string& filepath)
+            : m_logs{},
+            m_filter{},
+            m_scrollToBottom{ false },
+            m_file{}
+        {
+            m_file.open(filepath, std::ios::out | std::ios::app);
+            if (m_file.fail())
+                return;
+            m_file.exceptions(m_file.exceptions() | std::ios::failbit | std::ifstream::badbit);
+        }
 
-	void ChatLog::onUI() {
-		if (ImGui::CollapsingHeader("Message Viewer")) {
-			ImGui::Text("This mod was created for development purposes and will send all incoming messages to logs");
-			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-			ImGui::Checkbox("Enable Message Viewer", &m_isEnabled);
-		}
-	}
+        void clear() {
+            m_logs.clear();
+        }
 
-	void ChatLog::onConfigLoad(const Config& cfg) {
-		m_isEnabled = cfg.get<bool>("ChatLog.Enabled").value_or(false);
-	}
+        void addLog(const string& msg) {
+            m_logs.push_back(msg);
 
-	void ChatLog::onConfigSave(Config& cfg) {
-		cfg.set<bool>("ChatLog.Enabled", m_isEnabled);
-	}
+            m_scrollToBottom = true;
 
-	unsigned long ChatLog::onRecv(MabiMessage mabiMessage) {
-		CMabiPacket recvPacket;
-		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
-		std::ostringstream ss{};
+            m_file << msg << std::endl;
+        }
 
-		try {
-			ss << "OP: " << recvPacket.GetOP() << "\n";
-			ss << "ID: " << recvPacket.GetReciverId() << "\n";
-			ss << "Elements: " << recvPacket.GetElementNum() << "\n";
-			for (int i = 0; i < recvPacket.GetElementNum(); i++) {
-				switch (recvPacket.GetElement(i)->type) {
-				case T_BYTE: ss << "BYTE: " << "?" << "\n"; break;
-				case T_SHORT: ss << "SHORT: " << recvPacket.GetElement(i)->word16 << "\n"; break;
-				case T_INT: ss << "INT: " << recvPacket.GetElement(i)->int32 << "\n"; break;
-				case T_LONG: ss << "LONG: " << recvPacket.GetElement(i)->ID << "\n"; break;
-				case T_FLOAT: ss << "FLOAT: " << recvPacket.GetElement(i)->float32 << "\n"; break;
-				case T_STRING: ss << "STRING: " << recvPacket.GetElement(i)->str << "\n"; break;
-				case T_BIN: ss << "BINARY BLOB: ..." << "\n";
-				}
-			}
-			log("%s\n", ss.str().c_str());
-		}
-		catch (const char* msg) {
-			log(msg);
-		}
+        void draw(const string& title, bool* isOpen) {
+            ImGui::SetNextWindowSize(ImVec2{ 500.0f, 400.0f }, ImGuiCond_FirstUseEver);
 
-		return recvPacket.GetOP();
-	}
+            if (!ImGui::Begin(title.c_str(), isOpen)) {
+                ImGui::End();
+                return;
+            }
+
+            /*if (ImGui::Button("Clear")) {
+                clear();
+            }*/
+
+            ImGui::SameLine();
+
+            auto copy = ImGui::Button("Copy Logs");
+
+            ImGui::SameLine();
+            m_filter.Draw("Filter", -100.0f);
+            ImGui::Separator();
+            ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+            if (copy) {
+                ImGui::LogToClipboard();
+            }
+
+            if (m_filter.IsActive()) {
+                for (auto log : m_logs)
+                {
+                    if (m_filter.PassFilter(log.c_str())) {
+                        ImGui::TextWrapped(log.c_str());
+                    }
+                }
+            }
+            else {
+                for (auto log : m_logs)
+                {
+                    ImGui::TextWrapped(log.c_str());
+                }
+            }
+
+            if (m_scrollToBottom) {
+                ImGui::SetScrollHere(1.0f);
+            }
+
+            m_scrollToBottom = false;
+
+            ImGui::EndChild();
+            ImGui::End();
+        }
+
+    private:
+        ImGuiTextFilter m_filter;
+        vector<std::string> m_logs;
+        bool m_scrollToBottom;
+        ofstream m_file;
+    };
+
+    unique_ptr<ChatLog> g_log{};
+
+    void startChatLog(const string& filepath) {
+        g_log = make_unique<ChatLog>(filepath);
+    }
+
+    void chatLog(const string& msg) {
+        g_log->addLog(msg);
+    }
+
+    void chatMsg(const string& msg) {
+        chatLog(msg);
+
+        // Use the real window if we have it.
+        HWND wnd{ nullptr };
+
+        if (g_kanan) {
+            wnd = g_kanan->getWindow();
+        }
+        else {
+            wnd = GetDesktopWindow();
+        }
+
+        MessageBox(wnd, widen(msg).c_str(), L"Kanan", MB_ICONINFORMATION | MB_OK);
+    }
+
+    void chatError(const string& msg) {
+        chatLog(msg);
+
+        // Use the real window if we have it.
+        HWND wnd{ nullptr };
+
+        if (g_kanan) {
+            wnd = g_kanan->getWindow();
+        }
+        else {
+            wnd = GetDesktopWindow();
+        }
+
+        MessageBox(wnd, widen(msg).c_str(), L"Kanan Error!", MB_ICONERROR | MB_OK);
+    }
+
+    void chatLog(const char* format, ...) {
+        va_list args{};
+
+        va_start(args, format);
+        chatLog(formatString(format, args));
+        va_end(args);
+    }
+
+    void chatMsg(const char* format, ...) {
+        va_list args{};
+
+        va_start(args, format);
+        chatMsg(formatString(format, args));
+        va_end(args);
+    }
+
+    void chatError(const char* format, ...) {
+        va_list args{};
+
+        va_start(args, format);
+        chatError(formatString(format, args));
+        va_end(args);
+    }
+
+    void drawChatLog(bool* isOpen) {
+        if (g_log) {
+            g_log->draw("Chat Log", isOpen);
+        }
+    }
 }

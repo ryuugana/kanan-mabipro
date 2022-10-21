@@ -3,6 +3,7 @@
 #include <String.hpp>
 
 #include "Log.hpp"
+#include "ChatLog.hpp"
 #include "Kanan.hpp"
 
 using namespace std;
@@ -41,7 +42,8 @@ DWORD WINAPI kananInit(LPVOID params) {
     path = path.substr(0, path.find_last_of("\\/"));
 
     // First and most important thing is opening the log file.
-    startLog(path + "/log.txt");
+    startLog(path + "/kananLog.txt");
+	startChatLog(path + "/kananChatLog.txt");
 
     log("Welcome to Kanan for Mabinogi.");
     log("Creating Kanan object.");

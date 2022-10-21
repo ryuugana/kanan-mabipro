@@ -10,6 +10,7 @@
 
 #include "FontData.hpp"
 #include "Log.hpp"
+#include "ChatLog.hpp"
 #include "Kanan.hpp"
 #include "MabiMessageHook.hpp"
 #include "../Kanan/metrics_gui/metrics_gui.h"
@@ -150,7 +151,11 @@ namespace kanan {
         auto& io = ImGui::GetIO();
 
         io.IniFilename = m_uiConfigPath.c_str();
+        ImFontConfig config;
+        config.MergeMode = true;
         io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, 16.0f);
+        io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, 16.0f, &config, io.Fonts->GetGlyphRangesJapanese());
+        io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, 16.0f, &config, io.Fonts->GetGlyphRangesKorean());
         ImGuiFreeType::BuildFontAtlas(io.Fonts, 0);
 
         if (!ImGui_ImplWin32_Init(m_wnd)) {
@@ -262,6 +267,10 @@ namespace kanan {
                     drawLog(&m_isLogOpen);
                 }
 
+                if (m_isChatLogOpen) {
+                    drawChatLog(&m_isChatLogOpen);
+                }
+
                 if (m_isAboutOpen) {
                     drawAbout();
                 }
@@ -343,6 +352,7 @@ namespace kanan {
         Config cfg{ m_path + "/config.txt" };
 
         m_isUIOpenByDefault = cfg.get<bool>("UI.OpenByDefault").value_or(true);
+        m_isChatLogOpen = cfg.get<bool>("ChatLog.OpenByDefault").value_or(false);
         m_isUIOpen = m_isUIOpenByDefault;
 
         for (auto& mod : m_mods.getMods()) {
@@ -371,6 +381,7 @@ namespace kanan {
         Config cfg{};
 
         cfg.set<bool>("UI.OpenByDefault", m_isUIOpenByDefault);
+        cfg.set<bool>("ChatLog.OpenByDefault", m_isChatLogOpen);
 
         for (auto& mod : m_mods.getMods()) {
             mod->onConfigSave(cfg);
@@ -434,12 +445,7 @@ namespace kanan {
 
             if (ImGui::BeginMenu("View")) {
                 ImGui::MenuItem("Show Log", nullptr, &m_isLogOpen);
-                if (ImGui::MenuItem("AstralWorld")) {
-                    viewAstralWorld();
-                }
-                if (ImGui::MenuItem("Housing Board")) {
-                    housingBoard();
-                }
+                ImGui::MenuItem("Show Chat Log", nullptr, &m_isChatLogOpen);
                 ImGui::EndMenu();
             }
 
@@ -461,12 +467,22 @@ namespace kanan {
         // Rest of the UI
         //
         ImGui::TextWrapped(
-            "Input to the game is blocked while interacting with this UI. \n"
+            "Input to the game is blocked while interacting with this UI. \n\n"
             "Press the INSERT key to toggle this UI. \n"
             "Configuration is saved every time the INSERT key is used to close the UI. \n"
-            "You can also save the configuration by using File->Save Config. "
+            "You can also save the configuration by using File->Save Config. \n\n"
+            "You can stop Kanan from opening on start by using Settings->UI Open By Default. "
         );
+        ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
         ImGui::Spacing();
+        if (ImGui::Button("Housing Board", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.50f, 50))) {
+            housingBoard();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("AstralWorld", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+            viewAstralWorld();
+        }
+        ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
         if (ImGui::CollapsingHeader("Patches")) {
             for (auto& mod : m_mods.getMods()) {

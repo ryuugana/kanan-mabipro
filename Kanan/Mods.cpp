@@ -17,6 +17,7 @@
 #include "MessageViewer.hpp"
 #include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
+#include "ModChatLog.hpp"
 
 /*#include "RangedAttackSwap.hpp"
 #include "EnableMultiClient.hpp"
@@ -115,9 +116,10 @@ namespace kanan {
             });
         }
 
-        addMessageMod(make_unique<ChooseLoginNode>());
-        addMessageMod(make_unique<ScrollingMessageToChat>());
         addMessageMod(make_unique<BlockSkillSpam>());
+        addMessageMod(make_unique<ScrollingMessageToChat>());
+        addMessageMod(make_unique<ModChatLog>());
+        addMessageMod(make_unique<ChooseLoginNode>());
         addMessageMod(make_unique<MessageViewer>());
 
         addMod(make_unique<AutoSetMTU>());

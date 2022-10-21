@@ -1,18 +1,13 @@
 #pragma once
 
-#include "MessageMod.hpp"
-
+#include <fstream>
 
 namespace kanan {
-	class ChatLog : public MessageMod {
-	public:
-		ChatLog();
+    void startChatLog(const std::string& filepath);
 
-		void onUI() override;
+    void chatLog(const char* format, ...);
+    void chatMsg(const char* format, ...);
+    void chatError(const char* format, ...);
 
-		void onConfigLoad(const Config& cfg) override;
-		void onConfigSave(Config& cfg) override;
-
-		static unsigned long onRecv(MabiMessage mabiMessage);
-	};
+    void drawChatLog(bool* isOpen);
 }

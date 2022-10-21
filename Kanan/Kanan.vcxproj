@@ -118,6 +118,7 @@
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
+    <ClCompile Include="ModChatLog.cpp" />
     <ClCompile Include="ChooseLoginNode.cpp" />
     <ClCompile Include="ColorAltText.cpp" />
     <ClCompile Include="CookingMod.cpp" />
@@ -161,6 +162,7 @@
     <ClInclude Include="BorderlessWindow.hpp" />
     <ClInclude Include="ChangeChannelHotkey.hpp" />
     <ClInclude Include="ChatLog.hpp" />
+    <ClInclude Include="ModChatLog.hpp" />
     <ClInclude Include="ChooseLoginNode.hpp" />
     <ClInclude Include="ColorAltText.hpp" />
     <ClInclude Include="CookingMod.hpp" />
