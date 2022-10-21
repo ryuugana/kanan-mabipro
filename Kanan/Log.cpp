@@ -52,6 +52,24 @@ namespace kanan {
             }
         }
 
+        void addString(const string& msg) {
+            auto oldSize = m_buf.size();
+
+            m_buf.appendf("%s", msg.c_str());
+
+            for (auto newSize = m_buf.size(); oldSize < newSize; ++oldSize) {
+                if (m_buf[oldSize] == '\n') {
+                    m_lineOffsets.push_back(oldSize);
+                }
+            }
+
+            m_scrollToBottom = true;
+
+            if (m_file.is_open()) {
+                m_file << msg << endl;
+            }
+        }
+
         void draw(const string& title, bool* isOpen) {
             ImGui::SetNextWindowSize(ImVec2{ 500.0f, 400.0f }, ImGuiCond_FirstUseEver);
 
@@ -123,6 +141,10 @@ namespace kanan {
         g_log->addLog(msg);
     }
 
+    void logString(const string& msg) {
+        g_log->addString(msg);
+    }
+
     void msg(const string& msg) {
         log(msg);
 
@@ -160,6 +182,14 @@ namespace kanan {
 
         va_start(args, format);
         log(formatString(format, args));
+        va_end(args);
+    }
+
+    void logNoNewLine(const char* format, ...) {
+        va_list args{};
+
+        va_start(args, format);
+        logString(formatString(format, args));
         va_end(args);
     }
 

@@ -117,7 +117,7 @@ namespace kanan {
 		for (uint32_t i = 0; i < mabiRecvListeners->size(); i++) {
 			if ((*mabiRecvListeners)[i]->m_isEnabled) {
 				if (op == (*mabiRecvListeners)[i]->getOp() || -1 == (*mabiRecvListeners)[i]->getOp()) {
-					log("");
+					logNoNewLine("");
 					op = ((MabiRecvListenerSignature)(*mabiRecvListeners)[i]->getFuncPtr())(mabiMessage);
 				}
 			}
