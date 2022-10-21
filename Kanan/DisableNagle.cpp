@@ -69,7 +69,7 @@ namespace kanan {
             int nodelay = 1;
 
             if (setsockopt(result, IPPROTO_TCP, TCP_NODELAY, (const char*)&nodelay, sizeof(nodelay)) == 0) {
-                log("Nagle disabled successfully.");
+                //log("Nagle disabled successfully.");
             }
             else {
                 log("Failed to disable nagle!");
