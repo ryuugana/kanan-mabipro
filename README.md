@@ -2,8 +2,7 @@
 A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) that provides a variety of mods for G13 Mabinogi and fully supports [AstralWorld Patcher](https://github.com/slargi/FantasiaG13).
 
 ## Download
-Downloads for the latest _official_ releases are located [here](https://github.com/ryuugana/kanan-mabipro/releases).
-* [The latest KananMabiPro.zip can be downloaded here](https://github.com/ryuugana/kanan-mabipro/releases/latest/download/KananMabiPro.zip)!
+[The latest KananMabiPro.zip can be downloaded here](https://github.com/ryuugana/kanan-mabipro/releases/latest/download/KananMabiPro.zip)!
 
 ## Install
 * Put dsound.dll and patches.json into your MabiPro folder 
