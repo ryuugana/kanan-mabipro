@@ -8,7 +8,6 @@ namespace kanan {
 
 	ChooseLoginNode::ChooseLoginNode()
 	{
-		m_funcPtr = onRecv;
 		m_isEnabled = false;
 		m_op = 48;
 	}

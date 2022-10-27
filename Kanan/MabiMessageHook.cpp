@@ -48,10 +48,6 @@ namespace kanan {
 		result &= PatchReadFromNetworkBuffer();
 		log(result ? "...success" : "...failed");
 
-		log("Finding WriteToNetworkBuffer...");
-		result &= FindWriteToNetworkBuffer();
-		log(result ? "...success" : "...failed");
-
 		return result;
 	}
 
@@ -118,7 +114,7 @@ namespace kanan {
 			if ((*mabiRecvListeners)[i]->m_isEnabled) {
 				if (op == (*mabiRecvListeners)[i]->getOp() || -1 == (*mabiRecvListeners)[i]->getOp()) {
 					logNoNewLine("");
-					op = ((MabiRecvListenerSignature)(*mabiRecvListeners)[i]->getFuncPtr())(mabiMessage);
+					op = (*mabiRecvListeners)[i]->onRecv(mabiMessage);
 				}
 			}
 		}
@@ -142,18 +138,6 @@ namespace kanan {
 		m_patch.address = ReadFromNetworkBufferFunctionAddress;
 		m_patch.bytes = { 0xE9 };
 		patch(m_patch);
-		return TRUE;
-	}
-
-	BOOL MabiMessageHook::FindWriteToNetworkBuffer() {
-		std::optional<uintptr_t> WriteToNetworkBufferFunctionAddressPtr = kanan::scan("Mint.dll", "55 8B EC 83 EC 18 53 56 8B F1 8B 46 08 57");
-		DWORD WriteToNetworkBufferFunctionAddress = *WriteToNetworkBufferFunctionAddressPtr;
-		LONG WriteToNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&WriteToNetworkBufferFunctionAddress);
-		if (!WriteToNetworkBufferFunctionAddressLong) return FALSE;
-
-		log("WriteToNetworkBuffer prologue address 0x%08X\r", WriteToNetworkBufferFunctionAddress);
-
-		WriteToNetworkBuffer = (WriteToNetworkBufferSignature)WriteToNetworkBufferFunctionAddress;
 		return TRUE;
 	}
 

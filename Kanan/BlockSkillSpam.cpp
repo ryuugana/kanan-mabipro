@@ -6,7 +6,6 @@
 namespace kanan {
 	BlockSkillSpam::BlockSkillSpam()
 	{
-		m_funcPtr = onRecv;
 		m_isEnabled = false;
 		m_op = 21101;
 	}

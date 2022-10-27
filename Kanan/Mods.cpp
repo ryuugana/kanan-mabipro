@@ -154,10 +154,6 @@ namespace kanan {
     }
 
     void Mods::addMessageMod(std::unique_ptr<MessageMod>&& mod) {
-        if (!mod->getFuncPtr()) {
-            log("Empty function pointer for %d", mod->getOp());
-            return;
-        }
         scoped_lock<mutex> _{ m_modsMutex };
 
         m_messageMods.emplace_back(move(mod));

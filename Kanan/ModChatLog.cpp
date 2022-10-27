@@ -11,7 +11,6 @@ namespace kanan {
 	ModChatLog::ModChatLog()
 	{
 		m_fileLogEnabled = false;
-		m_funcPtr = onRecv;
 		m_isEnabled = false;
 		m_op = -1;
 	}
@@ -27,7 +26,7 @@ namespace kanan {
 
 	void ModChatLog::onConfigLoad(const Config& cfg) {
 		m_isEnabled = cfg.get<bool>("ModChatLog.Enabled").value_or(false);
-		m_fileLogEnabled = cfg.get<bool>("ModChatLog.FileLogEnabled").value_or(false);
+		//m_fileLogEnabled = cfg.get<bool>("ModChatLog.FileLogEnabled").value_or(false);
 	}
 
 	void ModChatLog::onConfigSave(Config& cfg) {

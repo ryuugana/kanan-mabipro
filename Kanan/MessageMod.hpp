@@ -16,12 +16,12 @@ namespace kanan {
     // Mod made specifically for MabiMessageHook.
     class MessageMod : public Mod {
     public:
+		virtual unsigned long onRecv(MabiMessage mabiMessage) { return m_op; };
+
         int     getOp()     { return m_op; };
-        void*   getFuncPtr(){ return m_funcPtr; };
         bool    m_isEnabled;
 
     protected:
         int     m_op;
-        void*	m_funcPtr = nullptr;
     };
 }

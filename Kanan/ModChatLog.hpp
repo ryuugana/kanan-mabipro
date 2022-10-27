@@ -13,7 +13,7 @@ namespace kanan {
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;
 
-		static unsigned long onRecv(MabiMessage mabiMessage);
+		unsigned long onRecv(MabiMessage mabiMessage) override;
 	private:
 		static bool m_fileLogEnabled;
 	};

@@ -7,7 +7,6 @@
 namespace kanan {
 	MessageViewer::MessageViewer()
 	{
-		m_funcPtr = onRecv;
 		m_isEnabled = false;
 		m_op = -1;
 	}
