@@ -13,6 +13,10 @@ namespace kanan {
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;
 
-		static unsigned long onRecv(MabiMessage mabiMessage);
+		unsigned long onRecv(MabiMessage mabiMessage) override;
+
+	private:
+		bool m_isAuctionEnabled;
+		bool m_isFieldBossEnabled;
 	};
 }
