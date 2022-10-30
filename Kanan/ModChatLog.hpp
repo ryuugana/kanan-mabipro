@@ -15,6 +15,9 @@ namespace kanan {
 
 		unsigned long onRecv(MabiMessage mabiMessage) override;
 	private:
-		static bool m_fileLogEnabled;
+		void startLogging();
+
+		bool m_fileLogEnabled;
+		bool m_startedLogging;
 	};
 }

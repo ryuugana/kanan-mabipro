@@ -27,6 +27,10 @@ namespace kanan {
             return m_mods;
         }
 
+		auto& getPath() const {
+			return m_path;
+		}
+
         auto getWindow() const {
             return m_wnd;
         }
@@ -67,6 +71,7 @@ namespace kanan {
 
         void loadConfig();
         void saveConfig();
+
         void housingBoard();
         void viewAstralWorld();
 

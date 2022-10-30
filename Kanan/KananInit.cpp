@@ -3,7 +3,6 @@
 #include <String.hpp>
 
 #include "Log.hpp"
-#include "ChatLog.hpp"
 #include "Kanan.hpp"
 
 using namespace std;
@@ -30,6 +29,7 @@ LPCSTR mImportNames[] = { "DirectSoundCaptureCreate",
 typedef int(CALLBACK *DirectSoundEnumerate)(LPVOID, LPVOID);
 typedef HRESULT(WINAPI *DirectSoundCreate)(LPCGUID, LPVOID, LPVOID);
 typedef HRESULT(WINAPI *DirectSoundCreate8)(LPCGUID, LPVOID, LPVOID);
+void deleteOldLogs(string path, string fileName, struct tm  tstruct);
 
 //
 // This is the entrypoint for kanan. It's only responsible for setting up the global
@@ -42,8 +42,7 @@ DWORD WINAPI kananInit(LPVOID params) {
     path = path.substr(0, path.find_last_of("\\/"));
 
     // First and most important thing is opening the log file.
-    startLog(path + "/kananLog.txt");
-	startChatLog(path + "/kananChatLog.txt");
+    startLog(path + "/kananLog.txt"); 
 
     log("Welcome to Kanan for Mabinogi.");
     log("Creating Kanan object.");

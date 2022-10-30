@@ -72,6 +72,7 @@ namespace kanan {
                         ImGui::TextWrapped(log.c_str());
                     }
                 }
+				m_scrollToBottom = false;
             }
             else {
                 for (auto log : m_logs)
