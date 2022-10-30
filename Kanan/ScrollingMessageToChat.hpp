@@ -18,5 +18,6 @@ namespace kanan {
 	private:
 		bool m_isAuctionEnabled;
 		bool m_isFieldBossEnabled;
+		bool m_isFieldBNotifyEnabled;
 	};
 }
