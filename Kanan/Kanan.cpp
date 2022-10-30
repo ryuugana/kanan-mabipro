@@ -14,6 +14,7 @@
 #include "Kanan.hpp"
 #include "MabiMessageHook.hpp"
 #include "../Kanan/metrics_gui/metrics_gui.h"
+#include "Hotkey.hpp"
 
 using namespace std;
 
@@ -27,6 +28,9 @@ namespace kanan {
 
     MetricsGuiPlot frameTimePlot;
 
+	Hotkey  m_key;
+	Hotkey  m_housingKey;
+	Hotkey  m_astralKey;
 
     Kanan::Kanan(string path)
         : m_path{ move(path) },
@@ -231,6 +235,8 @@ namespace kanan {
         frameTimeMetric.AddNewValue(1.f / ImGui::GetIO().Framerate);
         frameTimePlot.UpdateAxes();
 
+		auto& io = ImGui::GetIO();
+
         if (m_areModsReady) {
             // Make sure the config for all the mods gets loaded.
             if (!m_areModsLoaded) {
@@ -241,18 +247,25 @@ namespace kanan {
                 mod->onFrame();
             }
 
-            if (wasKeyPressed(VK_INSERT)) {
+            if (wasKeyPressed(m_key.hotkey) && !io.WantCaptureKeyboard) {
                 m_isUIOpen = !m_isUIOpen;
-
+				
                 // Save the config whenever the menu closes.
                 if (!m_isUIOpen) {
                     saveConfig();
                 }
             }
 
+			if (wasKeyPressed(m_housingKey.hotkey) && !io.WantCaptureKeyboard) {
+				housingBoard();
+			}
+
+			if (wasKeyPressed(m_astralKey.hotkey) && !io.WantCaptureKeyboard) {
+				viewAstralWorld();
+			}
+
             if (m_isUIOpen) {
                 // Block input if the user is interacting with the UI.
-                auto& io = ImGui::GetIO();
 
                 if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
                     m_dinputHook->ignoreInput();
@@ -352,8 +365,14 @@ namespace kanan {
         Config cfg{ m_path + "/config.txt" };
 
         m_isUIOpenByDefault = cfg.get<bool>("UI.OpenByDefault").value_or(true);
+		m_key.hotkey = cfg.get<int>("UI.Keybind").value_or(VK_INSERT);
+		m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
+		m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
         m_isChatLogOpen = cfg.get<bool>("ChatLog.OpenByDefault").value_or(false);
         m_isUIOpen = m_isUIOpenByDefault;
+
+		if (m_key.hotkey == 0)
+			m_isUIOpen = true;
 
         for (auto& mod : m_mods.getMods()) {
             mod->onConfigLoad(cfg);
@@ -381,6 +400,9 @@ namespace kanan {
         Config cfg{};
 
         cfg.set<bool>("UI.OpenByDefault", m_isUIOpenByDefault);
+		cfg.set<int>("UI.Keybind", m_key.hotkey);
+		cfg.set<int>("UI.HousingKey", m_housingKey.hotkey);
+		cfg.set<int>("UI.AstralKey", m_astralKey.hotkey);
         cfg.set<bool>("ChatLog.OpenByDefault", m_isChatLogOpen);
 
         for (auto& mod : m_mods.getMods()) {
@@ -422,9 +444,9 @@ namespace kanan {
     }
 
     void Kanan::drawUI() {
-        ImGui::SetNextWindowSize(ImVec2{ 450.0f, 200.0f }, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2{ 500, 700.0f }, ImGuiCond_FirstUseEver);
 
-        if (!ImGui::Begin("Kanan's New Mabinogi Mod Modified for MabiPro", &m_isUIOpen, ImGuiWindowFlags_MenuBar)) {
+        if (!ImGui::Begin("Kanan for MabiPro", &m_isUIOpen, ImGuiWindowFlags_MenuBar)) {
             ImGui::End();
             return;
         }
@@ -468,13 +490,14 @@ namespace kanan {
         //
         ImGui::TextWrapped(
             "Input to the game is blocked while interacting with this UI. \n\n"
-            "Press the INSERT key to toggle this UI. \n"
-            "Configuration is saved every time the INSERT key is used to close the UI. \n"
+            "Press the %s key to toggle this UI. \n"
+            "Configuration is saved every time the %s key is used to close the UI. \n"
             "You can also save the configuration by using File->Save Config. \n\n"
-            "You can stop Kanan from opening on start by using Settings->UI Open By Default. "
+            "You can stop Kanan from opening on start by using Settings->UI Open By Default. ", KeyNames[m_key.hotkey], KeyNames[m_key.hotkey]
         );
-        ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
         ImGui::Spacing();
+		ImGui::Separator();
+		ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
         if (ImGui::Button("Housing Board", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.50f, 50))) {
             housingBoard();
         }
@@ -484,6 +507,14 @@ namespace kanan {
         }
         ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
+		if (ImGui::CollapsingHeader("Kanan Hotkey")) {
+			ImGui::TextWrapped("Press Esc Key to delete a hotkey\nDoes not support combos such as Ctrl+G");
+			ImGui::Spacing();
+			ImGui::Separator();
+			m_key.Display("Open/Close/Save Kanan", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
+			m_housingKey.Display("Open Housing Board", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
+			m_astralKey.Display("Open AstralWorld", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
+		}
         if (ImGui::CollapsingHeader("Patches")) {
             for (auto& mod : m_mods.getMods()) {
                 mod->onPatchUI();
@@ -575,4 +606,5 @@ namespace kanan {
 
         ImGui::End();
     }
+
 }
