@@ -118,6 +118,7 @@
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
+    <ClCompile Include="DisableFlashy.cpp" />
     <ClCompile Include="Hotkey.cpp" />
     <ClCompile Include="ModChatLog.cpp" />
     <ClCompile Include="ChooseLoginNode.cpp" />
@@ -164,6 +165,7 @@
     <ClInclude Include="ChangeChannelHotkey.hpp" />
     <ClInclude Include="ChatLog.hpp" />
     <ClInclude Include="dirent.h" />
+    <ClInclude Include="DisableFlashy.h" />
     <ClInclude Include="Hotkey.hpp" />
     <ClInclude Include="ModChatLog.hpp" />
     <ClInclude Include="ChooseLoginNode.hpp" />

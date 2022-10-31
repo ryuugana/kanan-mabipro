@@ -10,9 +10,13 @@
 #include "Log.hpp"
 
 #include "PatchMod.hpp"
+
 #include "AutoSetMTU.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
+
+#include "DisableFlashy.h"
+
 #include "BlockSkillSpam.hpp"
 #include "MessageViewer.hpp"
 #include "ScrollingMessageToChat.hpp"
@@ -107,6 +111,7 @@ namespace kanan {
         addPatchMod("Speedup", make_unique<DontMoveToSquadChat>());
 		addPatchMod("Text", make_unique<TTFFontSize>());
         addPatchMod("Text", make_unique<ColorAltText>());*/
+		addPatchMod("Graphics", make_unique<DisableFlashy>());
 
         for (auto& categories : m_patchMods) {
             auto& mods = categories.second;
@@ -116,11 +121,11 @@ namespace kanan {
             });
         }
 
+		addMessageMod(make_unique<MessageViewer>());
         addMessageMod(make_unique<BlockSkillSpam>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
         addMessageMod(make_unique<ModChatLog>());
         addMessageMod(make_unique<ChooseLoginNode>());
-        addMessageMod(make_unique<MessageViewer>());
 
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());

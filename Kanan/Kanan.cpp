@@ -507,8 +507,8 @@ namespace kanan {
         }
         ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
-		if (ImGui::CollapsingHeader("Kanan Hotkey")) {
-			ImGui::TextWrapped("Press Esc Key to delete a hotkey\nDoes not support combos such as Ctrl+G");
+		if (ImGui::CollapsingHeader("Kanan Hotkeys")) {
+			ImGui::TextWrapped("Press Esc Key to delete a hotkey\n\nHotkey combos such as Ctrl+G are not supported");
 			ImGui::Spacing();
 			ImGui::Separator();
 			m_key.Display("Open/Close/Save Kanan", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));

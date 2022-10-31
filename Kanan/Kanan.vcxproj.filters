@@ -177,6 +177,9 @@
     <ClCompile Include="Hotkey.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DisableFlashy.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -367,6 +370,9 @@
     </ClInclude>
     <ClInclude Include="Hotkey.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DisableFlashy.h">
+      <Filter>Header Files\Mods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
