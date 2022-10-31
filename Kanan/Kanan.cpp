@@ -247,7 +247,7 @@ namespace kanan {
                 mod->onFrame();
             }
 
-            if (wasKeyPressed(m_key.hotkey) && !io.WantCaptureKeyboard) {
+            if (wasKeyPressed(m_key.hotkey)) {
                 m_isUIOpen = !m_isUIOpen;
 				
                 // Save the config whenever the menu closes.
@@ -256,11 +256,11 @@ namespace kanan {
                 }
             }
 
-			if (wasKeyPressed(m_housingKey.hotkey) && !io.WantCaptureKeyboard) {
+			if (wasKeyPressed(m_housingKey.hotkey)) {
 				housingBoard();
 			}
 
-			if (wasKeyPressed(m_astralKey.hotkey) && !io.WantCaptureKeyboard) {
+			if (wasKeyPressed(m_astralKey.hotkey)) {
 				viewAstralWorld();
 			}
 

@@ -1,6 +1,7 @@
 #include "Hotkey.hpp"
 
 #include <Scan.hpp>
+#include <Utility.hpp>
 #include <imgui_internal.h>
 
 namespace kanan {
@@ -13,7 +14,7 @@ namespace kanan {
 		if (m_isKeyBindOpen) {
 			if (!value_changed) {
 				for (auto i = VK_BACK; i <= VK_RMENU; i++) {
-					if (io.KeysDown[i]) {
+					if (wasKeyPressed(i)) {
 						key = i;
 						value_changed = true;
 					}
@@ -23,7 +24,6 @@ namespace kanan {
 			if (ImGui::IsKeyPressed(ImGuiKey_Escape) || key == VK_ESCAPE) {
 				hotkey = 0;
 				m_isKeyBindOpen = false;
-				io.WantCaptureKeyboard = false;
 			}
 			else {
 				hotkey = key;
@@ -48,13 +48,11 @@ namespace kanan {
 		ImGui::SameLine();
 		if (m_isKeyBindOpen) {
 			m_isKeyBindOpen = !value_changed;
-			io.WantCaptureKeyboard = m_isKeyBindOpen;
 		}
 
 		if (ImGui::Button(buf_display, ImVec2(size_arg.x * 0.50f, size_arg.y))) {
 			if (m_isKeyBindOpen == false) {
 				m_isKeyBindOpen = true;
-				io.WantCaptureKeyboard = true;
 			}
 		}
 
