@@ -135,6 +135,40 @@ namespace kanan {
         return true;
     }
 
+	bool Hookjmp(void* toHook, void* ourFunct, int len)
+	{
+		if (len < 5)
+		{
+			return false;
+		}
+		DWORD curProtection;
+		VirtualProtect(toHook, len, PAGE_EXECUTE_READWRITE, &curProtection);
+		memset(toHook, 0x90, len);
+
+		DWORD relativeAddress = ((DWORD)ourFunct - (DWORD)toHook) - 5;
+		*(BYTE*)toHook = 0xE9;
+		*(DWORD*)((DWORD)toHook + 1) = relativeAddress;
+
+		DWORD temp;
+		VirtualProtect(toHook, len, curProtection, &temp);
+
+		return true;
+	}
+
+	//the code i use for injecting stuff
+	//patch bytes
+	void Patchmem(BYTE* dst, BYTE* src, unsigned int size)
+	{
+		DWORD oldprotect;
+		//set prems of area of memory to execute&read&write, copy the old perms into oldprotect
+		VirtualProtect(dst, size, PAGE_EXECUTE_READWRITE, &oldprotect);
+		//write our new bytes into the dst with the bytes in src
+		memcpy(dst, src, size);
+		//set the perms of the area of memory back to what ever it was before we were here
+		VirtualProtect(dst, size, oldprotect, &oldprotect);
+
+	}
+
     void from_json(const json& j, PatchMod& mod) {
         mod.m_patchName = j.at("name").get<string>();
 

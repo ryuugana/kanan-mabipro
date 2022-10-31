@@ -132,12 +132,8 @@ namespace kanan {
 		ReadFromNetworkBuffer = (ReadFromNetworkBufferSignature)ReadFromNetworkBufferFunctionAddressLong;
 		ReadFromNetworkBufferHookContinueAddress = ReadFromNetworkBufferFunctionAddressLong + 9;
 
-		Hookcall((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 7);
+		Hookjmp((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 7);
 
-		Patch m_patch;
-		m_patch.address = ReadFromNetworkBufferFunctionAddress;
-		m_patch.bytes = { 0xE9 };
-		patch(m_patch);
 		return TRUE;
 	}
 

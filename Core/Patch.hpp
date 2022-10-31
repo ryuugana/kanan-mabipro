@@ -18,6 +18,8 @@ namespace kanan {
     bool patch(Patch& p);
     bool undoPatch(const Patch& p);
     bool Hookcall(void* toHook, void* ourFunct, int len);
+	bool Hookjmp(void* toHook, void* ourFunct, int len);
+	void Patchmem(BYTE* dst, BYTE* src, unsigned int size);
 
     // Returns the old protection on success.
     // Note: you don't need to call this if you're using the above patch function.

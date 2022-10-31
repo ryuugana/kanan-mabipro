@@ -48,22 +48,6 @@ namespace kanan {
 
     }
 
-
-    //the code i use for injecting stuff
-    //patch bytes
-    void Patchmem(BYTE* dst, BYTE* src, unsigned int size)
-    {
-        DWORD oldprotect;
-        //set prems of area of memory to execute&read&write, copy the old perms into oldprotect
-        VirtualProtect(dst, size, PAGE_EXECUTE_READWRITE, &oldprotect);
-        //write our new bytes into the dst with the bytes in src
-        memcpy(dst, src, size);
-        //set the perms of the area of memory back to what ever it was before we were here
-        VirtualProtect(dst, size, oldprotect, &oldprotect);
-
-    }
-
-
     //find the addresses we need for patching
     CookingMod::CookingMod() {
         auto cookingAddress = scan("client.exe", "0F 83 ? ? ? ? 8B 75 ? 8D 04");
