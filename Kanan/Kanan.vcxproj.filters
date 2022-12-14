@@ -46,6 +46,12 @@
     <Filter Include="Source Files\MessageMods">
       <UniqueIdentifier>{abfdf516-58b4-4d4a-b292-a6c9935eecf6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\AstralMods">
+      <UniqueIdentifier>{b4e67cd7-7ebe-4851-9f76-9a86ca9e6185}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\AstralMods">
+      <UniqueIdentifier>{00d7cd44-7727-49b3-9b91-70a6cc7ef567}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="KananInit.cpp">
@@ -91,9 +97,6 @@
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
     <ClCompile Include="EnableMultiClient.cpp">
-      <Filter>Source Files\Mods</Filter>
-    </ClCompile>
-    <ClCompile Include="RangedAttackSwap.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
     <ClCompile Include="PatchMod.cpp">
@@ -180,6 +183,12 @@
     <ClCompile Include="DisableFlashy.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="RangedAttackSwap.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="DisableNight.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -228,9 +237,6 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="EnableMultiClient.hpp">
-      <Filter>Header Files\Mods</Filter>
-    </ClInclude>
-    <ClInclude Include="RangedAttackSwap.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="PatchMod.hpp">
@@ -373,6 +379,12 @@
     </ClInclude>
     <ClInclude Include="DisableFlashy.h">
       <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="RangedAttackSwap.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="DisableNight.h">
+      <Filter>Header Files\AstralMods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

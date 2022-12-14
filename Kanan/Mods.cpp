@@ -23,8 +23,9 @@
 #include "ChooseLoginNode.hpp"
 #include "ModChatLog.hpp"
 
-/*#include "RangedAttackSwap.hpp"
-#include "EnableMultiClient.hpp"
+#include "RangedAttackSwap.hpp"
+#include "DisableNight.h"
+/*#include "EnableMultiClient.hpp"
 #include "EntityViewer.hpp"
 #include "ColorAltText.hpp"
 #include "EquipmentOverride.hpp"
@@ -107,11 +108,13 @@ namespace kanan {
             }
         }
 
-        /*addPatchMod("Quality of Life", make_unique<RangedAttackSwap>());
+        /*
         addPatchMod("Speedup", make_unique<DontMoveToSquadChat>());
 		addPatchMod("Text", make_unique<TTFFontSize>());
         addPatchMod("Text", make_unique<ColorAltText>());*/
 		addPatchMod("Graphics", make_unique<DisableFlashy>());
+        addPatchMod("Quality of Life", make_unique<RangedAttackSwap>());
+        addPatchMod("Graphics", make_unique<DisableNight>());
 
         for (auto& categories : m_patchMods) {
             auto& mods = categories.second;

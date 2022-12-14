@@ -17,6 +17,7 @@ namespace kanan {
 
 	private:
 		std::optional<uintptr_t> address;
+		std::optional<uintptr_t> address2;
 		Patch m_patch;
 		bool m_choice;
 

@@ -13,7 +13,7 @@ namespace kanan {
         m_choice{ 0 },
         m_patch{}
     {
-        auto address = scan("client.exe", "B8 09 52 00 00 5F");
+        auto address = scan("Standard.dll", "B8 12 52 00 00 75 03 83 C0 F7");
 
         if (address) {
             log("Got RangedAttackSwap %p", *address);
@@ -31,7 +31,7 @@ namespace kanan {
             return;
         }
 
-        if (ImGui::Combo("Ranged Attack Swap", &m_choice, "Disabled\0Magnum Shot\0Arrow Revolver\0Support Shot\0Mirage Missile\0Crash Shot\0Spider Shot\0Urgent Shot\0\0")) {
+        if (ImGui::Combo("Ranged Attack Swap", &m_choice, "Disabled\0Magnum Shot\0Arrow Revolver\0Support Shot\0Mirage Missile\0Crash Shot\0\0")) {
             apply();
         }
     }
@@ -70,12 +70,6 @@ namespace kanan {
             break;
         case 5: //Crash Shot
             m_patch.bytes = { 0xFB, 0x55 };
-            break;
-        case 6: //Spider Shot
-            m_patch.bytes = { 0x14, 0x52 };
-            break;
-        case 7: //Urgent Shot
-            m_patch.bytes = { 0x16, 0x52 };
             break;
         default: //Disable on default
         case 0: //Disabled
