@@ -454,5 +454,29 @@
         "patch": "? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? EB 90"
       }
     ]
+  },
+  {
+    "name": "Disable Screen Shake",
+    "desc": "",
+    "category": "Quality of Life",
+    "patches": [
+      {
+        "location": "Renderer2.dll",
+        "pattern": "D9 04 30 D9 1E 83 C6 04 49 75 F5 5E",
+        "patch": "? EE 90"
+      }
+    ]
+  },
+  {
+    "name": "Disable Sunlight Glare",
+    "desc": "",
+    "category": "Graphics",
+    "patches": [
+      {
+        "location": "Renderer2.dll",
+        "pattern": "E8 13 0A 00 00",
+        "patch": "90 90 90 90 90"
+      }
+    ]
   }
 ]

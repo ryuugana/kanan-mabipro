@@ -24,7 +24,8 @@
 #include "ModChatLog.hpp"
 
 #include "RangedAttackSwap.hpp"
-#include "DisableNight.h"
+#include "DisableNight.hpp"
+#include "DisplayNamesFar.hpp"
 /*#include "EnableMultiClient.hpp"
 #include "EntityViewer.hpp"
 #include "ColorAltText.hpp"
@@ -115,6 +116,7 @@ namespace kanan {
 		addPatchMod("Graphics", make_unique<DisableFlashy>());
         addPatchMod("Quality of Life", make_unique<RangedAttackSwap>());
         addPatchMod("Graphics", make_unique<DisableNight>());
+        addPatchMod("Graphics", make_unique<DisplayNamesFar>());
 
         for (auto& categories : m_patchMods) {
             auto& mods = categories.second;
