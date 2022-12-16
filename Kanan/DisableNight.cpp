@@ -2,7 +2,7 @@
 
 #include "Log.hpp"
 #include <imgui.h>
-#include "DisableNight.h"
+#include "DisableNight.hpp"
 
 namespace kanan {
 
@@ -15,7 +15,7 @@ namespace kanan {
 			log("Got Disable Night %p", *address);
 		}
 		else {
-			log("Failed to find Disable Flashy address.");
+			log("Failed to find Disable Night address.");
 		}
 	}
 

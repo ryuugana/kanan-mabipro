@@ -189,6 +189,69 @@
     <ClCompile Include="DisableNight.cpp">
       <Filter>Source Files\AstralMods</Filter>
     </ClCompile>
+    <ClCompile Include="DisplayNamesFar.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="EnableFSAA.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="EnableNameColoring.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ExtraThreads.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="FarDiceThrow.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemSplitQuantity.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ModifyFontSize.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ModifyRenderDistance.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ModifyZoomLimit.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenshotQuality.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowClockMinutes.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowCombatPowerHP.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowFPS.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowExplorationPercent.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowItemID.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowPoisonDurability.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowTrueDurability.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowTrueFoodQuality.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="ShowTrueHp.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="TimeAlarm.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
+    <ClCompile Include="CombatMasterySwap.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -383,7 +446,67 @@
     <ClInclude Include="RangedAttackSwap.hpp">
       <Filter>Header Files\AstralMods</Filter>
     </ClInclude>
-    <ClInclude Include="DisableNight.h">
+    <ClInclude Include="DisableNight.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="DisplayNamesFar.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="EnableFSAA.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="TimeAlarm.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowTrueHp.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowTrueFoodQuality.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowPoisonDurability.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowItemID.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowFPS.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowExplorationPercent.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowCombatPower.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ShowClockMinutes.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenshotQuality.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ModifyZoomLimit.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ModifyRenderDistance.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ModifyFontSize.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemSplitQuantity.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="FarDiceThrow.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="ExtraThreads.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="EnableNameColoring.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="CombatMasterySwap.hpp">
       <Filter>Header Files\AstralMods</Filter>
     </ClInclude>
   </ItemGroup>
