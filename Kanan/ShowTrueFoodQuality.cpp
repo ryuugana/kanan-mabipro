@@ -1,94 +1,108 @@
-/*#include "Patcher_ShowTrueFoodQuality.h"
-#include "../Addr.h"
-#include "../FileSystem.h"
+#include <Scan.hpp>
 
-//-----------------------------------------------------------------------------
-// Static variable initialization
+#include "Log.hpp"
+#include <imgui.h>
+#include "ShowTrueFoodQuality.hpp"
 
-wchar_t CPatcher_ShowTrueFoodQuality::dataBuf[256];
-LPBYTE CPatcher_ShowTrueFoodQuality::addrCStringTEquals = NULL;
-LPBYTE CPatcher_ShowTrueFoodQuality::addrTargetReturn = NULL;
 
-//-----------------------------------------------------------------------------
-// Constructor
+namespace kanan{
+	//-----------------------------------------------------------------------------
+	// Static variable initialization
 
-CPatcher_ShowTrueFoodQuality::CPatcher_ShowTrueFoodQuality( void )
-{
-	patchname = "Show True Food Quality";
+	wchar_t dataBuf[256];
+	LPBYTE addrCStringTEquals = NULL;
+	LPBYTE aaddrTargetReturn = NULL;
+	BYTE hexstr[32];
 
-	addrCStringTEquals = CAddr::Addr(CStringTUni_Equals);
-	if (!addrCStringTEquals) {
-		WriteLog("Patch initialization failed: %s.\n", patchname.c_str());
-		WriteLog("   Missing dependency.\n");
-		return;
+	//-----------------------------------------------------------------------------
+	// Constructor
+
+	ShowTrueFoodQuality::ShowTrueFoodQuality(void)
+	{
+		address = scan("Pleione.dll", "? ? ? ? ? ? ? ? 80 7d 18 00 0f 84 ? ? ? ? 83 7D 0C 50");
+
+		if (address) {
+
+			for (int i = 0; i < 8; i++) {
+				hexstr[i] = ((LPBYTE)*address)[i];
+				log("%02X", hexstr[i]);
+			}
+
+			int offset = (((LPBYTE)*address)[7] << 24) | (((LPBYTE)*address)[6] << 16) | (((LPBYTE)*address)[5] << 8) | (((LPBYTE)*address)[4]);
+
+			addrCStringTEquals = (LPBYTE)*address+offset+8;
+			aaddrTargetReturn = (LPBYTE)*address + 8;
+			log("Found Show True Food Quality %p %p", *address, addrCStringTEquals);
+		}
+		else {
+			log("Failed to find Show True Food Quality address.");
+		}
 	}
 
-	vector<WORD> patch;
-	vector<WORD> backup;
+	//-----------------------------------------------------------------------------
+	// Hook functions
 
-	backup +=
-		0x8B, 0xCB,								// +CC: MOV ECX, EBX
-		0x90, 0xE8, -1, -1, -1, -1,				// +CE: CALL xxxxxxxx (esl::CStringT::operator+=(wchar const *))
-		0x80, 0x7D, 0x18, 0x00,					// +D4: CMP [EBP-10], 0
-		0x0F, 0x84, 0x31, 0x01, 0x00, 0x00;		// +D8: JZ NEAR +0x131
-	patch +=
-		0xE9, 0x01FF, 0x01FF, 0x01FF, 0x01FF,	// +CC: JMP patchFoodQuality
-		0x90, 0x90, 0x90,						// +D1: NOP (x3)
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1;
-	MemoryPatch mp( NULL, patch, backup );
-	mp.Search( L"Pleione.dll" );
-	mp.PatchRelativeAddress( 0x01, (LPBYTE)patchFoodQuality );
+	void patchFoodQualityFormat(wchar_t * buff, wchar_t* str, int d)
+	{
+		swprintf_s(buff, 255, L"%s (%d)", str, d);
+	}
 
-	addrTargetReturn = mp.GetAddr() + 0x08;		// +D4
-	
-	patches += mp;
-	if (CheckPatches())
-		WriteLog("Patch initialization successful: %s.\n", patchname.c_str());
-	else
-		WriteLog("Patch initialization failed: %s.\n", patchname.c_str());
-}
+	__declspec(naked) void patchFoodQuality(void)
+	{
+		//EAX: Numeric food quality
+		//EBX: String pointer
+		//ECX: none
+		__asm {
+			pop		ecx
+			push	eax
+			push	ecx
+			push	offset dataBuf
+			call	patchFoodQualityFormat
+			add		esp, 0Ch
 
-//-----------------------------------------------------------------------------
-// Hook functions
+			push	offset dataBuf
+			mov		ecx, ebx;
+			call	addrCStringTEquals
 
-NAKED void CPatcher_ShowTrueFoodQuality::patchFoodQuality(void)
-{
-	//EAX: Numeric food quality
-	//EBX: String pointer
-	//ECX: none
-	__asm {
-		pop		ecx				
-		push	eax
-		push	ecx
-		push	offset dataBuf
-		call	patchFoodQualityFormat
-		add		esp, 0Ch
+			jmp		aaddrTargetReturn
+		}
+	}
 
-		push	offset dataBuf
-		mov		ecx, ebx;
-		call	addrCStringTEquals
 
-		jmp		addrTargetReturn
+	//-----------------------------------------------------------------------------
+	// UI Functions
+
+	void ShowTrueFoodQuality::apply() {
+		if (m_choice) {
+			Hookjmp((void*)(*address), patchFoodQuality, 8);
+		}
+		else {
+			Patchmem((BYTE*)(*address), hexstr, 8);
+		}
+	}
+
+	void ShowTrueFoodQuality::onPatchUI() {
+		if (!address) {
+			return;
+		}
+
+		if (ImGui::Checkbox("Show True Food Quality", &m_choice)) {
+			apply();
+		}
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Shows food quality in numerical format");
+		}
+	}
+
+	void ShowTrueFoodQuality::onConfigLoad(const Config& cfg) {
+		m_choice = cfg.get<bool>("ShowTrueFoodQuality.Enabled").value_or(false);
+
+		if (m_choice != 0) {
+			apply();
+		}
+	}
+
+	void ShowTrueFoodQuality::onConfigSave(Config& cfg) {
+		cfg.set<bool>("ShowTrueFoodQuality.Enabled", m_choice);
 	}
 }
-
-void CPatcher_ShowTrueFoodQuality::patchFoodQualityFormat(wchar_t * buff,wchar_t* str,int d)
-{
-	swprintf_s(buff,255,L"%s (%d)",str,d);
-}
-
-//-----------------------------------------------------------------------------
-// INI Functions
-
-bool CPatcher_ShowTrueFoodQuality::ReadINI( void )
-{
-	if ( ReadINI_Bool( L"ShowTrueFoodQuality" ))
-		return Install();
-	return true;
-}
-
-bool CPatcher_ShowTrueFoodQuality::WriteINI( void )
-{
-	WriteINI_Bool( L"ShowTrueFoodQuality", IsInstalled() );
-	return true;
-}*/
