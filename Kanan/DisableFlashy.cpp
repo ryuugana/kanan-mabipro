@@ -19,7 +19,7 @@ namespace kanan {
 		// Disable Flashy for items in inventory and on ground
 		address = scan("Standard.dll", "8B 44 24 04 8B 44 81 10 C2 04");
 		address2 = scan("Pleione.dll", "8B 45 18 8B 08 89 4E 1C");
-
+		addrTargetReturn = (LPBYTE)*address2 + 5;
 		if (address && address2) {
 			log("Got Disable Flashy %p %p", *address, *address2);
 		}
@@ -117,7 +117,7 @@ namespace kanan {
 	void DisableFlashy::apply() {
 		if (m_choice) {
 			Hookjmp((void*)(*address), patchFlashyValue, 8);
-			Hookjmp((void*)(*address2), patchFlashyValue2, 8);
+			Hookjmp((void*)(*address2), patchFlashyValue2, 5);
 		}
 		else {
             Patchmem((BYTE*)(*address), (BYTE*)"\x8B\x44\x24\x04\x8B\x44\x81\x10", 8);
