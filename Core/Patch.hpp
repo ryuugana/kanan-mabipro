@@ -7,15 +7,24 @@
 #include <Windows.h>
 
 namespace kanan {
+	enum patchType {
+		P_NONE,
+		P_JMP,
+		P_CALL
+	};
+
     struct Patch {
         uintptr_t address{ 0 };
+		void* funcAddress{ 0 };
         std::vector<int16_t> bytes;
         std::vector<int16_t> originalBytes;
+		int size;
+		int type;
     };
-
     bool patch(uintptr_t address, const std::vector<int>& bytes);
 
     bool patch(Patch& p);
+	bool hookPatch(Patch& p);
     bool undoPatch(const Patch& p);
     bool Hookcall(void* toHook, void* ourFunct, int len);
 	bool Hookjmp(void* toHook, void* ourFunct, int len);

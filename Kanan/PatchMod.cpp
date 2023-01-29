@@ -115,46 +115,6 @@ namespace kanan {
         }
     }
 
-    bool Hookcall(void* toHook, void* ourFunct, int len)
-    {
-        if (len < 5)
-        {
-            return false;
-        }
-        DWORD curProtection;
-        VirtualProtect(toHook, len, PAGE_EXECUTE_READWRITE, &curProtection);
-        memset(toHook, 0x90, len);
-
-        DWORD relativeAddress = ((DWORD)ourFunct - (DWORD)toHook) - 5;
-        *(BYTE*)toHook = 0xE8;
-        *(DWORD*)((DWORD)toHook + 1) = relativeAddress;
-
-        DWORD temp;
-        VirtualProtect(toHook, len, curProtection, &temp);
-
-        return true;
-    }
-
-	bool Hookjmp(void* toHook, void* ourFunct, int len)
-	{
-		if (len < 5)
-		{
-			return false;
-		}
-		DWORD curProtection;
-		VirtualProtect(toHook, len, PAGE_EXECUTE_READWRITE, &curProtection);
-		memset(toHook, 0x90, len);
-
-		DWORD relativeAddress = ((DWORD)ourFunct - (DWORD)toHook) - 5;
-		*(BYTE*)toHook = 0xE9;
-		*(DWORD*)((DWORD)toHook + 1) = relativeAddress;
-
-		DWORD temp;
-		VirtualProtect(toHook, len, curProtection, &temp);
-
-		return true;
-	}
-
 	//the code i use for injecting stuff
 	//patch bytes
 	void Patchmem(BYTE* dst, BYTE* src, unsigned int size)
