@@ -112,6 +112,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Addr.cpp" />
     <ClCompile Include="AutoChangeChannels.cpp" />
     <ClCompile Include="AutoSetMTU.cpp" />
     <ClCompile Include="BlockSkillSpam.cpp" />
@@ -180,6 +181,7 @@
     <ClCompile Include="WindowsMessageHook.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Addr.h" />
     <ClInclude Include="AutoChangeChannels.hpp" />
     <ClInclude Include="AutoSetMTU.hpp" />
     <ClInclude Include="BlockSkillSpam.hpp" />

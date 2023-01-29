@@ -1,0 +1,92 @@
+#pragma once
+
+#include <WinDef.h>
+namespace kanan {
+	enum DllAddress {
+		kernel32_CreateRemoteThread,
+		kernelbase_CreateRemoteThreadEx,
+		CStringTUni_Constr,
+		CStringTUni_Equals,
+		CFileSystem_SetLookUpOrder,
+		CFormatter_Insert_ulong,
+		CFormatter_Insert_ushort,
+		CFormatter_Insert_float,
+		CFormatter_Insert_pwchar,
+		win32_CreateWindowExW,
+		CGameOptionMgr_ReadFSAA,
+		CGameOptionMgr_ReadFSAAQuality,
+		CPleione_CleanUp,
+		CAtmosphere_SetSkyTime,
+		CQuaterViewCamera_CQuaterViewCamera,
+		CDungeonRegion_SetFog,
+		IParameterBase2_GetCombatPower,
+		IParameterBase2_GetLife,
+		IParameterBase2_GetLifeMax,
+		IParameterBase2_GetLifeDamaged,
+		IParameterBase2_GetLifeMaxBase,
+		IParameterBase2_GetInterfaceLifeDamaged,
+		IParameterBase2_GetLifePercent,
+		IItem_GetInterfaceDurability,
+		IItem_GetInterfaceDurabilityMax,
+		IItem_GetColor,
+		IItem_IsPoisoned,
+		IItem_GetItemPotionPoison,
+		IItem_GetItemBasePoison,
+		IItem_GetItemPotionPoisonDurability,
+		ICharacter_IsElf,
+		ICharacter_IsGiant,
+		ICharacter_IsPet,
+		ICharacter_IsNPC,
+		ICharacter_IsGoodNPC,
+		CDefaultCompiler_Compile,
+		CDefaultTagCompiler_Compile,
+		CHTMLCompiler_Compile,
+		Camera_SetProjectionDesc,
+		IParameterBase2_GetExploLevel,
+		IParameter_GetExploExpPercent,
+		ISkillMgr_IsEnableMovingAim,
+		ISkillMgr_GetBasicRangedAttackSkill,
+		IParameter_GetStrength,
+		IParameter_GetDexterity,
+		IParameter_GetIntelligence,
+		IParameter_GetWill,
+		IParameter_GetLuck,
+		CSkillDiceThrowing_GetSkillUsable,
+		CCamera_EnableVibrate,
+		CRendererContext_RenderSkyTexture,
+		Stdapi_FindItem,
+		CSetItemMgr_GetToolTipString,
+		g_cStandardAPIMgrBlock,
+		CStandardAPIMgr_CommonAPI,
+		stdapi_ShowChattingMessage,
+		stdapi_ShowCaption,
+		stdapi_GetGlobalTime,
+		stdapi_GlobalTimeToGameTime,
+		IServiceMgr_IsUsingNaosSupport,
+		IServiceMgr_IsUsableContents,
+		Mint_Write16,
+		Mint_CMessage,
+		ISkillMgr_Complete,
+		CSkillRush_GetId,
+		CSkillRush_OnLeaveProcessing,
+		CStringT_Implement,
+		CConditionDescMgr_FindConditionID,
+		CConditionDescMgr_LoadData,
+		CConditionDescMgr_LoadXML,
+		IConditionMgr_GetConditionNum,
+		IConditionMgr_WriteToDB,
+		IConditionMgr_WriteToFile,
+		IConditionMgr_WriteMsgFast,
+		IConditionMgr_Update,
+		DllAddress_size // equal to the number of enum entries previously
+	};
+
+	class CAddr
+	{
+	public:
+		static LPBYTE Addr(DllAddress addrNumber);
+		static bool PreCacheAddresses(void);
+	private:
+		static bool CacheAddress(DllAddress addrNumber);
+	};
+}

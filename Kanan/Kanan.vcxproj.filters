@@ -252,6 +252,9 @@
     <ClCompile Include="CombatMasterySwap.cpp">
       <Filter>Source Files\AstralMods</Filter>
     </ClCompile>
+    <ClCompile Include="Addr.cpp">
+      <Filter>Source Files\AstralMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -507,6 +510,9 @@
       <Filter>Header Files\AstralMods</Filter>
     </ClInclude>
     <ClInclude Include="CombatMasterySwap.hpp">
+      <Filter>Header Files\AstralMods</Filter>
+    </ClInclude>
+    <ClInclude Include="Addr.h">
       <Filter>Header Files\AstralMods</Filter>
     </ClInclude>
   </ItemGroup>
