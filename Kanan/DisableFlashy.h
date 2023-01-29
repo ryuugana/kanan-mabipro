@@ -15,10 +15,12 @@ namespace kanan {
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;
 
+
 	private:
 		std::optional<uintptr_t> address;
 		std::optional<uintptr_t> address2;
 		Patch m_patch;
+		Patch m_patch2;
 		bool m_choice;
 
 		void apply();
