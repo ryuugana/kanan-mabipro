@@ -71,57 +71,70 @@ namespace kanan {
 		return ss.str();
 	}
 
+	string removePercent(string message) {
+		int pos = message.find("%");
+		while (pos != string::npos) {
+			message = message.replace(pos, 1, "p");
+			pos = message.find("%");
+		}
+		return message;
+	}
+
 	void ModChatLog::onRecv(MabiMessage mabiMessage) {
 		unsigned long op = GetOP(mabiMessage.buffer);
 
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
-		std::ostringstream ss{};
+		ostringstream ss{};
 
 		try {
-			if (!std::string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
+			if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
 				return;
-
+			string message = "";
 			switch (recvPacket.GetOP())
 			{
 			case 21100: // All + Personal Shop
+				message = removePercent(recvPacket.GetElement(2)->str);
 				if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
 					break;
 				if (strcmp(recvPacket.GetElement(1)->str, "<PERSONALSHOP>") == 0) {
-					ss << getTime() << " | <PERSONALSHOP> " << ": " << recvPacket.GetElement(2)->str;
+					ss << getTime() << " | <PERSONALSHOP> " << ": " << message;
 				}
 				else if (strcmp(recvPacket.GetElement(1)->str, "<PARTY>") == 0) {
-					ss << getTime() << " | <PARTY> " << ": " << recvPacket.GetElement(2)->str;
+					ss << getTime() << " | <PARTY> " << ": " << message;
 				}
 				else {
 					bool isEmote = false;
 					for each(auto emote in emotes) {
-						if (strcmp(recvPacket.GetElement(2)->str, emote) == 0) {
-							isEmote = true;
-							break;
-						}
+						if (message.find(emote) != string::npos)
+							return;
 					}
-					if(!isEmote)
-						ss << getTime() << " | " << recvPacket.GetElement(1)->str << ": " << recvPacket.GetElement(2)->str;
+
+					ss << getTime() << " | " << recvPacket.GetElement(1)->str << ": " << message;
 				}
 				break;
 			case 21101: // System
 				if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
 					break;
+				message = removePercent(recvPacket.GetElement(1)->str);
 				if(recvPacket.GetElement(0)->byte8 == 7)
 					ss << getTime() << " | <SYSTEM> " << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 21107: // Whisper
+				message = removePercent(recvPacket.GetElement(1)->str);
 				ss << getTime() << " | <WHISPER> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 21109: // Beginner
+				message = removePercent(recvPacket.GetElement(1)->str);
 				ss << getTime() << " | <GLOBAL> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 36520: // Party
+				message = removePercent(recvPacket.GetElement(1)->str);
 				ss << getTime() << " | <PARTY> " << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 50031: // Guild
+				message = removePercent(recvPacket.GetElement(1)->str);
 				ss << getTime() << " | <GUILD> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
 			default:
