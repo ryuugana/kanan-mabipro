@@ -11,7 +11,7 @@ namespace kanan {
 		m_isAuctionEnabled = false;
 		m_isFieldBossEnabled = false;
 		m_isFieldBNotifyEnabled = false;
-		m_op = 21101;
+		m_op.push_back(21101);
 	}
 
 	void ScrollingMessageToChat::onUI() {
@@ -59,12 +59,12 @@ namespace kanan {
 		}
 	}
 
-	unsigned long ScrollingMessageToChat::onRecv(MabiMessage mabiMessage) {
+	void ScrollingMessageToChat::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
 		if (recvPacket.GetElement(0)->byte8 != 1 && recvPacket.GetElement(0)->byte8 != 8)
-			return recvPacket.GetOP();
+			return;
 
 		if (m_isAuctionEnabled && strstr(recvPacket.GetElement(1)->str, "Channel 1")) {
 			PacketData data;
@@ -95,7 +95,5 @@ namespace kanan {
 			if (strstr(recvPacket.GetElement(1)->str, "has appeared") && m_isFieldBNotifyEnabled)
 				notify();
 		}
-
-		return recvPacket.GetOP();
 	}
 }

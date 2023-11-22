@@ -112,9 +112,11 @@ namespace kanan {
 		unsigned long op = GetOP(mabiMessage.buffer);
 		for (uint32_t i = 0; i < mabiRecvListeners->size(); i++) {
 			if ((*mabiRecvListeners)[i]->m_isEnabled) {
-				if (op == (*mabiRecvListeners)[i]->getOp() || -1 == (*mabiRecvListeners)[i]->getOp()) {
+				for each( int listenOp in (*mabiRecvListeners)[i]->getOp())
+				if (op ==  listenOp || -1 == listenOp) {
 					logNoNewLine("");
-					op = (*mabiRecvListeners)[i]->onRecv(mabiMessage);
+					(*mabiRecvListeners)[i]->onRecv(mabiMessage);
+					break;
 				}
 			}
 		}

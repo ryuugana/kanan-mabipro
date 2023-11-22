@@ -29,7 +29,12 @@ namespace kanan {
 		: m_fileLogEnabled{ false },
 		m_startedLogging{ false }
 	{
-		m_op = -1;
+		m_op.push_back(21100);
+		m_op.push_back(21101);
+		m_op.push_back(21107);
+		m_op.push_back(21109);
+		m_op.push_back(36520);
+		m_op.push_back(50031);
 	}
 
 	void ModChatLog::onUI() {
@@ -66,11 +71,8 @@ namespace kanan {
 		return ss.str();
 	}
 
-	unsigned long ModChatLog::onRecv(MabiMessage mabiMessage) {
+	void ModChatLog::onRecv(MabiMessage mabiMessage) {
 		unsigned long op = GetOP(mabiMessage.buffer);
-		if (!(op == 21100 || op == 21101 || op == 21107 || op == 21109 || op == 36520 || op == 50031)) {
-			return op;
-		}
 
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
@@ -79,7 +81,7 @@ namespace kanan {
 
 		try {
 			if (!std::string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
-				return op;
+				return;
 
 			switch (recvPacket.GetOP())
 			{
@@ -130,8 +132,6 @@ namespace kanan {
 		}
 		catch (exception e) {
 		}
-
-		return recvPacket.GetOP();
 	}
 
 	void deleteOldLogs(string path, string fileName, struct tm  tstruct) {

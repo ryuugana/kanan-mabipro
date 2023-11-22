@@ -8,7 +8,7 @@ namespace kanan {
 	MessageViewer::MessageViewer()
 	{
 		m_isEnabled = false;
-		m_op = -1;
+		m_op.push_back(-1);
 	}
 
 	void MessageViewer::onUI() {
@@ -27,7 +27,7 @@ namespace kanan {
 		cfg.set<bool>("MessageViewer.Enabled", m_isEnabled);
 	}
 
-	unsigned long MessageViewer::onRecv(MabiMessage mabiMessage) {
+	void MessageViewer::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
@@ -52,7 +52,5 @@ namespace kanan {
 		catch (const char* msg) {
 			log(msg);
 		}
-
-		return recvPacket.GetOP();
 	}
 }

@@ -9,7 +9,7 @@ namespace kanan {
 	ChooseLoginNode::ChooseLoginNode()
 	{
 		m_isEnabled = false;
-		m_op = 48;
+		m_op.push_back(48);
 	}
 
 	void ChooseLoginNode::onUI() {
@@ -35,13 +35,13 @@ namespace kanan {
 		cfg.set<int>("ChooseLoginNode.Choice", m_choice);
 	}
 
-	unsigned long ChooseLoginNode::onRecv(MabiMessage mabiMessage) {
+	void ChooseLoginNode::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
 		// Prevent Housing Login Disconnect
 		if (strcmp(recvPacket.GetElement(2)->str, "Channel 1") != 0) {
-			return recvPacket.GetOP();
+			return;
 		}
 
 		PacketData data;
@@ -75,7 +75,5 @@ namespace kanan {
 		int tmpSizw = recvPacket.BuildPacket(&p);
 
 		memcpy(mabiMessage.buffer, p, tmpSizw);
-
-		return recvPacket.GetOP();
 	}
 }

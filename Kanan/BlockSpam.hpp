@@ -4,15 +4,19 @@
 
 
 namespace kanan {
-	class BlockSkillSpam : public MessageMod {
+	class BlockSpam : public MessageMod {
 	public:
-		BlockSkillSpam();
+		BlockSpam();
 
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;
 
-		unsigned long onRecv(MabiMessage mabiMessage) override;
+		void onRecv(MabiMessage mabiMessage) override;
+
+	private:
+		bool m_isBSEnabled;
+		bool m_isBOEEnabled;
 	};
 }

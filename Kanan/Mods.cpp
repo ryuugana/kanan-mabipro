@@ -17,7 +17,7 @@
 
 #include "DisableFlashy.h"
 
-#include "BlockSkillSpam.hpp"
+#include "BlockSpam.hpp"
 #include "MessageViewer.hpp"
 #include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
@@ -122,7 +122,7 @@ namespace kanan {
         }
 
 		addMessageMod(make_unique<MessageViewer>());
-        addMessageMod(make_unique<BlockSkillSpam>());
+        addMessageMod(make_unique<BlockSpam>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
         addMessageMod(make_unique<ModChatLog>());
         addMessageMod(make_unique<ChooseLoginNode>());

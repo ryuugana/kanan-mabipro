@@ -114,7 +114,7 @@
   <ItemGroup>
     <ClCompile Include="AutoChangeChannels.cpp" />
     <ClCompile Include="AutoSetMTU.cpp" />
-    <ClCompile Include="BlockSkillSpam.cpp" />
+    <ClCompile Include="BlockSpam.cpp" />
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
@@ -160,7 +160,7 @@
   <ItemGroup>
     <ClInclude Include="AutoChangeChannels.hpp" />
     <ClInclude Include="AutoSetMTU.hpp" />
-    <ClInclude Include="BlockSkillSpam.hpp" />
+    <ClInclude Include="BlockSpam.hpp" />
     <ClInclude Include="BorderlessWindow.hpp" />
     <ClInclude Include="ChangeChannelHotkey.hpp" />
     <ClInclude Include="ChatLog.hpp" />
