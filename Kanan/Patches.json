@@ -474,5 +474,39 @@
         "patch": "83 F8 01 90 90 39 ? ? 74 40"
       }
     ]
+  },
+  {
+    "name": "Block pet messages",
+    "desc": "",
+    "category": "Quality of Life",
+    "patches": [
+      {
+        "location": "Pleione.dll",
+        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 03 FF D7 F6 45 08 08",
+        "patch": "90 90 90 90 90"
+      },
+      {
+        "location": "Pleione.dll",
+        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 03 FF D7 F6 45 08 02",
+        "patch": "90 90 90 90 90"
+      },
+      {
+        "location": "Pleione.dll",
+        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 08 FF D6 8D",
+        "patch": "90 90 90 90 90"
+      }
+    ]
+  },
+  {
+    "name": "Block party ads",
+    "desc": "",
+    "category": "Quality of Life",
+    "patches": [
+      {
+        "location": "Pleione.dll",
+        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D C0 C6 45 FC 06 90 E8",
+        "patch": "90 90 90 90 90"
+      }
+    ]
   }
 ]
