@@ -18,5 +18,6 @@ namespace kanan {
 	private:
 		bool m_isBSEnabled;
 		bool m_isBOEEnabled;
+		bool m_isBECEnabled;
 	};
 }
