@@ -374,6 +374,9 @@
     <ClInclude Include="BlockSpam.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
+    <ClInclude Include="Version.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Patches.json" />

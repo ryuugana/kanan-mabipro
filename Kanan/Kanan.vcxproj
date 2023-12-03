@@ -221,6 +221,7 @@
     <ClInclude Include="StatusUI.hpp" />
     <ClInclude Include="TTFFontSize.hpp" />
     <ClInclude Include="UseDataFolder.hpp" />
+    <ClInclude Include="Version.h" />
     <ClInclude Include="WindowsMessageHook.hpp" />
   </ItemGroup>
   <ItemGroup>
