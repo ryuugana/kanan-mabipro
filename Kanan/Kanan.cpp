@@ -1,3 +1,5 @@
+#pragma comment(lib, "urlmon")
+
 #include <imgui.h>
 #include <imgui_freetype.h>
 #include <imgui_impl_dx9.h>
@@ -15,6 +17,7 @@
 #include "MabiMessageHook.hpp"
 #include "../Kanan/metrics_gui/metrics_gui.h"
 #include "Hotkey.hpp"
+#include "Version.h"
 
 using namespace std;
 
@@ -41,9 +44,12 @@ namespace kanan {
         m_wmHook{ nullptr },
         m_game{ nullptr },
         m_mods{ m_path },
+        m_isUpdate{ false },
+        m_isNotifyUpdate{ true },
         m_isUIOpen{ true },
         m_isLogOpen{ false },
         m_isAboutOpen{ false },
+        m_isUpdateOpen{ false },
         m_isInitialized{ false },
         m_areModsReady{ false },
         m_areModsLoaded{ false },
@@ -287,6 +293,10 @@ namespace kanan {
                 if (m_isAboutOpen) {
                     drawAbout();
                 }
+
+                if (m_isUpdate) {
+                    drawUpdateMessage();
+                }
             }
             else {
                 // UI is closed so always pass input to the game.
@@ -359,17 +369,55 @@ namespace kanan {
         return true;
     }
 
+    bool Kanan::checkVersion()
+    {
+        IStream* lpSrc;
+        const ULONG size = 70;
+        char szBuffer[size];
+
+        memset(szBuffer, 0, size);
+
+        if (URLOpenBlockingStream(NULL, L"https://raw.githubusercontent.com/ryuugana/kanan-mabipro/master/Kanan/Version.h", &lpSrc, 0, NULL) != S_OK)
+        {
+            return false;
+        }
+        else
+        {
+            lpSrc->Read(szBuffer, size - 1, NULL);
+        }
+
+        string remoteVersion = "";
+
+        for each (char var in szBuffer)
+        {
+            if (var >= '0' && var <= '9')
+            {
+                remoteVersion.push_back(var);
+            }
+        }
+
+        log("Local version is %d and remote version is %s", version, remoteVersion.c_str());
+
+        return version < atoi(remoteVersion.c_str());
+    }
+
+    void Kanan::updateKanan()
+    {
+
+    }
+
     void Kanan::loadConfig() {
         log("Loading config %s/config.txt", m_path.c_str());
 
         Config cfg{ m_path + "/config.txt" };
-
         m_isUIOpenByDefault = cfg.get<bool>("UI.OpenByDefault").value_or(true);
 		m_key.hotkey = cfg.get<int>("UI.Keybind").value_or(VK_INSERT);
 		m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
 		m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
         m_isChatLogOpen = cfg.get<bool>("ChatLog.OpenByDefault").value_or(false);
-        m_isUIOpen = m_isUIOpenByDefault;
+        m_isNotifyUpdate = cfg.get<bool>("UI.NotifyUpdate").value_or(true);
+        m_isUpdate = checkVersion() && m_isNotifyUpdate;
+        m_isUIOpen = m_isUIOpenByDefault || m_isUpdate;
 
 		if (m_key.hotkey == 0)
 			m_isUIOpen = true;
@@ -400,6 +448,7 @@ namespace kanan {
         Config cfg{};
 
         cfg.set<bool>("UI.OpenByDefault", m_isUIOpenByDefault);
+        cfg.set<bool>("UI.NotifyUpdate", m_isNotifyUpdate);
 		cfg.set<int>("UI.Keybind", m_key.hotkey);
 		cfg.set<int>("UI.HousingKey", m_housingKey.hotkey);
 		cfg.set<int>("UI.AstralKey", m_astralKey.hotkey);
@@ -473,6 +522,7 @@ namespace kanan {
 
             if (ImGui::BeginMenu("Settings")) {
                 ImGui::MenuItem("UI Open By Default", nullptr, &m_isUIOpenByDefault);
+                ImGui::MenuItem("Notity Updates", nullptr, &m_isNotifyUpdate);
                 ImGui::MenuItem("Metrics", nullptr, &m_ismetricsopen);
                 ImGui::EndMenu();
             }
@@ -575,6 +625,41 @@ namespace kanan {
         ImGui::Text("    MinHook (https://github.com/TsudaKageyu/minhook)");
         ImGui::Text("    Roboto Font (https://fonts.google.com/specimen/Roboto)");
         ImGui::Text("    Metrics GUI (https://github.com/GameTechDev/MetricsGui)");
+
+        ImGui::End();
+    }
+
+    void Kanan::drawUpdateMessage()
+    {
+        ImGui::SetNextWindowSize(ImVec2{ 475.0f, 275.0f }, ImGuiCond_Appearing);
+        ImGui::SetNextWindowPosCenter();
+
+        if (!ImGui::Begin("Kanan is not up to date", &m_isUpdateOpen)) {
+            ImGui::End();
+            return;
+        }
+
+        ImGui::Text("Would you like to close MabiPro and auto-update now?");
+        ImGui::Dummy(ImVec2{ 30.0f, 30.0f });
+
+        if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+            updateKanan();
+        }
+
+        ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+
+        if (ImGui::Button("Update Later", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+            m_isUpdate = false;
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+
+        if (ImGui::Button("Disable Updates", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+            m_isUpdate = false;
+            m_isNotifyUpdate = false;
+            ImGui::CloseCurrentPopup();
+        }
 
         ImGui::End();
     }

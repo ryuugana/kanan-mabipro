@@ -54,6 +54,9 @@ namespace kanan {
         bool m_isChatLogOpen;
         bool m_isAboutOpen;
         bool m_ismetricsopen;
+        bool m_isUpdateOpen;
+        bool m_isUpdate;
+        bool m_isNotifyUpdate;
 
         bool m_isInitialized;
         std::atomic_bool m_areModsReady;
@@ -69,6 +72,9 @@ namespace kanan {
         void onFrame();
         bool onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam);
 
+        bool checkVersion();
+        void updateKanan();
+
         void loadConfig();
         void saveConfig();
 
@@ -77,6 +83,7 @@ namespace kanan {
 
         void drawUI();
         void drawAbout();
+        void drawUpdateMessage();
         void Drawmetrics();
     };
 
