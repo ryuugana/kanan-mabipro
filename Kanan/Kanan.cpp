@@ -7,6 +7,8 @@
 
 #include <Scan.hpp>
 #include <Config.hpp>
+#include <filesystem>
+#include <iostream>
 #include <String.hpp>
 #include <Utility.hpp>
 
@@ -403,7 +405,35 @@ namespace kanan {
 
     void Kanan::updateKanan()
     {
+        string downloadPath = std::filesystem::current_path().string();
+        string KananPath = downloadPath + "\\KananUpdate.zip";
+        string BatchPath = downloadPath + "\\ExtractKanan.bat";
+        URLDownloadToFileA(NULL, "https://github.com/ryuugana/kanan-mabipro/releases/latest/download/KananMabiPro.zip", KananPath.c_str(), 0, NULL);
 
+        std::ofstream batch_file(BatchPath);
+        batch_file <<
+            "echo \"Extracting Kanan Update\"\n"
+            "timeout /t 5 /nobreak\n"
+            "tar -xf KananUpdate.zip\n"
+            "del KananUpdate.zip\n"
+            "MabiProLauncher22.exe\n";
+        batch_file.close();
+
+        PROCESS_INFORMATION processInformation = { 0 };
+        STARTUPINFOA startupInfo = { 0 };
+        BOOL result = CreateProcessA(NULL,
+            const_cast<char*>(BatchPath.c_str()),
+            NULL,
+            NULL,
+            FALSE,
+            CREATE_NO_WINDOW,
+            NULL,
+            NULL,
+            &startupInfo,
+            &processInformation);
+
+        if(result) exit(0);
+        log("Failed to update Kanan.");
     }
 
     void Kanan::loadConfig() {
