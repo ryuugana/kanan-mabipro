@@ -42,6 +42,8 @@ namespace kanan {
     private:
         std::string m_path;
         std::string m_uiConfigPath;
+        std::string m_batchPath;
+        std::string m_updatePath;
         std::unique_ptr<D3D9Hook> m_d3d9Hook;
         std::unique_ptr<DInputHook> m_dinputHook;
         std::unique_ptr<WindowsMessageHook> m_wmHook;

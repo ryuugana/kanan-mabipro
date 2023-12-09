@@ -40,6 +40,8 @@ namespace kanan {
     Kanan::Kanan(string path)
         : m_path{ move(path) },
         m_uiConfigPath{ m_path + "/ui.ini" },
+        m_batchPath{ m_path + "/ExtractKanan.bat" },
+        m_updatePath{ m_path + "/KananUpdate.zip" },
         m_d3d9Hook{ nullptr },
         m_dinputHook{ nullptr },
         m_mesHook{ nullptr },
@@ -379,6 +381,9 @@ namespace kanan {
 
         memset(szBuffer, 0, size);
 
+        // Delete previously created batch file
+        if (std::filesystem::exists(m_batchPath)) std::filesystem::remove(m_batchPath);
+
         if (URLOpenBlockingStream(NULL, L"https://raw.githubusercontent.com/ryuugana/kanan-mabipro/master/Kanan/Version.h", &lpSrc, 0, NULL) != S_OK)
         {
             return false;
@@ -405,12 +410,9 @@ namespace kanan {
 
     void Kanan::updateKanan()
     {
-        string downloadPath = std::filesystem::current_path().string();
-        string KananPath = downloadPath + "\\KananUpdate.zip";
-        string BatchPath = downloadPath + "\\ExtractKanan.bat";
-        URLDownloadToFileA(NULL, "https://github.com/ryuugana/kanan-mabipro/releases/latest/download/KananMabiPro.zip", KananPath.c_str(), 0, NULL);
+        URLDownloadToFileA(NULL, "https://github.com/ryuugana/kanan-mabipro/releases/latest/download/KananMabiPro.zip", m_updatePath.c_str(), 0, NULL);
 
-        std::ofstream batch_file(BatchPath);
+        std::ofstream batch_file(m_batchPath);
         batch_file <<
             "echo \"Extracting Kanan Update\"\n"
             "timeout /t 5 /nobreak\n"
@@ -422,7 +424,7 @@ namespace kanan {
         PROCESS_INFORMATION processInformation = { 0 };
         STARTUPINFOA startupInfo = { 0 };
         BOOL result = CreateProcessA(NULL,
-            const_cast<char*>(BatchPath.c_str()),
+            const_cast<char*>(m_batchPath.c_str()),
             NULL,
             NULL,
             FALSE,
