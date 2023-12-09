@@ -476,8 +476,8 @@
     ]
   },
   {
-    "name": "Block Critical Effects",
-    "desc": "Blocks all Critical effects from showing",
+    "name": "Block Critical Hit Effects",
+    "desc": "Blocks all Critical Hit effects from showing",
     "category": "Graphics",
     "patches": [
       {
