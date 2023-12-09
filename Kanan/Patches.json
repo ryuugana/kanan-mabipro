@@ -476,6 +476,18 @@
     ]
   },
   {
+    "name": "Block Critical Effects",
+    "desc": "Blocks all Critical effects from showing",
+    "category": "Graphics",
+    "patches": [
+      {
+        "location": "Pleione.dll",
+        "pattern": "74 09 56 53 E8",
+        "patch": "EB 09 56 53 E8"
+      }
+    ]
+  },
+  {
     "name": "Block pet messages",
     "desc": "",
     "category": "Chat Filter",
@@ -511,7 +523,7 @@
   },
   {
     "name": "Block system spam",
-    "desc": "Blocks most <SYSTEM> chats and some <COMBAT>, including EXP gained",
+    "desc": "Blocks many <SYSTEM> chats and some <COMBAT>, including EXP gained",
     "category": "Chat Filter",
     "patches": [
       {
@@ -528,8 +540,8 @@
     "patches": [
       {
         "location": "Pleione.dll",
-        "pattern": "74 09 56 53 E8",
-        "patch": "EB 09 56 53 E8"
+        "pattern": "0F 84 59 01 00 00 68 4C 6F DE 63 8D",
+        "patch": "E9 5A 01 00 00 90"
       }
     ]
   }
