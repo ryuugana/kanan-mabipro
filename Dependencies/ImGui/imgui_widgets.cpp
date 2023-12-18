@@ -41,6 +41,7 @@ Index of this file:
 #else
 #include <stdint.h>     // intptr_t
 #endif
+#include <cstring>
 
 // Visual Studio warnings
 #ifdef _MSC_VER
@@ -240,6 +241,25 @@ void ImGui::TextV(const char* fmt, va_list args)
     TextUnformatted(g.TempBuffer, text_end);
 }
 
+void ImGui::TextNoFmt(const char* text)
+{
+	TextVNoFmt(text);
+}
+
+void ImGui::TextVNoFmt(const char* text)
+{
+	ImGuiWindow* window = GetCurrentWindow();
+	if (window->SkipItems)
+		return;
+
+	int pos = std::strlen(text);
+
+	if (pos < 0) pos = 0;
+	else if (pos > 3000) pos = 3000;
+
+	TextUnformatted(text, text + pos);
+}
+
 void ImGui::TextColored(const ImVec4& col, const char* fmt, ...)
 {
     va_list args;
@@ -278,12 +298,24 @@ void ImGui::TextWrapped(const char* fmt, ...)
     va_end(args);
 }
 
+void ImGui::TextWrappedNoFmt(const char* text)
+{
+	TextWrappedVNoFmt(text);
+}
+
 void ImGui::TextWrappedV(const char* fmt, va_list args)
 {
     bool need_wrap = (GImGui->CurrentWindow->DC.TextWrapPos < 0.0f);    // Keep existing wrap position is one ia already set
     if (need_wrap) PushTextWrapPos(0.0f);
     TextV(fmt, args);
     if (need_wrap) PopTextWrapPos();
+}
+void ImGui::TextWrappedVNoFmt(const char* text)
+{
+	bool need_wrap = (GImGui->CurrentWindow->DC.TextWrapPos < 0.0f);    // Keep existing wrap position is one ia already set
+	if (need_wrap) PushTextWrapPos(0.0f);
+	TextVNoFmt(text);
+	if (need_wrap) PopTextWrapPos();
 }
 
 void ImGui::LabelText(const char* label, const char* fmt, ...)

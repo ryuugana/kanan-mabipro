@@ -5,9 +5,7 @@
 namespace kanan {
     void startChatLog(const std::string& filepath);
 
-    void chatLog(const char* format, ...);
-    void chatMsg(const char* format, ...);
-    void chatError(const char* format, ...);
+    void chatLog(const std::string& msg);
 
     void drawChatLog(bool* isOpen);
 }

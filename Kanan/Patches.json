@@ -369,18 +369,6 @@
     ]
   },
   {
-    "name": "Disable Pet Pickup Messages",
-    "desc": "",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "Oasis.dll",
-        "pattern": "0F 85 73 03 00 00 8B 1D",
-        "patch": "E9 74 03 00 00 90 8B 1D "
-      }
-    ]
-  },
-  {
     "name": "Disable Skill Rank Up Message",
     "desc": "",
     "category": "Interface",
@@ -488,7 +476,19 @@
     ]
   },
   {
-    "name": "Block pet messages",
+    "name": "Block Pet Pickup Messages",
+    "desc": "",
+    "category": "Chat Filter",
+    "patches": [
+      {
+        "location": "Oasis.dll",
+        "pattern": "0F 85 73 03 00 00 8B 1D",
+        "patch": "E9 74 03 00 00 90 8B 1D"
+      }
+    ]
+  },
+  {
+    "name": "Block Pet Status Messages",
     "desc": "",
     "category": "Chat Filter",
     "patches": [
@@ -510,7 +510,7 @@
     ]
   },
   {
-    "name": "Block party ads",
+    "name": "Block Party Ads",
     "desc": "",
     "category": "Chat Filter",
     "patches": [
@@ -522,7 +522,7 @@
     ]
   },
   {
-    "name": "Block system spam",
+    "name": "Block System Spam",
     "desc": "Blocks many <SYSTEM> chats and some <COMBAT>, including EXP gained",
     "category": "Chat Filter",
     "patches": [

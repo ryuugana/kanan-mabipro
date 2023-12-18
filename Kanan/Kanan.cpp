@@ -554,7 +554,7 @@ namespace kanan {
 
             if (ImGui::BeginMenu("Settings")) {
                 ImGui::MenuItem("UI Open By Default", nullptr, &m_isUIOpenByDefault);
-                ImGui::MenuItem("Notity Updates", nullptr, &m_isNotifyUpdate);
+                ImGui::MenuItem("Notify Updates", nullptr, &m_isNotifyUpdate);
                 ImGui::MenuItem("Metrics", nullptr, &m_ismetricsopen);
                 ImGui::EndMenu();
             }

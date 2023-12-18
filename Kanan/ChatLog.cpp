@@ -69,7 +69,7 @@ namespace kanan {
                 for (auto log : m_logs)
                 {
                     if (m_filter.PassFilter(log.c_str())) {
-                        ImGui::TextWrapped(log.c_str());
+                        ImGui::TextWrappedNoFmt(log.c_str());
                     }
                 }
 				m_scrollToBottom = false;
@@ -77,7 +77,7 @@ namespace kanan {
             else {
                 for (auto log : m_logs)
                 {
-                    ImGui::TextWrapped(log.c_str());
+                    ImGui::TextWrappedNoFmt(log.c_str());
                 }
             }
 
@@ -106,62 +106,6 @@ namespace kanan {
 
     void chatLog(const string& msg) {
         g_log->addLog(msg);
-    }
-
-    void chatMsg(const string& msg) {
-        chatLog(msg);
-
-        // Use the real window if we have it.
-        HWND wnd{ nullptr };
-
-        if (g_kanan) {
-            wnd = g_kanan->getWindow();
-        }
-        else {
-            wnd = GetDesktopWindow();
-        }
-
-        MessageBox(wnd, widen(msg).c_str(), L"Kanan", MB_ICONINFORMATION | MB_OK);
-    }
-
-    void chatError(const string& msg) {
-        chatLog(msg);
-
-        // Use the real window if we have it.
-        HWND wnd{ nullptr };
-
-        if (g_kanan) {
-            wnd = g_kanan->getWindow();
-        }
-        else {
-            wnd = GetDesktopWindow();
-        }
-
-        MessageBox(wnd, widen(msg).c_str(), L"Kanan Error!", MB_ICONERROR | MB_OK);
-    }
-
-    void chatLog(const char* format, ...) {
-        va_list args{};
-
-        va_start(args, format);
-        chatLog(formatString(format, args));
-        va_end(args);
-    }
-
-    void chatMsg(const char* format, ...) {
-        va_list args{};
-
-        va_start(args, format);
-        chatMsg(formatString(format, args));
-        va_end(args);
-    }
-
-    void chatError(const char* format, ...) {
-        va_list args{};
-
-        va_start(args, format);
-        chatError(formatString(format, args));
-        va_end(args);
     }
 
     void drawChatLog(bool* isOpen) {

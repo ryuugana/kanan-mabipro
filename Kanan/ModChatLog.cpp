@@ -95,7 +95,7 @@ namespace kanan {
 			switch (recvPacket.GetOP())
 			{
 			case 21100: // All + Personal Shop
-				message = removePercent(recvPacket.GetElement(2)->str);
+				message = recvPacket.GetElement(2)->str;
 				if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
 					break;
 				if (strcmp(recvPacket.GetElement(1)->str, "<PERSONALSHOP>") == 0) {
@@ -117,30 +117,30 @@ namespace kanan {
 			case 21101: // System
 				if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
 					break;
-				message = removePercent(recvPacket.GetElement(1)->str);
-				if(recvPacket.GetElement(0)->byte8 == 7)
+				message = recvPacket.GetElement(1)->str;
+				if (recvPacket.GetElement(0)->byte8 == 7)
 					ss << getTime() << " | <SYSTEM> " << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 21107: // Whisper
-				message = removePercent(recvPacket.GetElement(1)->str);
+				message = recvPacket.GetElement(1)->str;
 				ss << getTime() << " | <WHISPER> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 21109: // Beginner
-				message = removePercent(recvPacket.GetElement(1)->str);
+				message = recvPacket.GetElement(1)->str;
 				ss << getTime() << " | <GLOBAL> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 36520: // Party
-				message = removePercent(recvPacket.GetElement(1)->str);
+				message = recvPacket.GetElement(1)->str;
 				ss << getTime() << " | <PARTY> " << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 50031: // Guild
-				message = removePercent(recvPacket.GetElement(1)->str);
+				message = recvPacket.GetElement(1)->str;
 				ss << getTime() << " | <GUILD> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
 			default:
 				break;
 			}
-			if(ss.str().size() > 0)
+			if (ss.str().size() > 0)
 				chatLog(ss.str().c_str());
 		}
 		catch (exception e) {
