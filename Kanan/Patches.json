@@ -121,11 +121,6 @@
         "location": "Standard.dll",
         "pattern": "84 C0 74 04 B0 01 EB 02 32 C0 E8 ? ? ? ? C2 08",
         "patch": "84 C0 74 04 B0 01 EB 02 b0 01 E8 ? ? ? ? C2 08"
-      },
-      {
-        "location": "Standard.dll",
-        "pattern": "75 E7",
-        "patch": "EB E7"
       }
     ]
   },
@@ -266,6 +261,18 @@
         "location": "Standard.dll",
         "pattern": "EB 06 D9 05 F0 EA",
         "patch": "EB 06 DD"
+      }
+    ]
+  },
+  {
+    "name": "Uncap Alchemy Auto Production",
+    "desc": "Remove limit on auto production for alchemy",
+    "category": "Quality of Life",
+    "patches": [
+      {
+        "location": "Pleione.dll",
+        "pattern": "76 03 66 89 08 8B 8E 94 01",
+        "patch": "EB"
       }
     ]
   },
