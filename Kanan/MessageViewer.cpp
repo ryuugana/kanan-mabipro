@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "Log.hpp"
 #include <sstream>
+#include <iomanip>
 
 namespace kanan {
 	MessageViewer::MessageViewer()
@@ -33,18 +34,30 @@ namespace kanan {
 
 		std::ostringstream ss{};
 
+		string binary;
+
 		try {
-			ss << "OP: " << recvPacket.GetOP() << "\n";
-			ss << "ID: " << recvPacket.GetReciverId() << "\n";
+			ss << "OP: " << std::hex << recvPacket.GetOP() << "\n";
+			ss << "ID: " << recvPacket.GetReciverId() << std::dec << "\n";
 			for (int i = 0; i < recvPacket.GetElementNum(); i++) {
 				switch (recvPacket.GetElement(i)->type) {
 					case T_BYTE: ss << "BYTE: " << (unsigned int)(recvPacket.GetElement(i)->byte8) << "\n"; break;
 					case T_SHORT: ss << "SHORT: " << recvPacket.GetElement(i)->word16 << "\n"; break;
 					case T_INT: ss << "INT: " << recvPacket.GetElement(i)->int32 << "\n"; break;
-					case T_LONG: ss << "LONG: " << recvPacket.GetElement(i)->ID << "\n"; break;
+					case T_LONG: ss << std::hex << "LONG: " << recvPacket.GetElement(i)->ID << std::dec << "\n"; break;
 					case T_FLOAT: ss << "FLOAT: " << recvPacket.GetElement(i)->float32 << "\n"; break;
 					case T_STRING: ss << "STRING: " << recvPacket.GetElement(i)->str << "\n"; break;
-					case T_BIN: ss << "BINARY BLOB: ..." << "\n";
+					case T_BIN: 
+						binary = recvPacket.GetElement(i)->str;
+						ss << "BINARY: ";
+						for each(char hex in binary)
+						{
+							ss << std::hex << std::setfill('0') << std::setw(2) << (unsigned int)std::uint8_t(hex) << std::dec;
+						}
+						 ss << "\n"; 
+						break;
+					default:
+						break;
 				}
 			}
 			log("%s\n", ss.str().c_str());
