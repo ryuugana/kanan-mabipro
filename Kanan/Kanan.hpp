@@ -42,8 +42,10 @@ namespace kanan {
     private:
         std::string m_path;
         std::string m_uiConfigPath;
+        std::string m_modConfigPath;
         std::string m_batchPath;
         std::string m_updatePath;
+        std::string m_astralPath;
         std::unique_ptr<D3D9Hook> m_d3d9Hook;
         std::unique_ptr<DInputHook> m_dinputHook;
         std::unique_ptr<WindowsMessageHook> m_wmHook;
@@ -59,6 +61,7 @@ namespace kanan {
         bool m_isUpdateOpen;
         bool m_isUpdate;
         bool m_isNotifyUpdate;
+        bool m_defaultMods;
 
         bool m_isInitialized;
         std::atomic_bool m_areModsReady;
@@ -77,6 +80,8 @@ namespace kanan {
         bool checkVersion();
         void updateKanan();
 
+        void applyDefaultMods(bool astralWorld);
+
         void loadConfig();
         void saveConfig();
 
@@ -86,6 +91,7 @@ namespace kanan {
         void drawUI();
         void drawAbout();
         void drawUpdateMessage();
+        void drawDefaultMods();
         void Drawmetrics();
     };
 
