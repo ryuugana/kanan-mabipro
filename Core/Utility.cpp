@@ -15,7 +15,7 @@ namespace kanan {
         if (isKeyDown(key) && !keys[key]) {
             keys[key] = true;
 
-            return true;
+            return GetActiveWindow() == GetForegroundWindow();
         }
 
         if (!isKeyDown(key)) {
