@@ -84,19 +84,6 @@
     ]
   },
   {
-    "name": "Remote UI Props",
-    "desc": "Allows you to access most UI related props such as Shadow Mission boards\nWarning: This can cause problems which are usually fixed by standing near the prop that was clicked\nExamples of problem props: Party Board, Special Upgrade Anvil",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "offset": 2,
-        "pattern": "84 C0 0F 84 DF ? ? ? ? 7D 10 00 8B 3D",
-        "patch": "90 90 90 90 90 90"
-      }
-    ]
-  },
-  {
     "name": "Keep Pet Window Open",
     "desc": "After summoning a pet, prevent the pet window from closing.",
     "category": "Interface",

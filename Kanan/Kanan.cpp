@@ -1016,6 +1016,7 @@ namespace kanan {
         cfg.set<bool>("NoPetIdle.Enabled", true);
         cfg.set<bool>("NoSMClear/FailMessage.Enabled", true);
         cfg.set<bool>("RemoveChatRestrictions.Enabled", true);
+		cfg.set<bool>("UncapAlchemyAutoProduction.Enabled", true);
 
 
         if (!cfg.save(m_modConfigPath)) {
