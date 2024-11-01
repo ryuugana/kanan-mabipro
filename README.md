@@ -37,7 +37,14 @@ I may periodically release official binaries for those who don't want to build t
 * Vulkan support for use with [dxvk](https://github.com/doitsujin/dxvk)
 
 ## Preview
-![preview](https://user-images.githubusercontent.com/20805020/197324399-7be59b36-d1de-4d24-b088-1d5f96176a66.png)
+![preview](https://github.com/user-attachments/assets/acf53269-e3e7-4ede-8d88-f125a1c99276)
+
+
+![preview](https://github.com/user-attachments/assets/7e684f6b-0462-4428-acc1-39d2f489cf50)
+
+
+![preview](https://github.com/user-attachments/assets/fc7b829d-f707-4dfc-9bef-f6189ee1865d)
+
 
 
 ## Many original patches/ideas came from the following projects:
