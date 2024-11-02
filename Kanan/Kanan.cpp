@@ -277,24 +277,21 @@ namespace kanan {
 				viewAstralWorld();
 			}
 
+            if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
+                m_dinputHook->ignoreInput();
+            }
+            else {
+                m_dinputHook->acknowledgeInput();
+            }
+
             if (m_isUIOpen) {
                 // Block input if the user is interacting with the UI.
 
-                if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
-                    m_dinputHook->ignoreInput();
-                }
-                else {
-                    m_dinputHook->acknowledgeInput();
-                }
 
                 drawUI();
 
                 if (m_isLogOpen) {
                     drawLog(&m_isLogOpen);
-                }
-
-                if (m_isChatLogOpen) {
-                    drawChatLog(&m_isChatLogOpen);
                 }
 
                 if (m_isAboutOpen) {
@@ -309,9 +306,9 @@ namespace kanan {
                     drawDefaultMods();
                 }
             }
-            else {
-                // UI is closed so always pass input to the game.
-                m_dinputHook->acknowledgeInput();
+
+            if (m_isChatLogOpen) {
+                drawChatLog(&m_isChatLogOpen);
             }
 
             //draw metric window
@@ -360,14 +357,12 @@ namespace kanan {
 
     bool Kanan::onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam) {
 
-        if (m_isUIOpen) {
-            if (ImGui_ImplWin32_WndProcHandler(wnd, message, wParam, lParam) != 0) {
-                // If the user is interacting with the UI we block the message from going to the game.
-                auto& io = ImGui::GetIO();
+        if (ImGui_ImplWin32_WndProcHandler(wnd, message, wParam, lParam) != 0) {
+            // If the user is interacting with the UI we block the message from going to the game.
+            auto& io = ImGui::GetIO();
 
-                if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
-                    return false;
-                }
+            if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
+                return false;
             }
         }
 
