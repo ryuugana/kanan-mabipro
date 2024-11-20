@@ -22,18 +22,6 @@ namespace kanan {
 		else {
 			log("Failed to find Disable Flashy address.");
 		}
-
-		// AstralWorld AntiFlashy Fix
-		auto fix = scan("mss32.dll", "81 E9 00 00 00 01");
-
-		if (fix) {
-			log("Got Disable Flashy Fix %p", *fix);
-			m_patch.address = *fix;
-			m_patch.bytes = { 0x81, 0xC1, 0x00, 0x00, 0x00, 0x10 };
-		}
-		else {
-			log("Failed to find Disable Flashy Fix address.");
-		}
 	}
 
 	//-----------------------------------------------------------------------------
@@ -84,11 +72,11 @@ namespace kanan {
 			return;
 		}
 
-		if (ImGui::Checkbox("Disable Flashy", &m_choice)) {
+		if (ImGui::Checkbox("Disable Inventory Flashy", &m_choice)) {
 			apply();
 		}
 		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Disables flashy effect for items in inventory and fixes AstralWorld's varient if enabled");
+			ImGui::SetTooltip("Disables flashy effect for items in inventory\nASTRALWORLD ShowItemColor MUST BE DISABLED");
 		}
 	}
 

@@ -49,28 +49,6 @@
     ]
   },
   {
-    "name": "Disable Character Alpha Transparancy",
-    "desc": "Disables alpha transparancy on characters when zooming in.",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "4F F7 DF 1B FF 81 E7 FE 07 00 00 47 47",
-        "patch": "4F F7 DF 1B FF 81 C7 F0 0F 00 00 47 47"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "74 ? 57 53 6A 02",
-        "patch": "74 ? 57 53 6A 05"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "74 ? 57 53 6A 02",
-        "patch": "74 ? 57 53 6A 05"
-      }
-    ]
-  },
-  {
     "name": "Disable Skill Locks",
     "desc": "Allows you to use other skills after using flameburst",
     "category": "Quality of Life",
@@ -203,18 +181,6 @@
         "location": "Pleione.dll",
         "pattern": "8B 89 ? ? ? ? 8B 01 FF 50 58 84 C0",
         "patch": "B0 01 C3 90 90 90 8B 01 FF 50 58 84 C0"
-      }
-    ]
-  },
-  {
-    "name": "Freeze Camera Angle",
-    "desc": "Camera angle and position will be stuck while enabled.",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B 80 D4 03 00 00 C3 8B 01 8B",
-        "patch": "B8 01 00 00 00 90 C3 8B 01 8B"
       }
     ]
   },
@@ -417,6 +383,40 @@
     ]
   },
   {
+    "name": "Disable Character Alpha Transparancy",
+    "desc": "Disables alpha transparancy on characters when zooming in.",
+    "category": "Graphics",
+    "patches": [
+      {
+        "location": "Renderer2.dll",
+        "pattern": "4F F7 DF 1B FF 81 E7 FE 07 00 00 47 47",
+        "patch": "4F F7 DF 1B FF 81 C7 F0 0F 00 00 47 47"
+      },
+      {
+        "location": "Renderer2.dll",
+        "pattern": "74 ? 57 53 6A 02",
+        "patch": "74 ? 57 53 6A 05"
+      },
+      {
+        "location": "Renderer2.dll",
+        "pattern": "74 ? 57 53 6A 02",
+        "patch": "74 ? 57 53 6A 05"
+      }
+    ]
+  },
+  {
+    "name": "Freeze Camera Angle",
+    "desc": "Camera angle and position will be stuck while enabled.",
+    "category": "Graphics",
+    "patches": [
+      {
+        "location": "Renderer2.dll",
+        "pattern": "8B 80 D4 03 00 00 C3 8B 01 8B",
+        "patch": "B8 01 00 00 00 90 C3 8B 01 8B"
+      }
+    ]
+  },
+  {
     "name": "No Render Sky",
     "desc": "",
     "category": "Graphics",
@@ -479,6 +479,18 @@
         "location": "Pleione.dll",
         "pattern": "74 09 56 53 E8",
         "patch": "EB 09 56 53 E8"
+      }
+    ]
+  },
+  {
+    "name": "Fix AstralWorld Flashy",
+    "desc": "Fixes the way AstralWorld disables flashy",
+    "category": "Graphics",
+    "patches": [
+      {
+        "location": "mss32.dll",
+        "pattern": "81 E9 00 00 00 01",
+        "patch": "81 C1 00 00 00 10"
       }
     ]
   },
