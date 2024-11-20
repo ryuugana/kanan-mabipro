@@ -1006,6 +1006,7 @@ namespace kanan {
         cfg.set<bool>("FastNao.Enabled", true);
         cfg.set<bool>("FieldBossMessageToChat.Enabled", true);
         cfg.set<bool>("FieldBossNotify.Enabled", true);
+        cfg.set<bool>("FixAstralWorldFlashy.Enabled", true);
         cfg.set<bool>("FreeIndoorCamera.Enabled", true);
         cfg.set<bool>("KeepPetWindowOpen.Enabled", true);
         cfg.set<bool>("NoPetIdle.Enabled", true);
