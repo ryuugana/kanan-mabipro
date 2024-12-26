@@ -19,6 +19,7 @@ namespace kanan {
             : m_logs{},
             m_filter{},
             m_scrollToBottom{ false },
+            m_autoScroll{ true },
             m_file{}
         {
             m_file.open(filepath, std::ios::out | std::ios::app);
@@ -48,22 +49,12 @@ namespace kanan {
                 return;
             }
 
-            /*if (ImGui::Button("Clear")) {
-                clear();
-            }*/
-
-            ImGui::SameLine();
-
-            auto copy = ImGui::Button("Copy Logs");
+            ImGui::Checkbox("Auto Scroll  ", &m_autoScroll);
 
             ImGui::SameLine();
             m_filter.Draw("Filter", -100.0f);
             ImGui::Separator();
             ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
-
-            if (copy) {
-                ImGui::LogToClipboard();
-            }
 
             if (m_filter.IsActive()) {
                 for (auto log : m_logs)
@@ -81,7 +72,7 @@ namespace kanan {
                 }
             }
 
-            if (m_scrollToBottom) {
+            if (m_scrollToBottom && m_autoScroll) {
                 ImGui::SetScrollHere(1.0f);
             }
 
@@ -95,6 +86,7 @@ namespace kanan {
         ImGuiTextFilter m_filter;
         vector<std::string> m_logs;
         bool m_scrollToBottom;
+        bool m_autoScroll;
         ofstream m_file;
     };
 
