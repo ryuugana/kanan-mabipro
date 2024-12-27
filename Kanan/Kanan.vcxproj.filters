@@ -180,6 +180,9 @@
     <ClCompile Include="BlockSpam.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
+    <ClCompile Include="NaoCounter.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -376,6 +379,9 @@
     </ClInclude>
     <ClInclude Include="Version.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NaoCounter.hpp">
+      <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -132,6 +132,7 @@
     <ClCompile Include="EnableMultiClient.cpp" />
     <ClCompile Include="EntityViewer.cpp" />
     <ClCompile Include="EquipmentOverride.cpp" />
+    <ClCompile Include="NaoCounter.cpp" />
     <ClCompile Include="ScrollingMessageToChat.cpp" />
     <ClCompile Include="FieldOfView.cpp" />
     <ClCompile Include="FreezeTimeOfDay.cpp" />
@@ -179,6 +180,7 @@
     <ClInclude Include="EnableMultiClient.hpp" />
     <ClInclude Include="EntityViewer.hpp" />
     <ClInclude Include="EquipmentOverride.hpp" />
+    <ClInclude Include="NaoCounter.hpp" />
     <ClInclude Include="ScrollingMessageToChat.hpp" />
     <ClInclude Include="FieldOfView.hpp" />
     <ClInclude Include="FontData.hpp" />
