@@ -20,7 +20,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v141_xp</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -117,10 +117,9 @@
     <ClCompile Include="BlockSpam.cpp" />
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
-    <ClCompile Include="ChatLog.cpp" />
     <ClCompile Include="DisableFlashy.cpp" />
     <ClCompile Include="Hotkey.cpp" />
-    <ClCompile Include="ModChatLog.cpp" />
+    <ClCompile Include="ChatLog.cpp" />
     <ClCompile Include="ChooseLoginNode.cpp" />
     <ClCompile Include="ColorAltText.cpp" />
     <ClCompile Include="CookingMod.cpp" />
@@ -164,11 +163,10 @@
     <ClInclude Include="BlockSpam.hpp" />
     <ClInclude Include="BorderlessWindow.hpp" />
     <ClInclude Include="ChangeChannelHotkey.hpp" />
-    <ClInclude Include="ChatLog.hpp" />
     <ClInclude Include="dirent.h" />
     <ClInclude Include="DisableFlashy.h" />
     <ClInclude Include="Hotkey.hpp" />
-    <ClInclude Include="ModChatLog.hpp" />
+    <ClInclude Include="ChatLog.hpp" />
     <ClInclude Include="ChooseLoginNode.hpp" />
     <ClInclude Include="ColorAltText.hpp" />
     <ClInclude Include="CookingMod.hpp" />

@@ -21,7 +21,7 @@
 #include "MessageViewer.hpp"
 #include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
-#include "ModChatLog.hpp"
+#include "ChatLog.hpp"
 #include "NaoCounter.hpp"
 
 /*#include "RangedAttackSwap.hpp"
@@ -125,7 +125,7 @@ namespace kanan {
 		addMessageMod(make_unique<MessageViewer>());
         addMessageMod(make_unique<BlockSpam>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
-        addMessageMod(make_unique<ModChatLog>());
+        addMessageMod(make_unique<ChatLog>());
         addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<ChooseLoginNode>());
 

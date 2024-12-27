@@ -14,7 +14,6 @@
 
 #include "FontData.hpp"
 #include "Log.hpp"
-#include "ChatLog.hpp"
 #include "Kanan.hpp"
 #include "MabiMessageHook.hpp"
 #include "../Kanan/metrics_gui/metrics_gui.h"
@@ -305,10 +304,6 @@ namespace kanan {
                 if (m_defaultMods) {
                     drawDefaultMods();
                 }
-            }
-
-            if (m_isChatLogOpen) {
-                drawChatLog(&m_isChatLogOpen);
             }
 
             //draw metric window
@@ -1040,7 +1035,6 @@ namespace kanan {
 		m_key.hotkey = cfg.get<int>("UI.Keybind").value_or(VK_INSERT);
 		m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
 		m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
-        m_isChatLogOpen = cfg.get<bool>("ChatLog.OpenByDefault").value_or(false);
         m_isNotifyUpdate = cfg.get<bool>("UI.NotifyUpdate").value_or(true);
         m_isUpdate = checkVersion() && m_isNotifyUpdate;
         m_isUIOpen = m_isUIOpenByDefault || m_isUpdate;
@@ -1078,7 +1072,6 @@ namespace kanan {
 		cfg.set<int>("UI.Keybind", m_key.hotkey);
 		cfg.set<int>("UI.HousingKey", m_housingKey.hotkey);
 		cfg.set<int>("UI.AstralKey", m_astralKey.hotkey);
-        cfg.set<bool>("ChatLog.OpenByDefault", m_isChatLogOpen);
 
         for (auto& mod : m_mods.getMods()) {
             mod->onConfigSave(cfg);
@@ -1142,7 +1135,6 @@ namespace kanan {
 
             if (ImGui::BeginMenu("View")) {
                 ImGui::MenuItem("Show Log", nullptr, &m_isLogOpen);
-                ImGui::MenuItem("Show Chat Log", nullptr, &m_isChatLogOpen);
                 ImGui::MenuItem("Metrics", nullptr, &m_ismetricsopen);
                 ImGui::EndMenu();
             }

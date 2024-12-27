@@ -14,7 +14,7 @@ namespace kanan {
 	void NaoCounter::drawWindow() {
 		ImGui::SetNextWindowSize(ImVec2{ 0.0f, 10.0f }, ImGuiCond_Appearing);
 
-		if (!ImGui::Begin("", &m_isEnabled, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
+		if (!ImGui::Begin("", &m_isEnabled, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing)) {
 			ImGui::End();
 			return;
 		}

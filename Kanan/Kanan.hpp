@@ -55,7 +55,6 @@ namespace kanan {
 
         bool m_isUIOpen;
         bool m_isLogOpen;
-        bool m_isChatLogOpen;
         bool m_isAboutOpen;
         bool m_ismetricsopen;
         bool m_isUpdateOpen;

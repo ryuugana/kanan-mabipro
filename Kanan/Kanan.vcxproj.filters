@@ -162,14 +162,11 @@
     <ClCompile Include="ScrollingMessageToChat.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
-    <ClCompile Include="ModChatLog.cpp">
+    <ClCompile Include="ChatLog.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
     <ClCompile Include="ChooseLoginNode.cpp">
       <Filter>Source Files\MessageMods</Filter>
-    </ClCompile>
-    <ClCompile Include="ChatLog.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Hotkey.cpp">
       <Filter>Source Files</Filter>
@@ -353,7 +350,7 @@
     <ClInclude Include="MessageViewer.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
-    <ClInclude Include="ModChatLog.hpp">
+    <ClInclude Include="ChatLog.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
     <ClInclude Include="ScrollingMessageToChat.hpp">
@@ -361,9 +358,6 @@
     </ClInclude>
     <ClInclude Include="ChooseLoginNode.hpp">
       <Filter>Header Files\MessageMods</Filter>
-    </ClInclude>
-    <ClInclude Include="ChatLog.hpp">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dirent.h">
       <Filter>Header Files</Filter>
