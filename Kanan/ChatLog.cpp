@@ -74,7 +74,7 @@ namespace kanan {
 	}
 
 	void ChatLog::onConfigSave(Config& cfg) {
-		cfg.set<bool>("ChatLog.Enabled", m_isEnabled);
+		cfg.set<bool>("ModChatLog.Enabled", m_isEnabled);
 		cfg.set<bool>("ChatLog.OpenByDefault", m_isOpen);
 	}
 
