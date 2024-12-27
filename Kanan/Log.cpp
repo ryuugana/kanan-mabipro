@@ -20,6 +20,7 @@ namespace kanan {
             m_filter{},
             m_lineOffsets{},
             m_scrollToBottom{ false },
+            m_autoScroll { true },
             m_file{}
         {
             m_file.open(filepath);
@@ -78,6 +79,15 @@ namespace kanan {
                 return;
             }
 
+            ImGui::Checkbox("Auto Scroll  ", &m_autoScroll);
+
+            ImGui::SameLine();
+            m_filter.Draw("Filter", -100.0f);
+            ImGui::Separator();
+            ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+            ImGui::SameLine();
+
             if (ImGui::Button("Clear")) {
                 clear();
             }
@@ -85,11 +95,6 @@ namespace kanan {
             ImGui::SameLine();
 
             auto copy = ImGui::Button("Copy");
-
-            ImGui::SameLine();
-            m_filter.Draw("Filter", -100.0f);
-            ImGui::Separator();
-            ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
 
             if (copy) {
                 ImGui::LogToClipboard();
@@ -113,7 +118,7 @@ namespace kanan {
                 ImGui::TextUnformatted(m_buf.begin());
             }
 
-            if (m_scrollToBottom) {
+            if (m_scrollToBottom && m_autoScroll) {
                 ImGui::SetScrollHere(1.0f);
             }
 
@@ -128,6 +133,7 @@ namespace kanan {
         ImGuiTextFilter m_filter;
         ImVector<int> m_lineOffsets; // Index to lines offset
         bool m_scrollToBottom;
+        bool m_autoScroll;
         ofstream m_file;
     };
 
