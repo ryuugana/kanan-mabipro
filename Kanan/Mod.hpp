@@ -16,6 +16,8 @@ namespace kanan {
         virtual void onUI() {}
         virtual void onPatchUI() {}
 
+        virtual void onWindow() {}
+
         virtual void onConfigLoad(const Config& cfg) {}
         virtual void onConfigSave(Config& cfg) {}
 

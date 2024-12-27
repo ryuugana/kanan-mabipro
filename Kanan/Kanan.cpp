@@ -316,6 +316,13 @@ namespace kanan {
                 Drawmetrics();
             }
 
+            for (const auto& mod : m_mods.m_messageMods) {
+                mod->onWindow();
+            }
+
+            for (const auto& mod : m_mods.getMods()) {
+                mod->onWindow();
+            }
 
         }
         else {
