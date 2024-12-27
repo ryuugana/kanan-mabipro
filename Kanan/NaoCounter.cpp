@@ -11,13 +11,35 @@ namespace kanan {
 		m_op.push_back(0x909A);
 	}
 
+	void NaoCounter::drawWindow() {
+		ImGui::SetNextWindowSize(ImVec2{ 0.0f, 10.0f }, ImGuiCond_Appearing);
+
+		if (!ImGui::Begin("", &m_isEnabled, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize)) {
+			ImGui::End();
+			return;
+		}
+		ImGui::Text("Nao's Support: %d", m_count);
+		ImGui::End();
+	}
+
 	void NaoCounter::onUI() {
 		if (ImGui::CollapsingHeader("Nao Counter")) {
-			ImGui::TextWrapped("This mod allows you to see the nao revival counter in a separate window.\nRequires a relog on after enabling.\nCurrent Nao count: %d", m_count);
-
+			ImGui::TextWrapped("This mod allows you to see the nao revival counter in a separate window.");
+			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+			ImGui::TextWrapped("Designed to be used with AstralWorld's timer mod, which breaks viewing Nao's Support from the clock.");
+			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+			ImGui::TextWrapped("The window can be moved by dragging it to the desired location.");
+			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+			ImGui::TextWrapped("Requires a relog after enabling.");
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
 			ImGui::Checkbox("Enable Nao Counter", &m_isEnabled);
+		}
+	}
+
+	void NaoCounter::onWindow() {
+		if (m_isEnabled) {
+			drawWindow();
 		}
 	}
 

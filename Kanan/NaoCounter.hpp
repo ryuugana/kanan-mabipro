@@ -10,12 +10,16 @@ namespace kanan {
 
 		void onUI() override;
 
+		void onWindow() override;
+
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;
 
 		void onRecv(MabiMessage mabiMessage) override;
 
 	private:
+		void drawWindow();
+
 		unsigned int m_count;
 
 		// Nao's Support: 5
