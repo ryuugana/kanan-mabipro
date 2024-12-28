@@ -1,567 +1,577 @@
 [
-  {
-    "name": "Enable Money Letters",
-    "desc": "Gold will be shown in thousnads and millions (K and M).",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "ESL.dll",
-        "pattern": "BF 00 E1 F5 05 89 45 D8 F7 F7 33",
-        "patch": "BF 40 42 0F 00 89 45 D8 F7 F7 33"
-      },
-      {
-        "location": "ESL.dll",
-        "pattern": "10 27 00 00 F7 F7 85",
-        "patch": "E8 03 00 00 F7 F7 85"
-      },
-      {
-        "location": "ESL.dll",
-        "pattern": "EB 29 83 F8 03 0F 84",
-        "patch": "74 29 83 F8 03 0F 84"
-      },
-      {
-        "location": "ESL.dll",
-        "pattern": "B8 07 4E 00",
-        "patch": "B8 6B 00 00"
-      },
-      {
-        "location": "ESL.dll",
-        "pattern": "DD B8 04 51 00 00",
-        "patch": "DD B8 6D 00 00 00"
-      }
-    ]
-  },
-  {
-    "name": "Remove Chat Restrictions",
-    "desc": "Allows chat spam and repeat messages.",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "74 0E 2B 45 E4 8D 9C 00 88 13 00 00 85 DB 7D 02 33 DB 8D",
-        "patch": "EB 0E 2B 45 E4 8D 9C 00 88 13 00 00 85 DB 7D 02 33 DB 8D"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "83 F8 0A 0F 86 AD",
-        "patch": "83 F8 0A 0F 87 AD"
-      }
-    ]
-  },
-  {
-    "name": "Disable Skill Locks",
-    "desc": "Allows you to use other skills after using flameburst",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "offset": 4,
-        "pattern": "59 59 84 C0 0F 84 93 ? ? ? 8B 1D",
-        "patch": "E9 94 02 00 00 90"
-      }
-    ]
-  },
-  {
-    "name": "Keep Pet Window Open",
-    "desc": "After summoning a pet, prevent the pet window from closing.",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "84 C0 0F 84 3D 01 00 00 8B 0D 38",
-        "patch": "84 C0 0F 81 3D 01 00 00 8B 0D 38"
-      }
-    ]
-  },
-  {
-    "name": "Always Enable Attack with Pet",
-    "desc": "Credits: Flipend0",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "6A 00 FF 50 50 EB 53",
-        "patch": "6A 01 FF 50 50 EB 53"
-      }
-    ]
-  },
-  {
-    "name": "Basic Ghost Lock",
-    "desc": "Allows aiming and use of non target skills on other players",
-    "category": "Fun",
-    "patches": [
-      {
-        "location": "Standard.dll",
-        "pattern": "32 C0 E9 2C 01 00 00 8B 06 8B CE FF 50",
-        "patch": "B0 01"
-      },
-      {
-        "location": "Standard.dll",
-        "pattern": "84 C0 74 04 B0 01 EB 02 32 C0 E8 ? ? ? ? C2 08",
-        "patch": "84 C0 74 04 B0 01 EB 02 b0 01 E8 ? ? ? ? C2 08"
-      }
-    ]
-  },
-  {
-    "name": "Delag Skill",
-    "desc": "Decrease skill lag",
-    "category": "Speedup",
-    "patches": [
-      {
-        "location": "Standard.dll",
-        "pattern": "56 8B F1 8B 06 ff 90 ? ? ? ? 8B 06 6A ? 8B CE FF 90 ? ? ? ? 84 c0 75 02",
-        "patch": "b0 01 c3"
-      },
-      {
-        "location": "Standard.dll",
-        "pattern": "56 8B F1 8B 06 FF 90 D0 00 00 00 8B 06 8B CE FF 50 08 8B 10 6A 40",
-        "patch": "b0 01 c3"
-      },
-      {
-        "location": "Standard.dll",
-        "pattern": "56 8B F1 8B 06 FF 90 ? ? ? ? 8b 06 6A ? 8B CE FF 90 ? ? ? ? 84 C0 75 04",
-        "patch": "b0 01 c3"
-      },
-      {
-        "location": "Standard.dll",
-        "pattern": "83 F8 13 75 03 B0 01 C3 32 C0 C3",
-        "patch": "83 F8 13 75 03 B0 00 C3 B0 00 C3"
-      },
-      {
-        "location": "Standard.dll",
-        "pattern": "56 8B F1 8B 06 FF 90 ? ? ? ? 8B 06 68 80 00 00 00",
-        "patch": "b0 01 c3"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "3b f8 77 ? 80 7d 0c 00 75",
-        "patch": "3b f8 90 90 80 7d 0c 00 EB"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "EXL.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "EXL.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "EXL.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "EXL.dll",
-        "pattern": "6A 01 e8 ? ? ? ? 53 53",
-        "patch": "6A 01 90 90 90 90 90 53 53"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "8B 89 ? ? ? ? 8B 01 FF 50 58 84 C0",
-        "patch": "B0 01 C3 90 90 90 8B 01 FF 50 58 84 C0"
-      }
-    ]
-  },
-  {
-    "name": "Free Indoor Camera",
-    "desc": "Allows you to freely rotate the camera while indoors.",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "0F 84 ? ? ? ? 8B 8E ? ? ? ? 85 C9 0F 84 ? ? ? ? 83 7D",
-        "patch": "90 E9"
-      }
-    ]
-  },
-  {
-    "name": "Dungeon Map Resize",
-    "desc": "",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "BF B4 00 00 00 6A",
-        "patch": "BF 19 00 00 00 6A"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "B8 B4 00 00 00 8B C8",
-        "patch": "B8 FF 00 00 00 8B C8"
-      }
-    ]
-  },
-  {
-    "name": "Uncap Flying Height",
-    "desc": "No restrictions on how high mounts can fly",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Standard.dll",
-        "pattern": "00 00 74 2C 83 E8 63 74",
-        "patch": "00 00 EB"
-      },
-      {
-        "location": "Standard.dll",
-        "pattern": "EB 06 D9 05 F0 EA",
-        "patch": "EB 06 DD"
-      }
-    ]
-  },
-  {
-    "name": "Uncap Alchemy Auto Production",
-    "desc": "Remove limit on auto production for alchemy",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "76 03 66 89 08 8B 8E 94 01",
-        "patch": "EB"
-      }
-    ]
-  },
-  {
-    "name": "Fast Flight",
-    "desc": "Increases flight rotation and verticle speed",
-    "category": "Speedup",
-    "patches": [
-      {
-        "location": "Standard.dll",
-        "pattern": "D9 43 10 D8 4D E4 D9 5D E4 D9 45",
-        "patch": "D9 43 10 D8 4B 10 D9 5D E4 D9 45"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "8B 45 50 DB 45 50 85 C0 7D 06",
-        "patch": "8B 45 50 DB 45 50 85 C0 90 90"
-      }
-    ]
-  },
-  {
-    "name": "No SM Clear/Fail Message",
-    "desc": "Do not display Mission Complete or Mission Failed messages",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "8D 4D E0 74 20 48 0F 85 D6 02 00 00 68",
-        "patch": "8D 4D E0 90 90 48 90 E9 D6 02 00 00 68"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "8D 4D E8 74 43 48 0F 85 0B 05 00 00 68",
-        "patch": "8D 4D E8 90 90 48 90 E9 0B 05 00 00 68"
-      }
-    ]
-  },
-  {
-    "name": "Fast Nao",
-    "desc": "Nao appears immediately on revival",
-    "category": "Speedup",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "68 88 13 00 00 68 D0 07 00 00",
-        "patch": "68 01 00 00 00 68 01 00 00 00"
-      }
-    ]
-  },
-  {
-    "name": "Assistant Character Location",
-    "desc": "Shows last location for assistant characters",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "74 70 68 40 5C DF",
-        "patch": "EB 70 68 40 5C DF"
-      }
-    ]
-  },
-  {
-    "name": "No Pet Idle",
-    "desc": "When playing as pet, pet will not wonder while afk",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "3D 30 75 00 00 0F 86",
-        "patch": "3D 30 75 00 00 90 E9"
-      }
-    ]
-  },
-  {
-    "name": "Perfect Cooking Bar",
-    "desc": "Bar will not shake when adding ingredients",
-    "category": "Quality of Life",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "3D 3E 42 0F 00 77",
-        "patch": "3D 3E 42 0F 00 EB"
-      }
-    ]
-  },
-  {
-    "name": "Disable Pet Summon Messages",
-    "desc": "",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "74 1A 6A  01 8B CF E8 8C FB FF",
-        "patch": "EB"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "74 0A 53 8B CE E8 EE",
-        "patch": "EB"
-      }
-    ]
-  },
-  {
-    "name": "Disable Skill Rank Up Message",
-    "desc": "",
-    "category": "Interface",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "E8 ? ? ? ? 33 F6 3B C6 0F 84",
-        "patch": "E8 ? ? ? ? 33 F6 3B C6 90 E9"
-      }
-    ]
-  },
-  {
-    "name": "Disable Player Effects",
-    "desc": "Disables most player effects.",
-    "category": "Speedup",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "75 07 32 C0 E9 8B 00 00 00 56 FF 75 08 E8 EA 3C",
-        "patch": "90 90 32 C0 E9 8B 00 00 00 56 FF 75 08 E8 EA 3C"
-      }
-    ]
-  },
-  {
-    "name": "Debug Wireframe Mode",
-    "desc": "",
-    "category": "Debug",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "85 C0 74 20 8B 0D",
-        "patch": "85 C0 EB 20 8B 0D"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B C8 FF 62 04 32 C0",
-        "patch": "8B C8 FF 62 04 B0 01"
-      }
-    ]
-  },
-  {
-    "name": "Disable Character Alpha Transparancy",
-    "desc": "Disables alpha transparancy on characters when zooming in.",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "4F F7 DF 1B FF 81 E7 FE 07 00 00 47 47",
-        "patch": "4F F7 DF 1B FF 81 C7 F0 0F 00 00 47 47"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "74 ? 57 53 6A 02",
-        "patch": "74 ? 57 53 6A 05"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "74 ? 57 53 6A 02",
-        "patch": "74 ? 57 53 6A 05"
-      }
-    ]
-  },
-  {
-    "name": "Freeze Camera Angle",
-    "desc": "Camera angle and position will be stuck while enabled.",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B 80 D4 03 00 00 C3 8B 01 8B",
-        "patch": "B8 01 00 00 00 90 C3 8B 01 8B"
-      }
-    ]
-  },
-  {
-    "name": "No Render Sky",
-    "desc": "",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B 10 8B C8 FF 52 04 84 C0 74 ? 8B ? ? 8B 01 6A",
-        "patch": "8B 10 8B C8 FF 52 04 84 C0 EB ? 8B ? ? 8B 01 6A"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B 4E ? 85 C9 74 ? E8 ? ? ? ? 8B 10 8B C8 FF 52 04 84 C0 74",
-        "patch": "8B 4E ? 85 C9 EB ? E8 ? ? ? ? 8B 10 8B C8 FF 52 04 84 C0 74"
-      }
-    ]
-  },
-  {
-    "name": "Texture Stop",
-    "desc": "Reduce texture to minimum",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B 45 ? 85 C0 74 ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8",
-        "patch": "8B 45 ? 85 C0 EB ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B 45 ? 85 C0 74 ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8 E8 ? ? ? ? 83",
-        "patch": "8B 45 ? 85 C0 EB ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8 E8 ? ? ? ? 83"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "75 2C 8B 7F",
-        "patch": "EB 2C 8B 7F"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "85 46 ? 0F 95",
-        "patch": "84 46 ? 0F 95"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "8B C8 E8 ? ? ? ? 6A 00 FF 74 ? ? 8B C8",
-        "patch": "8B C8 E8 ? ? ? ? 6A FF FF 74 ? ? 8B C8"
-      },
-      {
-        "location": "Renderer2.dll",
-        "pattern": "83 F8 01 75 05 39 ? ? 74 40",
-        "patch": "83 F8 01 90 90 39 ? ? 74 40"
-      }
-    ]
-  },
-  {
-    "name": "Block Critical Hit Effects",
-    "desc": "Blocks all Critical Hit effects from showing",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "74 09 56 53 E8",
-        "patch": "EB 09 56 53 E8"
-      }
-    ]
-  },
-  {
-    "name": "Fix AstralWorld Flashy",
-    "desc": "Fixes the way AstralWorld disables flashy",
-    "category": "Graphics",
-    "patches": [
-      {
-        "location": "mss32.dll",
-        "pattern": "81 E9 00 00 00 01",
-        "patch": "81 C1 00 00 00 10"
-      }
-    ]
-  },
-  {
-    "name": "Block Pet Pickup Messages",
-    "desc": "",
-    "category": "Chat Filter",
-    "patches": [
-      {
-        "location": "Oasis.dll",
-        "pattern": "0F 85 73 03 00 00 8B 1D",
-        "patch": "E9 74 03 00 00 90 8B 1D"
-      }
-    ]
-  },
-  {
-    "name": "Block Pet Status Messages",
-    "desc": "",
-    "category": "Chat Filter",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 03 FF D7 F6 45 08 08",
-        "patch": "90 90 90 90 90"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 03 FF D7 F6 45 08 02",
-        "patch": "90 90 90 90 90"
-      },
-      {
-        "location": "Pleione.dll",
-        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 08 FF D6 8D",
-        "patch": "90 90 90 90 90"
-      }
-    ]
-  },
-  {
-    "name": "Block Party Ads",
-    "desc": "",
-    "category": "Chat Filter",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D C0 C6 45 FC 06 90 E8",
-        "patch": "90 90 90 90 90"
-      }
-    ]
-  },
-  {
-    "name": "Block System Spam",
-    "desc": "Blocks many <SYSTEM> chats and some <COMBAT>, including EXP gained",
-    "category": "Chat Filter",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "E8 ? ? ? ? 83 C4 1C EB 0B 8B CF E8 ? ? ? ? 84 C0 74",
-        "patch": "90 90 90 90 90"
-      }
-    ]
-  },
-  {
-    "name": "Block Critical Text",
-    "desc": "Blocks Critical Hit!!! from showing in chat",
-    "category": "Chat Filter",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "0F 84 59 01 00 00 68 4C 6F DE 63 8D",
-        "patch": "E9 5A 01 00 00 90"
-      }
-    ]
-  }
+    {
+        "name": "Enable Money Letters",
+        "desc": "Gold will be shown in thousnads and millions (K and M).",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "ESL.dll",
+                "pattern": "BF 00 E1 F5 05 89 45 D8 F7 F7 33",
+                "patch": "BF 40 42 0F 00 89 45 D8 F7 F7 33"
+            },
+            {
+                "location": "ESL.dll",
+                "pattern": "10 27 00 00 F7 F7 85",
+                "patch": "E8 03 00 00 F7 F7 85"
+            },
+            {
+                "location": "ESL.dll",
+                "pattern": "EB 29 83 F8 03 0F 84",
+                "patch": "74 29 83 F8 03 0F 84"
+            },
+            {
+                "location": "ESL.dll",
+                "pattern": "B8 07 4E 00",
+                "patch": "B8 6B 00 00"
+            },
+            {
+                "location": "ESL.dll",
+                "pattern": "DD B8 04 51 00 00",
+                "patch": "DD B8 6D 00 00 00"
+            }
+        ]
+    },
+    {
+        "name": "Remove Chat Restrictions",
+        "desc": "Allows chat spam and repeat messages.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "74 0E 2B 45 E4 8D 9C 00 88 13 00 00 85 DB 7D 02 33 DB 8D",
+                "patch": "EB 0E 2B 45 E4 8D 9C 00 88 13 00 00 85 DB 7D 02 33 DB 8D"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "83 F8 0A 0F 86 AD",
+                "patch": "83 F8 0A 0F 87 AD"
+            }
+        ]
+    },
+    {
+        "name": "Disable Skill Locks",
+        "desc": "Allows you to use other skills after using flameburst",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "offset": 4,
+                "pattern": "59 59 84 C0 0F 84 93 ? ? ? 8B 1D",
+                "patch": "E9 94 02 00 00 90"
+            }
+        ]
+    },
+    {
+        "name": "Keep Pet Window Open",
+        "desc": "After summoning a pet, prevent the pet window from closing.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "84 C0 0F 84 3D 01 00 00 8B 0D 38",
+                "patch": "84 C0 0F 81 3D 01 00 00 8B 0D 38"
+            }
+        ]
+    },
+    {
+        "name": "Always Enable Attack with Pet",
+        "desc": "Credits: Flipend0",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "6A 00 FF 50 50 EB 53",
+                "patch": "6A 01 FF 50 50 EB 53"
+            }
+        ]
+    },
+    {
+        "name": "Basic Ghost Lock",
+        "desc": "Allows aiming and use of non target skills on other players",
+        "category": "Fun",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "32 C0 E9 2C 01 00 00 8B 06 8B CE FF 50",
+                "patch": "B0 01"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "84 C0 74 04 B0 01 EB 02 32 C0 E8 ? ? ? ? C2 08",
+                "patch": "84 C0 74 04 B0 01 EB 02 b0 01 E8 ? ? ? ? C2 08"
+            }
+        ]
+    },
+    {
+        "name": "Delag Skill",
+        "desc": "Decrease skill lag",
+        "category": "Speedup",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "56 8B F1 8B 06 ff 90 ? ? ? ? 8B 06 6A ? 8B CE FF 90 ? ? ? ? 84 c0 75 02",
+                "patch": "b0 01 c3"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "56 8B F1 8B 06 FF 90 D0 00 00 00 8B 06 8B CE FF 50 08 8B 10 6A 40",
+                "patch": "b0 01 c3"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "56 8B F1 8B 06 FF 90 ? ? ? ? 8b 06 6A ? 8B CE FF 90 ? ? ? ? 84 C0 75 04",
+                "patch": "b0 01 c3"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "83 F8 13 75 03 B0 01 C3 32 C0 C3",
+                "patch": "83 F8 13 75 03 B0 00 C3 B0 00 C3"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "56 8B F1 8B 06 FF 90 ? ? ? ? 8B 06 68 80 00 00 00",
+                "patch": "b0 01 c3"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "3b f8 77 ? 80 7d 0c 00 75",
+                "patch": "3b f8 90 90 80 7d 0c 00 EB"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "EXL.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "EXL.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "EXL.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "EXL.dll",
+                "pattern": "6A 01 e8 ? ? ? ? 53 53",
+                "patch": "6A 01 90 90 90 90 90 53 53"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B 89 ? ? ? ? 8B 01 FF 50 58 84 C0",
+                "patch": "B0 01 C3 90 90 90 8B 01 FF 50 58 84 C0"
+            }
+        ]
+    },
+    {
+        "name": "Free Indoor Camera",
+        "desc": "Allows you to freely rotate the camera while indoors.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "0F 84 ? ? ? ? 8B 8E ? ? ? ? 85 C9 0F 84 ? ? ? ? 83 7D",
+                "patch": "90 E9"
+            }
+        ]
+    },
+    {
+        "name": "Dungeon Map Resize",
+        "desc": "",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "BF B4 00 00 00 6A",
+                "patch": "BF 19 00 00 00 6A"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "B8 B4 00 00 00 8B C8",
+                "patch": "B8 FF 00 00 00 8B C8"
+            }
+        ]
+    },
+    {
+        "name": "Uncap Flying Height",
+        "desc": "No restrictions on how high mounts can fly",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "00 00 74 2C 83 E8 63 74",
+                "patch": "00 00 EB"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "EB 06 D9 05 F0 EA",
+                "patch": "EB 06 DD"
+            }
+        ]
+    },
+    {
+        "name": "Uncap Alchemy Auto Production",
+        "desc": "Remove limit on auto production for alchemy",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "76 03 66 89 08 8B 8E 94 01",
+                "patch": "EB"
+            }
+        ]
+    },
+    {
+        "name": "Fast Flight",
+        "desc": "Increases flight rotation and verticle speed",
+        "category": "Speedup",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "D9 43 10 D8 4D E4 D9 5D E4 D9 45",
+                "patch": "D9 43 10 D8 4B 10 D9 5D E4 D9 45"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B 45 50 DB 45 50 85 C0 7D 06",
+                "patch": "8B 45 50 DB 45 50 85 C0 90 90"
+            }
+        ]
+    },
+    {
+        "name": "No SM Clear/Fail Message",
+        "desc": "Do not display Mission Complete or Mission Failed messages",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "8D 4D E0 74 20 48 0F 85 D6 02 00 00 68",
+                "patch": "8D 4D E0 90 90 48 90 E9 D6 02 00 00 68"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "8D 4D E8 74 43 48 0F 85 0B 05 00 00 68",
+                "patch": "8D 4D E8 90 90 48 90 E9 0B 05 00 00 68"
+            }
+        ]
+    },
+    {
+        "name": "Fast Nao",
+        "desc": "Nao appears immediately on revival",
+        "category": "Speedup",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "68 88 13 00 00 68 D0 07 00 00",
+                "patch": "68 01 00 00 00 68 01 00 00 00"
+            }
+        ]
+    },
+    {
+        "name": "Assistant Character Location",
+        "desc": "Shows last location for assistant characters",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "74 70 68 40 5C DF",
+                "patch": "EB 70 68 40 5C DF"
+            }
+        ]
+    },
+    {
+        "name": "No Pet Idle",
+        "desc": "When playing as pet, pet will not wonder while afk",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "3D 30 75 00 00 0F 86",
+                "patch": "3D 30 75 00 00 90 E9"
+            }
+        ]
+    },
+    {
+        "name": "Perfect Cooking Bar",
+        "desc": "Bar will not shake when adding ingredients",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "3D 3E 42 0F 00 77",
+                "patch": "3D 3E 42 0F 00 EB"
+            }
+        ]
+    },
+    {
+        "name": "Disable Pet Summon Messages",
+        "desc": "",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "74 1A 6A  01 8B CF E8 8C FB FF",
+                "patch": "EB"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "74 0A 53 8B CE E8 EE",
+                "patch": "EB"
+            }
+        ]
+    },
+    {
+        "name": "Disable Skill Rank Up Message",
+        "desc": "",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "E8 ? ? ? ? 33 F6 3B C6 0F 84",
+                "patch": "E8 ? ? ? ? 33 F6 3B C6 90 E9"
+            }
+        ]
+    },
+    {
+        "name": "Disable Player Effects",
+        "desc": "Disables most player effects.",
+        "category": "Speedup",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "75 07 32 C0 E9 8B 00 00 00 56 FF 75 08 E8 EA 3C",
+                "patch": "90 90 32 C0 E9 8B 00 00 00 56 FF 75 08 E8 EA 3C"
+            }
+        ]
+    },
+    {
+        "name": "Debug Wireframe Mode",
+        "desc": "",
+        "category": "Debug",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "85 C0 74 20 8B 0D",
+                "patch": "85 C0 EB 20 8B 0D"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B C8 FF 62 04 32 C0",
+                "patch": "8B C8 FF 62 04 B0 01"
+            }
+        ]
+    },
+    {
+        "name": "Disable Character Alpha Transparancy",
+        "desc": "Disables alpha transparancy on characters when zooming in.",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "4F F7 DF 1B FF 81 E7 FE 07 00 00 47 47",
+                "patch": "4F F7 DF 1B FF 81 C7 F0 0F 00 00 47 47"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "74 ? 57 53 6A 02",
+                "patch": "74 ? 57 53 6A 05"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "74 ? 57 53 6A 02",
+                "patch": "74 ? 57 53 6A 05"
+            }
+        ]
+    },
+    {
+        "name": "Freeze Camera Angle",
+        "desc": "Camera angle and position will be stuck while enabled.",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B 80 D4 03 00 00 C3 8B 01 8B",
+                "patch": "B8 01 00 00 00 90 C3 8B 01 8B"
+            }
+        ]
+    },
+    {
+        "name": "No Render Sky",
+        "desc": "",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B 10 8B C8 FF 52 04 84 C0 74 ? 8B ? ? 8B 01 6A",
+                "patch": "8B 10 8B C8 FF 52 04 84 C0 EB ? 8B ? ? 8B 01 6A"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B 4E ? 85 C9 74 ? E8 ? ? ? ? 8B 10 8B C8 FF 52 04 84 C0 74",
+                "patch": "8B 4E ? 85 C9 EB ? E8 ? ? ? ? 8B 10 8B C8 FF 52 04 84 C0 74"
+            }
+        ]
+    },
+    {
+        "name": "Texture Stop",
+        "desc": "Reduce texture to minimum",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B 45 ? 85 C0 74 ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8",
+                "patch": "8B 45 ? 85 C0 EB ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B 45 ? 85 C0 74 ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8 E8 ? ? ? ? 83",
+                "patch": "8B 45 ? 85 C0 EB ? FF 70 ? 8B CE E8 ? ? ? ? 8B C8 E8 ? ? ? ? 83"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "75 2C 8B 7F",
+                "patch": "EB 2C 8B 7F"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "85 46 ? 0F 95",
+                "patch": "84 46 ? 0F 95"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B C8 E8 ? ? ? ? 6A 00 FF 74 ? ? 8B C8",
+                "patch": "8B C8 E8 ? ? ? ? 6A FF FF 74 ? ? 8B C8"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "83 F8 01 75 05 39 ? ? 74 40",
+                "patch": "83 F8 01 90 90 39 ? ? 74 40"
+            }
+        ]
+    },
+    {
+        "name": "Block Critical Hit Effects",
+        "desc": "Blocks all Critical Hit effects from showing",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "74 09 56 53 E8",
+                "patch": "EB 09 56 53 E8"
+            }
+        ]
+    },
+    {
+        "name": "Fix AstralWorld Flashy",
+        "desc": "Fixes the way AstralWorld disables flashy by using a color similar to the flashy",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "mss32.dll",
+                "pattern": "2d 00 00 00 01",
+                "patch": "05 00 00 00 10"
+            },
+            {
+                "location": "mss32.dll",
+                "pattern": "81 ea 00 00 00 01",
+                "patch": "81 C1 00 00 00 10"
+            },
+            {
+                "location": "mss32.dll",
+                "pattern": "81 e9 00 00 00 01",
+                "patch": "81 C1 00 00 00 10"
+            }
+        ]
+    },
+    {
+        "name": "Block Pet Pickup Messages",
+        "desc": "",
+        "category": "Chat Filter",
+        "patches": [
+            {
+                "location": "Oasis.dll",
+                "pattern": "0F 85 73 03 00 00 8B 1D",
+                "patch": "E9 74 03 00 00 90 8B 1D"
+            }
+        ]
+    },
+    {
+        "name": "Block Pet Status Messages",
+        "desc": "",
+        "category": "Chat Filter",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 03 FF D7 F6 45 08 08",
+                "patch": "90 90 90 90 90"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 03 FF D7 F6 45 08 02",
+                "patch": "90 90 90 90 90"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D E4 C6 45 FC 08 FF D6 8D",
+                "patch": "90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Block Party Ads",
+        "desc": "",
+        "category": "Chat Filter",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "E8 ? ? ? ? 83 C4 1C 8D 4D C0 C6 45 FC 06 90 E8",
+                "patch": "90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Block System Spam",
+        "desc": "Blocks many <SYSTEM> chats and some <COMBAT>, including EXP gained",
+        "category": "Chat Filter",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "E8 ? ? ? ? 83 C4 1C EB 0B 8B CF E8 ? ? ? ? 84 C0 74",
+                "patch": "90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Block Critical Text",
+        "desc": "Blocks Critical Hit!!! from showing in chat",
+        "category": "Chat Filter",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "0F 84 59 01 00 00 68 4C 6F DE 63 8D",
+                "patch": "E9 5A 01 00 00 90"
+            }
+        ]
+    }
 ]
