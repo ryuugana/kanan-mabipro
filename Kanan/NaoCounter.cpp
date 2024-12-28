@@ -9,6 +9,7 @@ namespace kanan {
 		m_count = 0;
 		m_isEnabled = false;
 		m_op.push_back(0x909A);
+		m_op.push_back(0x526d);
 	}
 
 	void NaoCounter::drawWindow() {
@@ -54,8 +55,24 @@ namespace kanan {
 	void NaoCounter::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
-
-		// Retrieve Nao Count
-		m_count = m_maxNao - recvPacket.GetElement(1)->byte8;
+		if (recvPacket.GetOP() == 0x909A)
+		{
+			// Retrieve Nao Count
+			m_count = m_maxNao - recvPacket.GetElement(1)->byte8;
+		}
+		else
+		{
+			if (recvPacket.GetReciverId() == 0x3000000000000000)
+			{
+				string message = recvPacket.GetElement(1)->str;
+				if (message.find("Eweca has set.") != std::string::npos)
+				{
+					if (m_count < m_maxNao)
+					{
+						m_count++;
+					}
+				}
+			}
+		}
 	}
 }
