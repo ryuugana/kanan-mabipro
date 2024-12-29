@@ -113,7 +113,7 @@ namespace kanan {
         addPatchMod("Speedup", make_unique<DontMoveToSquadChat>());
 		addPatchMod("Text", make_unique<TTFFontSize>());
         addPatchMod("Text", make_unique<ColorAltText>());*/
-        addPatchMod("Graphics", make_unique<AutoMute>());
+        addPatchMod("Quality of Life", make_unique<AutoMute>());
 		addPatchMod("Graphics", make_unique<DisableFlashy>());
 
         for (auto& categories : m_patchMods) {
