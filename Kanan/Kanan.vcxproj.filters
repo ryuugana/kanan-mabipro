@@ -180,6 +180,9 @@
     <ClCompile Include="NaoCounter.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
+    <ClCompile Include="AutoMute.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -376,6 +379,9 @@
     </ClInclude>
     <ClInclude Include="NaoCounter.hpp">
       <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="AutoMute.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

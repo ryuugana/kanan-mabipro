@@ -113,6 +113,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AutoChangeChannels.cpp" />
+    <ClCompile Include="AutoMute.cpp" />
     <ClCompile Include="AutoSetMTU.cpp" />
     <ClCompile Include="BlockSpam.cpp" />
     <ClCompile Include="BorderlessWindow.cpp" />
@@ -159,6 +160,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoChangeChannels.hpp" />
+    <ClInclude Include="AutoMute.hpp" />
     <ClInclude Include="AutoSetMTU.hpp" />
     <ClInclude Include="BlockSpam.hpp" />
     <ClInclude Include="BorderlessWindow.hpp" />
