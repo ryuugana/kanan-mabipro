@@ -997,6 +997,7 @@ namespace kanan {
         Config cfg{ m_modConfigPath };
         cfg.set<bool>("AssistantCharacterLocation.Enabled", true);
         cfg.set<bool>("AuctionMessageToChat.Enabled", true);
+        cfg.set<bool>("AutoMute.Enabled", true);
         cfg.set<bool>("BlockSpam.Enabled", true);
         cfg.set<bool>("BlockPetPickupMessages.Enabled", true);
         cfg.set<bool>("BlockPetStatusMessages.Enabled", true);
@@ -1011,6 +1012,7 @@ namespace kanan {
         cfg.set<bool>("FixAstralWorldFlashy.Enabled", true);
         cfg.set<bool>("FreeIndoorCamera.Enabled", true);
         cfg.set<bool>("KeepPetWindowOpen.Enabled", true);
+        cfg.set<bool>("NaoCounter.Enabled", true);
         cfg.set<bool>("NoPetIdle.Enabled", true);
         cfg.set<bool>("NoSMClear/FailMessage.Enabled", true);
         cfg.set<bool>("RemoveChatRestrictions.Enabled", true);
