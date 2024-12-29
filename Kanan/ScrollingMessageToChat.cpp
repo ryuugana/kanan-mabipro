@@ -22,9 +22,17 @@ namespace kanan {
 				m_isEnabled = m_isAuctionEnabled || m_isFieldBossEnabled;
 			if (ImGui::Checkbox("Enable Field Boss Messages To Chat", &m_isFieldBossEnabled))
 				m_isEnabled = m_isAuctionEnabled || m_isFieldBossEnabled;
-			if (m_isFieldBossEnabled) {
+
+			if (m_isFieldBossEnabled)
+			{
 				if (ImGui::Checkbox("Enable Field Boss Notification", &m_isFieldBNotifyEnabled))
 					m_isEnabled = m_isAuctionEnabled || m_isFieldBossEnabled || m_isFieldBNotifyEnabled;
+			}
+			else
+			{
+				ImGui::Checkbox("", &m_isFieldBNotifyEnabled);
+				ImGui::SameLine(34.0);
+				ImGui::TextDisabled("Enable Field Boss Notification");
 			}
 		}
 	}
