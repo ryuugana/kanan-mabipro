@@ -64,12 +64,12 @@ namespace kanan {
 		__asm {
 			push	esi
 			mov		esi, CMSS
-			//cmp		byte ptr[esi + 4], 00
-			//je		cmssProcessRet
+			cmp		byte ptr[esi + 4], 00
+			je		cmssProcessRet
 			jmp		cmssProcessJmpTarget
-			//cmssProcessRet:
-			//pop		esi
-			//ret
+			cmssProcessRet:
+			pop		esi
+			ret
 		}
 	}
 	/*
