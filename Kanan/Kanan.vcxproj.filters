@@ -381,7 +381,7 @@
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
     <ClInclude Include="AutoMute.hpp">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Mods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -5,7 +5,7 @@
 #include "PatchMod.hpp"
 
 namespace kanan {
-	// Disable flashy effects and fix AstralWorlds broken disable by showing the non-flashy varient
+	// Automatically mute audio when Mabinogi is in the background
 	class AutoMute : public PatchMod {
 	public:
 		AutoMute();
