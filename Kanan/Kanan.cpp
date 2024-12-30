@@ -51,6 +51,7 @@ namespace kanan {
         m_mods{ m_path },
         m_isUpdate{ false },
         m_isNotifyUpdate{ true },
+        m_isMp3Fixed{ false },
         m_defaultMods{ true },
         m_isUIOpen{ true },
         m_isLogOpen{ false },
@@ -253,6 +254,41 @@ namespace kanan {
             // Make sure the config for all the mods gets loaded.
             if (!m_areModsLoaded) {
                 loadConfig();
+            }
+
+            if (!m_isMp3Fixed) {
+                log("Attempting to fix MabiPro mp3 files.");
+
+                mp3_status_fix status = no_mp3_found;
+
+                for (const auto& entry : std::filesystem::directory_iterator(m_path + "/mp3/ambient")) {
+                    if (entry.path().filename().generic_string().find("ambient") == std::string::npos) {
+                        status = mp3_move_success;
+                        try {
+                            std::filesystem::rename(entry.path(), m_path + "/mp3/" + entry.path().filename().string());
+                        }
+                        catch (std::filesystem::filesystem_error& e) {
+                            status = mp3_move_failure;
+                            break;
+                        }
+                    }
+                }
+
+                switch (status) {
+                case no_mp3_found:
+                    log("Did not find out of place mp3 files in ambient.");
+                    m_isMp3Fixed = true;
+                    saveConfig();
+                    break;
+                case mp3_move_success:
+                    log("Successfully moved mp3 files out of ambient.");
+                    m_isMp3Fixed = true;
+                    saveConfig();
+                    break;
+                case mp3_move_failure:
+                    log("Failed to move mp3 files out of ambient.");
+                    break;
+                }
             }
 
             for (const auto& mod : m_mods.getMods()) {
@@ -1038,6 +1074,7 @@ namespace kanan {
 		m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
 		m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
         m_isNotifyUpdate = cfg.get<bool>("UI.NotifyUpdate").value_or(true);
+        m_isMp3Fixed = cfg.get<bool>("UI.Mp3Fixed").value_or(false);
         m_isUpdate = checkVersion() && m_isNotifyUpdate;
         m_isUIOpen = m_isUIOpenByDefault || m_isUpdate;
 
@@ -1071,6 +1108,7 @@ namespace kanan {
 
         cfg.set<bool>("UI.OpenByDefault", m_isUIOpenByDefault);
         cfg.set<bool>("UI.NotifyUpdate", m_isNotifyUpdate);
+        cfg.set<bool>("UI.Mp3Fixed", m_isMp3Fixed);
 		cfg.set<int>("UI.Keybind", m_key.hotkey);
 		cfg.set<int>("UI.HousingKey", m_housingKey.hotkey);
 		cfg.set<int>("UI.AstralKey", m_astralKey.hotkey);

@@ -60,6 +60,7 @@ namespace kanan {
         bool m_isUpdateOpen;
         bool m_isUpdate;
         bool m_isNotifyUpdate;
+        bool m_isMp3Fixed;
         bool m_defaultMods;
 
         bool m_isInitialized;
@@ -92,6 +93,12 @@ namespace kanan {
         void drawUpdateMessage();
         void drawDefaultMods();
         void Drawmetrics();
+
+        enum mp3_status_fix {
+            no_mp3_found,
+            mp3_move_success,
+            mp3_move_failure
+        };
     };
 
     extern std::unique_ptr<Kanan> g_kanan;
