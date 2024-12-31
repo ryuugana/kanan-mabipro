@@ -85,6 +85,9 @@ namespace kanan {
         void loadConfig();
         void saveConfig();
 
+        bool isAmbientMp3(std::string path);
+        void fixMabiProMp3();
+
         void housingBoard();
         void viewAstralWorld();
 

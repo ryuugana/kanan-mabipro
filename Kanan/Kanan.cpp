@@ -257,38 +257,7 @@ namespace kanan {
             }
 
             if (!m_isMp3Fixed) {
-                log("Attempting to fix MabiPro mp3 files.");
-
-                mp3_status_fix status = no_mp3_found;
-
-                for (const auto& entry : std::filesystem::directory_iterator(m_path + "/mp3/ambient")) {
-                    if (entry.path().filename().generic_string().find("ambient") == std::string::npos) {
-                        status = mp3_move_success;
-                        try {
-                            std::filesystem::rename(entry.path(), m_path + "/mp3/" + entry.path().filename().string());
-                        }
-                        catch (std::filesystem::filesystem_error& e) {
-                            status = mp3_move_failure;
-                            break;
-                        }
-                    }
-                }
-
-                switch (status) {
-                case no_mp3_found:
-                    log("Did not find out of place mp3 files in ambient.");
-                    m_isMp3Fixed = true;
-                    saveConfig();
-                    break;
-                case mp3_move_success:
-                    log("Successfully moved mp3 files out of ambient.");
-                    m_isMp3Fixed = true;
-                    saveConfig();
-                    break;
-                case mp3_move_failure:
-                    log("Failed to move mp3 files out of ambient.");
-                    break;
-                }
+                fixMabiProMp3();
             }
 
             for (const auto& mod : m_mods.getMods()) {
@@ -1133,6 +1102,60 @@ namespace kanan {
         }
 
         log("Config saving done.");
+    }
+
+    bool Kanan::isAmbientMp3(string path) {
+        const string ambientMp3s[3] = { "battle_field_01.mp3", "camp.mp3", "Silence.mp3" };
+        bool knownAmbientMp3 = false;
+
+        for each (string mp3 in ambientMp3s) {
+            knownAmbientMp3 |= path.compare(mp3) == 0;
+        }
+
+        knownAmbientMp3 |= path.find("ambient") != std::string::npos;
+
+        return knownAmbientMp3;
+    }
+
+    void Kanan::fixMabiProMp3() {
+        log("Attempting to fix MabiPro mp3 files.");
+
+        mp3_status_fix status = no_mp3_found;
+
+        for (const auto& entry : std::filesystem::directory_iterator(m_path + "/mp3/ambient")) {
+            if (!isAmbientMp3(entry.path().filename().generic_string())) {
+                status = mp3_move_success;
+                string newMp3Path = m_path + "/mp3/" + entry.path().filename().string();
+                try {
+                    if (!std::filesystem::exists(newMp3Path)) {
+                        std::filesystem::rename(entry.path(), newMp3Path);
+                    }
+                    else {
+                        log("Existing mp3 at %s, skipping to next file.", newMp3Path);
+                    }
+                }
+                catch (std::filesystem::filesystem_error& e) {
+                    status = mp3_move_failure;
+                    break;
+                }
+            }
+        }
+
+        switch (status) {
+        case no_mp3_found:
+            log("Did not find out of place mp3 files in ambient.");
+            m_isMp3Fixed = true;
+            saveConfig();
+            break;
+        case mp3_move_success:
+            log("Successfully moved mp3 files out of ambient.");
+            m_isMp3Fixed = true;
+            saveConfig();
+            break;
+        case mp3_move_failure:
+            log("Failed to move mp3 files out of ambient.");
+            break;
+        }
     }
 
     //6A 08 B8 D9 34 D4 63 E8 67 89 3F 00 8B 0D 38 DF
