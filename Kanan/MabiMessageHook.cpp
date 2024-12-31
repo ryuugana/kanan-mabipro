@@ -114,7 +114,6 @@ namespace kanan {
 			if ((*mabiRecvListeners)[i]->m_isEnabled) {
 				for each( int listenOp in (*mabiRecvListeners)[i]->getOp())
 				if (op ==  listenOp || -1 == listenOp) {
-					logNoNewLine("");
 					(*mabiRecvListeners)[i]->onRecv(mabiMessage);
 					break;
 				}
