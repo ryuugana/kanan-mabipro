@@ -29,7 +29,6 @@ LPCSTR mImportNames[] = { "DirectSoundCaptureCreate",
 typedef int(CALLBACK *DirectSoundEnumerate)(LPVOID, LPVOID);
 typedef HRESULT(WINAPI *DirectSoundCreate)(LPCGUID, LPVOID, LPVOID);
 typedef HRESULT(WINAPI *DirectSoundCreate8)(LPCGUID, LPVOID, LPVOID);
-void deleteOldLogs(string path, string fileName, struct tm  tstruct);
 
 //
 // This is the entrypoint for kanan. It's only responsible for setting up the global

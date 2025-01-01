@@ -11,20 +11,6 @@
 #include "Kanan.hpp"
 
 namespace kanan {
-	const char* const emotes[] = {
-		"(laugh)",
-		"(angry)",
-		"(serious)",
-		"(jeah)",
-		"(confused)",
-		"(pain)",
-		"(eyesclosed)",
-		"(surprised)",
-		"(love)",
-		"(sad)"
-	};
-
-
 	ChatLog::ChatLog()
 		: m_fileLogEnabled{ false },
 		m_startedLogging{ false },
@@ -33,12 +19,15 @@ namespace kanan {
 		m_scrollToBottom{ false },
 		m_autoScroll{ true },
 		m_isOpen{ false },
-		m_file{}
+		m_file{},
+		m_partyMembers{}
 	{
 		m_op.push_back(21100);
 		m_op.push_back(21101);
 		m_op.push_back(21107);
 		m_op.push_back(21109);
+		m_op.push_back(36502);
+		m_op.push_back(36504);
 		m_op.push_back(36520);
 		m_op.push_back(50031);
 	}
@@ -85,7 +74,7 @@ namespace kanan {
 		cfg.set<bool>("ChatLog.OpenByDefault", m_isOpen);
 	}
 
-	std::string getTime() {
+	std::string ChatLog::getTime() {
 		std::ostringstream ss;
 		time_t now = time(0);
 		tm localTimeNow;
@@ -97,30 +86,19 @@ namespace kanan {
 		return ss.str();
 	}
 
-	string removePercent(string message) {
-		int pos = message.find("%");
-		while (pos != string::npos) {
-			message = message.replace(pos, 1, "p");
-			pos = message.find("%");
-		}
-		return message;
-	}
-
 	void ChatLog::onRecv(MabiMessage mabiMessage) {
-		unsigned long op = GetOP(mabiMessage.buffer);
-
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
 		ostringstream ss{};
 
 		try {
-			if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
-				return;
 			string message = "";
 			switch (recvPacket.GetOP())
 			{
 			case 21100: // All + Personal Shop
+				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
+					return;
 				message = recvPacket.GetElement(2)->str;
 				if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
 					break;
@@ -132,7 +110,7 @@ namespace kanan {
 				}
 				else {
 					bool isEmote = false;
-					for each(auto emote in emotes) {
+					for each(auto emote in m_emotes) {
 						if (message.find(emote) != string::npos)
 							return;
 					}
@@ -141,6 +119,8 @@ namespace kanan {
 				}
 				break;
 			case 21101: // System
+				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
+					return;
 				if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
 					break;
 				message = recvPacket.GetElement(1)->str;
@@ -155,9 +135,24 @@ namespace kanan {
 				message = recvPacket.GetElement(1)->str;
 				ss << getTime() << " | <GLOBAL> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
+			case 36502:
+				 m_partyMembers[recvPacket.GetElement(2)->ID] = recvPacket.GetElement(3)->str;
+			case 36504:
+				for (int i = 14; i < recvPacket.GetElementNum(); i += 11) {
+					log("Party joined elements: %d, i: %d, id: %lld", recvPacket.GetElementNum(), i, recvPacket.GetElement(i)->ID);
+					if (recvPacket.GetElement(i)->ID > 4700000000000000 || recvPacket.GetElement(i)->ID < 0x10000000000000)
+						break;
+					m_partyMembers[recvPacket.GetElement(i)->ID] = recvPacket.GetElement(i + 1)->str;
+				}
+				break;
 			case 36520: // Party
 				message = recvPacket.GetElement(1)->str;
-				ss << getTime() << " | <PARTY> " << ": " << recvPacket.GetElement(1)->str;
+				if (m_partyMembers.find(recvPacket.GetElement(0)->ID) == m_partyMembers.end()) {
+					ss << getTime() << " | <PARTY> " << ": " << recvPacket.GetElement(1)->str;
+				}
+				else {
+					ss << getTime() << " | <PARTY> " << m_partyMembers[recvPacket.GetElement(0)->ID] << ": " << recvPacket.GetElement(1)->str;
+				}
 				break;
 			case 50031: // Guild
 				message = recvPacket.GetElement(1)->str;
@@ -173,7 +168,7 @@ namespace kanan {
 		}
 	}
 
-	void deleteOldLogs(string path, string fileName, struct tm  tstruct) {
+void ChatLog::deleteOldLogs(string path, string fileName, tm tstruct) {
 		int year = 0;
 		int month = 0;
 		int day = 0;
@@ -208,15 +203,7 @@ namespace kanan {
 		}
 
 		// Delete file if it's older than a week
-		if (year < tstruct.tm_year) {
-			if (month == 12) {
-				if ((tstruct.tm_mday - 7) + 31 > day)
-					std::remove(path.c_str());
-			}
-			else
-				std::remove(path.c_str());
-		}
-		else if (month < tstruct.tm_mon + 1) {
+		if (month != tstruct.tm_mon + 1) {
 			switch (month) {
 			case 1:
 			case 3:
