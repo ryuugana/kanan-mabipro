@@ -137,6 +137,7 @@ namespace kanan {
 				break;
 			case 36502:
 				 m_partyMembers[recvPacket.GetElement(2)->ID] = recvPacket.GetElement(3)->str;
+				 break;
 			case 36504:
 				for (int i = 14; i < recvPacket.GetElementNum(); i += 11) {
 					log("Party joined elements: %d, i: %d, id: %lld", recvPacket.GetElementNum(), i, recvPacket.GetElement(i)->ID);
