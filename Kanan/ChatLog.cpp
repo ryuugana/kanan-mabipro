@@ -139,11 +139,15 @@ namespace kanan {
 				 m_partyMembers[recvPacket.GetElement(2)->ID] = recvPacket.GetElement(3)->str;
 				 break;
 			case 36504:
-				for (int i = 14; i < recvPacket.GetElementNum(); i += 11) {
+				for (int i = 14; i < recvPacket.GetElementNum();) {
 					log("Party joined elements: %d, i: %d, id: %lld", recvPacket.GetElementNum(), i, recvPacket.GetElement(i)->ID);
-					if (recvPacket.GetElement(i)->ID > 4700000000000000 || recvPacket.GetElement(i)->ID < 0x10000000000000)
-						break;
-					m_partyMembers[recvPacket.GetElement(i)->ID] = recvPacket.GetElement(i + 1)->str;
+					if (recvPacket.GetElement(i)->type == T_LONG) {
+						m_partyMembers[recvPacket.GetElement(i)->ID] = recvPacket.GetElement(i + 1)->str;
+						i += 11;
+					}
+					else {
+						i += 8;
+					}
 				}
 				break;
 			case 36520: // Party
