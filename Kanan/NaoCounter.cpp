@@ -57,8 +57,11 @@ namespace kanan {
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 		if (recvPacket.GetOP() == 0x909A)
 		{
-			// Retrieve Nao Count
-			m_count = m_maxNao - recvPacket.GetElement(1)->byte8;
+			if (recvPacket.GetReciverId() < 0x10010000000000)
+			{
+				// Retrieve Nao Count
+				m_count = m_maxNao - recvPacket.GetElement(1)->byte8;
+			}
 		}
 		else
 		{
