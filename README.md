@@ -43,7 +43,8 @@ I may periodically release official binaries for those who don't want to build t
 ![preview](https://github.com/user-attachments/assets/7e684f6b-0462-4428-acc1-39d2f489cf50)
 
 
-![preview](https://github.com/user-attachments/assets/fc7b829d-f707-4dfc-9bef-f6189ee1865d)
+![preview](https://github.com/user-attachments/assets/3bf8e514-2717-4d8f-bbc2-ddb6ecdc4ea1)
+
 
 
 
