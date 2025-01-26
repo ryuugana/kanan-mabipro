@@ -39,22 +39,17 @@ namespace kanan {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
-		// Prevent Housing Login Disconnect
-		if (strcmp(recvPacket.GetElement(2)->str, "Channel 1") != 0) {
-			return;
-		}
-
 		PacketData data;
 		// Change Connection IP address
 		data.type = 6;
 		switch (m_choice) {
 		case 0:
 			break;
-		case 1:
+		/*case 1:
 			// Vier
 			data.str = "162.253.176.221";
 			data.len = (int)strlen("162.253.176.221") + 1;
-			break;
+			break;*/
 		case 2:
 			// Funf
 			data.str = "75.127.4.123";
