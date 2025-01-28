@@ -124,12 +124,13 @@ namespace kanan {
             });
         }
 
-		addMessageMod(make_unique<MessageViewer>());
         addMessageMod(make_unique<BlockSpam>());
-        addMessageMod(make_unique<ScrollingMessageToChat>());
         addMessageMod(make_unique<ChatLog>());
-        addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<ChooseLoginNode>());
+        addMessageMod(make_unique<NaoCounter>());
+        addMessageMod(make_unique<ScrollingMessageToChat>());
+
+        addMessageMod(make_unique<MessageViewer>());
 
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
