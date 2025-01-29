@@ -29,12 +29,12 @@ namespace kanan {
 	}
 
 	void ChooseLoginNode::onConfigLoad(const Config& cfg) {
-		m_choice = cfg.get<int>("ChooseNode.Choice").value_or(0);
+		m_choice = cfg.get<int>("ChooseLoginNode.Choice").value_or(0);
 		m_isEnabled = m_choice > 0;
 	}
 
 	void ChooseLoginNode::onConfigSave(Config& cfg) {
-		cfg.set<int>("ChooseNode.Choice", m_choice);
+		cfg.set<int>("ChooseLoginNode.Choice", m_choice);
 	}
 
 	void ChooseLoginNode::onRecv(MabiMessage mabiMessage) {
