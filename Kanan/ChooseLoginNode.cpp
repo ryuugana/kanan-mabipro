@@ -65,6 +65,9 @@ namespace kanan {
 			break;
 		}
 		recvPacket.SetElement(&data, 4);
+		data.type = 6;
+		data.str = "";
+		data.len = (int)strlen("") + 1;
 		recvPacket.SetElement(&data, 5);
 		BYTE* p;
 		int tmpSizw = recvPacket.BuildPacket(&p);
