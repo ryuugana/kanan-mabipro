@@ -130,7 +130,9 @@ namespace kanan {
         addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
 
+#ifdef TEST
         addMessageMod(make_unique<MessageViewer>());
+#endif // DEBUG
 
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
