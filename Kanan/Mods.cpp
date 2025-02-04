@@ -132,7 +132,7 @@ namespace kanan {
 
 #ifdef TEST
         addMessageMod(make_unique<MessageViewer>());
-#endif // DEBUG
+#endif // TEST
 
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
