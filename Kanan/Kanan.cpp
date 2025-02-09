@@ -281,16 +281,15 @@ namespace kanan {
 				viewAstralWorld();
 			}
 
-            if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
-                m_dinputHook->ignoreInput();
-            }
-            else {
-                m_dinputHook->acknowledgeInput();
-            }
-
             if (m_isUIOpen) {
                 // Block input if the user is interacting with the UI.
 
+                if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
+                    m_dinputHook->ignoreInput();
+                }
+                else {
+                    m_dinputHook->acknowledgeInput();
+                }
 
                 drawUI();
 
@@ -364,12 +363,14 @@ namespace kanan {
 
     bool Kanan::onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam) {
 
-        if (ImGui_ImplWin32_WndProcHandler(wnd, message, wParam, lParam) != 0) {
-            // If the user is interacting with the UI we block the message from going to the game.
-            auto& io = ImGui::GetIO();
+        if (m_isUIOpen) {
+            if (ImGui_ImplWin32_WndProcHandler(wnd, message, wParam, lParam) != 0) {
+                // If the user is interacting with the UI we block the message from going to the game.
+                auto& io = ImGui::GetIO();
 
-            if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
-                return false;
+                if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
+                    return false;
+                }
             }
         }
 
@@ -1014,7 +1015,6 @@ namespace kanan {
         cfg.set<bool>("FastNao.Enabled", true);
         cfg.set<bool>("FieldBossMessageToChat.Enabled", true);
         cfg.set<bool>("FieldBossNotify.Enabled", true);
-        cfg.set<bool>("FixAstralWorldFlashy.Enabled", true);
         cfg.set<bool>("FixAstralWorldFlashy.Enabled", true);
         cfg.set<bool>("FixGiantCamera.Enabled", true);
         cfg.set<bool>("KeepPetWindowOpen.Enabled", true);
