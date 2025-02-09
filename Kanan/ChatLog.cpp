@@ -54,10 +54,12 @@ namespace kanan {
 		}
 	}
 
-	void ChatLog::onWindow() {
+	bool ChatLog::onWindow() {
 		if (m_isOpen && m_startedLogging && m_isEnabled) {
 			drawChatLog();
 		}
+
+		return m_isOpen && m_startedLogging && m_isEnabled;
 	}
 
 	void ChatLog::onConfigLoad(const Config& cfg) {

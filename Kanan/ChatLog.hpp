@@ -19,7 +19,7 @@ namespace kanan {
 
 		void onUI() override;
 
-		void onWindow() override;
+		bool onWindow() override;
 
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;

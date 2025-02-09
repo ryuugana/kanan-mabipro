@@ -53,6 +53,7 @@ namespace kanan {
         m_isNotifyUpdate{ true },
         m_isMp3Fixed{ false },
         m_defaultMods{ true },
+        m_interactiveWindows{ true },
         m_isUIOpen{ true },
         m_isLogOpen{ false },
         m_isAboutOpen{ false },
@@ -61,6 +62,7 @@ namespace kanan {
         m_areModsReady{ false },
         m_areModsLoaded{ false },
         m_wnd{ nullptr },
+        m_modWindowEnabled{ false },
         m_isUIOpenByDefault{ true }
     {
         log("Entering Kanan constructor.");
@@ -281,7 +283,7 @@ namespace kanan {
 				viewAstralWorld();
 			}
 
-            if (m_isUIOpen) {
+            if (m_isUIOpen || (m_interactiveWindows && m_modWindowEnabled)) {
                 // Block input if the user is interacting with the UI.
 
                 if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
@@ -290,7 +292,13 @@ namespace kanan {
                 else {
                     m_dinputHook->acknowledgeInput();
                 }
+            }
+            else {
+                m_dinputHook->acknowledgeInput();
+            }
 
+            if (m_isUIOpen)
+            {
                 drawUI();
 
                 if (m_isLogOpen) {
@@ -315,12 +323,14 @@ namespace kanan {
                 Drawmetrics();
             }
 
+            m_modWindowEnabled = false;
+
             for (const auto& mod : m_mods.m_messageMods) {
-                mod->onWindow();
+                m_modWindowEnabled = m_modWindowEnabled || mod->onWindow();
             }
 
             for (const auto& mod : m_mods.getMods()) {
-                mod->onWindow();
+                m_modWindowEnabled = m_modWindowEnabled || mod->onWindow();
             }
 
         }
@@ -363,7 +373,7 @@ namespace kanan {
 
     bool Kanan::onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam) {
 
-        if (m_isUIOpen) {
+        if (m_isUIOpen || (m_interactiveWindows && m_modWindowEnabled)) {
             if (ImGui_ImplWin32_WndProcHandler(wnd, message, wParam, lParam) != 0) {
                 // If the user is interacting with the UI we block the message from going to the game.
                 auto& io = ImGui::GetIO();
@@ -1044,8 +1054,9 @@ namespace kanan {
 		m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
 		m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
         m_isNotifyUpdate = cfg.get<bool>("UI.NotifyUpdate").value_or(true);
-        m_isMp3Fixed = cfg.get<bool>("UI.Mp3Fixed").value_or(false);
         m_isUpdate = checkVersion() && m_isNotifyUpdate;
+        m_isMp3Fixed = cfg.get<bool>("UI.Mp3Fixed").value_or(false);
+        m_interactiveWindows = cfg.get<bool>("UI.InteractiveWindows").value_or(true);
         m_isUIOpen = m_isUIOpenByDefault || m_isUpdate;
 
 		if (m_key.hotkey == 0)
@@ -1079,6 +1090,7 @@ namespace kanan {
         cfg.set<bool>("UI.OpenByDefault", m_isUIOpenByDefault);
         cfg.set<bool>("UI.NotifyUpdate", m_isNotifyUpdate);
         cfg.set<bool>("UI.Mp3Fixed", m_isMp3Fixed);
+        cfg.set<bool>("UI.InteractiveWindows", m_interactiveWindows);
 		cfg.set<int>("UI.Keybind", m_key.hotkey);
 		cfg.set<int>("UI.HousingKey", m_housingKey.hotkey);
 		cfg.set<int>("UI.AstralKey", m_astralKey.hotkey);
@@ -1204,9 +1216,16 @@ namespace kanan {
             }
 
             if (ImGui::BeginMenu("Settings")) {
+                ImGui::MenuItem("Enable Interactive Windows", nullptr, &m_interactiveWindows);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Disabling can result in performance increase depending on hardware.\nBut Kanan mod windows will only be interactive while main window is open.");
+                }
                 ImGui::MenuItem("UI Open By Default", nullptr, &m_isUIOpenByDefault);
                 ImGui::MenuItem("Notify Updates", nullptr, &m_isNotifyUpdate);
-                ImGui::MenuItem("Apply Recommended", nullptr, &m_defaultMods);
+                ImGui::MenuItem("Apply Recommended Settings", nullptr, &m_defaultMods);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Only enables recommended settings, this does not disable existing settings.");
+                }
                 ImGui::EndMenu();
             }
 

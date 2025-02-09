@@ -38,10 +38,12 @@ namespace kanan {
 		}
 	}
 
-	void NaoCounter::onWindow() {
+	bool NaoCounter::onWindow() {
 		if (m_isEnabled) {
 			drawWindow();
 		}
+
+		return m_isEnabled;
 	}
 
 	void NaoCounter::onConfigLoad(const Config& cfg) {

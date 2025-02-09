@@ -61,12 +61,14 @@ namespace kanan {
         bool m_isUpdate;
         bool m_isNotifyUpdate;
         bool m_isMp3Fixed;
+        bool m_interactiveWindows;
         bool m_defaultMods;
 
         bool m_isInitialized;
         std::atomic_bool m_areModsReady;
         bool m_areModsLoaded;
         HWND m_wnd;
+        bool m_modWindowEnabled;
 
         bool m_isUIOpenByDefault{};
 
