@@ -10,11 +10,13 @@ namespace kanan {
 	{
 		m_isEnabled = false;
 		m_op.push_back(48);
+		m_op.push_back(0x4e33);
 	}
 
 	void ChooseLoginNode::onUI() {
-		if (ImGui::CollapsingHeader("Choose Login Node")) {
-			ImGui::TextWrapped("This mod allows you to choose which node to connect to on login.");
+		if (ImGui::CollapsingHeader("Choose Node")) {
+			ImGui::TextWrapped("This mod allows you to choose which node to connect to on login and changing channels.\n\n"
+				"This will overwrite the >cc command if used and >server should always show the server chosen.");
 
 
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
@@ -39,11 +41,6 @@ namespace kanan {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
-		// Prevent Housing Login Disconnect
-		if (strcmp(recvPacket.GetElement(2)->str, "Channel 1") != 0) {
-			return;
-		}
-
 		PacketData data;
 		// Change Connection IP address
 		data.type = 6;
@@ -51,19 +48,20 @@ namespace kanan {
 		case 0:
 			break;
 		case 1:
-			// Vier
+			/*// Vier
 			data.str = "162.253.176.221";
 			data.len = (int)strlen("162.253.176.221") + 1;
-			break;
+			break;*/
+			return;
 		case 2:
-			// Funf
-			data.str = "75.127.4.123";
-			data.len = (int)strlen("75.127.4.123") + 1;
+			// Funf 75.127.4.123
+			data.str = "funf.mabi.pro";
+			data.len = (int)strlen("funf.mabi.pro") + 1;
 			break;
 		case 3:
-			// Drei
-			data.str = "192.210.185.228";
-			data.len = (int)strlen("192.210.185.228") + 1;
+			// Drei 192.210.185.228
+			data.str = "drei.mabi.pro";
+			data.len = (int)strlen("drei.mabi.pro") + 1;
 			break;
 		}
 		recvPacket.SetElement(&data, 4);
@@ -75,5 +73,6 @@ namespace kanan {
 		int tmpSizw = recvPacket.BuildPacket(&p);
 
 		memcpy(mabiMessage.buffer, p, tmpSizw);
+		free(p);
 	}
 }

@@ -2,7 +2,7 @@
 .xmake/
 .vscode/
 Release/
-Debug/
+Test/
 build/
 
 *.orig

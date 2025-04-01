@@ -1,5 +1,5 @@
 #pragma once
 
 namespace kanan {
-    const int version = 3;
+    const int version = 8;
 }

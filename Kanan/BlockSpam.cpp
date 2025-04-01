@@ -90,6 +90,7 @@ namespace kanan {
 					int tmpSizw = recvPacket.BuildPacket(&p);
 
 					memcpy(mabiMessage.buffer, p, tmpSizw);
+					free(p);
 				}
 			}
 		}

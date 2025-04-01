@@ -185,6 +185,18 @@
         ]
     },
     {
+        "name": "Fix Giant Camera",
+        "desc": "Forces regular camera on giant characters.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "74 08 90 E8 ? ? ? ? EB 06 90 E8 ? ? ? ? E8",
+                "patch": "EB"
+            }
+        ]
+    },
+    {
         "name": "Free Indoor Camera",
         "desc": "Allows you to freely rotate the camera while indoors.",
         "category": "Quality of Life",
@@ -406,8 +418,8 @@
     },
     {
         "name": "Freeze Camera Angle",
-        "desc": "Camera angle and position will be stuck while enabled.",
-        "category": "Graphics",
+        "desc": "Camera angle and position will be stuck while enabled.\nCan be useful for taking screenshots.",
+        "category": "Fun",
         "patches": [
             {
                 "location": "Renderer2.dll",

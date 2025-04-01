@@ -87,6 +87,7 @@ namespace kanan {
 			int tmpSizw = recvPacket.BuildPacket(&p);
 
 			memcpy(mabiMessage.buffer, p, tmpSizw);
+			free(p);
 		}
 		else if((m_isFieldBossEnabled && strstr(recvPacket.GetElement(1)->str, "has appeared")) ||
 			(m_isFieldBossEnabled && strstr(recvPacket.GetElement(1)->str, "has defeated"))) {
@@ -99,6 +100,7 @@ namespace kanan {
 			int tmpSizw = recvPacket.BuildPacket(&p);
 
 			memcpy(mabiMessage.buffer, p, tmpSizw);
+			free(p);
 
 			if (strstr(recvPacket.GetElement(1)->str, "has appeared") && m_isFieldBNotifyEnabled)
 				notify();
