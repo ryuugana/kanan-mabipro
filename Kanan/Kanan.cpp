@@ -326,11 +326,11 @@ namespace kanan {
             m_modWindowEnabled = false;
 
             for (const auto& mod : m_mods.m_messageMods) {
-                m_modWindowEnabled = m_modWindowEnabled || mod->onWindow();
+                m_modWindowEnabled = mod->onWindow() || m_modWindowEnabled;
             }
 
             for (const auto& mod : m_mods.getMods()) {
-                m_modWindowEnabled = m_modWindowEnabled || mod->onWindow();
+                m_modWindowEnabled = mod->onWindow() || m_modWindowEnabled;
             }
 
         }
