@@ -429,6 +429,18 @@
         ]
     },
     {
+        "name": "Derandomize Login Screen",
+        "desc": "Forces the Morrighan statue to appear on login\n\nCredits: InterestingFailure",
+        "category": "Fun",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "55 8b ec 0f 31 3c 1e 72 0c 3c 7f 7f 0e 3c 64 72 04 3c c8 7f 06",
+                "patch": "55 8b ec 0f 31 3c ff 72 0c 3c 7f 7f 0e 3c 64 72 04 3c c8 7f 06"
+            }
+        ]
+    },
+    {
         "name": "No Render Sky",
         "desc": "",
         "category": "Graphics",
