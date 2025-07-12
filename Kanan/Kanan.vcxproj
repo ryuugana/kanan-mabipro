@@ -210,6 +210,8 @@
     <ClCompile Include="RangedAttackSwap.cpp" />
     <ClCompile Include="SecondaryPassword.cpp" />
     <ClCompile Include="StatusUI.cpp" />
+    <ClCompile Include="TickTimer.cpp" />
+    <ClCompile Include="TickTimer.hpp" />
     <ClCompile Include="TTFFontSize.cpp" />
     <ClCompile Include="UseDataFolder.cpp" />
     <ClCompile Include="WindowsMessageHook.cpp" />

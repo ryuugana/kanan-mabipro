@@ -24,24 +24,7 @@
 #include "ChooseLoginNode.hpp"
 #include "ChatLog.hpp"
 #include "NaoCounter.hpp"
-
-/*#include "RangedAttackSwap.hpp"
-#include "EnableMultiClient.hpp"
-#include "EntityViewer.hpp"
-#include "ColorAltText.hpp"
-#include "EquipmentOverride.hpp"
-#include "FieldOfView.hpp"
-#include "UseDataFolder.hpp"
-#include "FreezeTimeOfDay.hpp"
-#include "TTFFontSize.hpp"
-#include "SecondaryPassword.hpp"
-#include "StatusUI.hpp"
-#include "LoginScreen.hpp"
-#include "DontMoveToSquadChat.hpp"
-#include "AutoChangeChannels.hpp"
-#include "ChangeChannelHotkey.hpp"
-#include "Currtarget.hpp"
-#include "CookingMod.hpp"*/
+#include "TickTimer.hpp"
 
 
 using namespace std;
@@ -109,10 +92,6 @@ namespace kanan {
             }
         }
 
-        /*addPatchMod("Quality of Life", make_unique<RangedAttackSwap>());
-        addPatchMod("Speedup", make_unique<DontMoveToSquadChat>());
-		addPatchMod("Text", make_unique<TTFFontSize>());
-        addPatchMod("Text", make_unique<ColorAltText>());*/
         addPatchMod("Quality of Life", make_unique<AutoMute>());
 		addPatchMod("Graphics", make_unique<DisableFlashy>());
 
@@ -125,10 +104,12 @@ namespace kanan {
         }
 
         addMessageMod(make_unique<BlockSpam>());
-        addMessageMod(make_unique<ChatLog>());
         addMessageMod(make_unique<ChooseLoginNode>());
         addMessageMod(make_unique<NaoCounter>());
+        addMessageMod(make_unique<TickTimer>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
+        // Keep ChatLog below ScrollingMessageToChat to log the messages
+        addMessageMod(make_unique<ChatLog>());
 
 #ifdef TEST
         addMessageMod(make_unique<MessageViewer>());
@@ -137,18 +118,6 @@ namespace kanan {
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
         addMod(make_unique<BorderlessWindow>());
-
-        /*addMod(make_unique<EnableMultiClient>());
-        addMod(make_unique<EntityViewer>());
-        addMod(make_unique<CookingMod>());
-        addMod(make_unique<EquipmentOverride>());
-        addMod(make_unique<FieldOfView>());
-        addMod(make_unique<FreezeTimeOfDay>());
-        addMod(make_unique<SecondaryPassword>());
-        addMod(make_unique<StatusUI>());
-        addMod(make_unique<AutoChangeChannels>());
-        addMod(make_unique<ChangeChannelHotkey>());
-        addMod(make_unique<Currtarget>());*/
         
         log("[Mods] Finished loading mods.");
     }

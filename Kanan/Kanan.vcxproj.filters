@@ -183,6 +183,12 @@
     <ClCompile Include="AutoMute.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="TickTimer.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClCompile>
+    <ClCompile Include="TickTimer.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
