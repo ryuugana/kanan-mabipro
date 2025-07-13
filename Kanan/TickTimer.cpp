@@ -12,11 +12,13 @@ namespace kanan {
 
 	TickTimer::TickTimer()
 	{
-		g_tickTimerSeconds = 0;
-		m_timerId = NULL;
 		m_isEnabled = false;
 		m_op.push_back(0x520E); // Tick sync packet; 0x5BD5 for durability update
 		m_op.push_back(0x909A); // Nao count login packet
+
+		g_tickTimerSeconds = 0;
+		m_timerId = NULL;
+		m_charId = 0;
 	}
 
 	void TickTimer::drawWindow() {
@@ -78,6 +80,13 @@ namespace kanan {
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 		if (recvPacket.GetReciverId() < 0x10010000000000)
 		{
+			// Find out who we are on login
+			// Move this to a global mod if our character ID is needed elsewhere
+			if (recvPacket.GetOP() == 0x909A)
+			{
+				m_charId = recvPacket.GetReciverId();
+			}
+
 			// Remove old timer
 			if (m_timerId == NULL)
 			{
@@ -86,8 +95,11 @@ namespace kanan {
 				m_timerId = SetTimer(NULL, m_timerId, 1000, TickTimerProc);
 			}
 
-			// Set max time for tick countdown
-			g_tickTimerSeconds = g_tickTimerMax;
+			// Set max time for tick countdown if the packet is ours
+			if (recvPacket.GetReciverId() == m_charId)
+			{
+				g_tickTimerSeconds = g_tickTimerMax;
+			}
 		}
 	}
 }

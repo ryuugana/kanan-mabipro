@@ -21,5 +21,6 @@ namespace kanan {
 		void drawWindow();
 
 		UINT_PTR m_timerId;
+		long long m_charId;
 	};
 }
