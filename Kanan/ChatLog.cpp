@@ -314,7 +314,6 @@ void ChatLog::deleteOldLogs(string path, string fileName, tm tstruct) {
 					ImGui::TextWrappedNoFmt(log.c_str());
 				}
 			}
-			m_scrollToBottom = false;
 		}
 		else {
 			for (auto log : m_logs)

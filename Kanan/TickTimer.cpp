@@ -36,8 +36,6 @@ namespace kanan {
 		if (ImGui::CollapsingHeader("Tick Timer")) {
 			ImGui::TextWrapped("This mod shows the time until the next tick in seconds in a separate window.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
-			ImGui::TextWrapped("If it becomes out of sync it can be resynced by changing channels or relogging.");
-			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TextWrapped("The window can be moved by dragging it to the desired location.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TextWrapped("Requires a relog after enabling.");
@@ -87,11 +85,10 @@ namespace kanan {
 				m_charId = recvPacket.GetReciverId();
 			}
 
-			// Remove old timer
+			// Create timer with 1 second interval 
+			// Use TickTimerProc callback to update remaining seconds in window
 			if (m_timerId == NULL)
 			{
-				// Create timer with 1 second interval 
-				// Use TickTimerProc callback to update remaining seconds in window
 				m_timerId = SetTimer(NULL, m_timerId, 1000, TickTimerProc);
 			}
 
