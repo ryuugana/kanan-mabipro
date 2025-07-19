@@ -4,6 +4,7 @@
 # documentation.
 
 name: MSBuild
+runs-on: self-hosted
 
 on:
   push:
