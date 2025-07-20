@@ -24,7 +24,7 @@
 #include "ChooseLoginNode.hpp"
 #include "ChatLog.hpp"
 #include "NaoCounter.hpp"
-#include "TickTimer.hpp"
+#include "TickTracker.hpp"
 
 
 using namespace std;
