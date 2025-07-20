@@ -10,6 +10,18 @@ namespace kanan {
 	// 5 Mintues between ticks
 	const unsigned int g_tickTimerMax = 300;
 
+	VOID CALLBACK TickTimerProc(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
+	{
+		if (g_tickTimerSeconds == 0 || g_tickTimerMax > g_tickTimerMax)
+		{
+			g_tickTimerSeconds = g_tickTimerMax;
+		}
+		else
+		{
+			g_tickTimerSeconds--;
+		}
+	}
+
 	TickTimer::TickTimer()
 	{
 		m_isEnabled = false;
@@ -59,18 +71,6 @@ namespace kanan {
 
 	void TickTimer::onConfigSave(Config& cfg) {
 		cfg.set<bool>("TickTimer.Enabled", m_isEnabled);
-	}
-
-	VOID CALLBACK TickTimerProc(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
-	{
-		if (g_tickTimerSeconds == 0 || g_tickTimerMax > g_tickTimerMax)
-		{
-			g_tickTimerSeconds = g_tickTimerMax;
-		}
-		else
-		{
-			g_tickTimerSeconds--;
-		}
 	}
 
 	void TickTimer::onRecv(MabiMessage mabiMessage) {
