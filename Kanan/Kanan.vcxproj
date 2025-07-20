@@ -58,6 +58,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetName>dsound</TargetName>
+    <LinkIncremental>
+    </LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
     <TargetName>dsound</TargetName>
@@ -83,7 +85,8 @@
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
+      <OptimizeReferences>
+      </OptimizeReferences>
       <AdditionalLibraryDirectories>$(OutDir);$(SolutionDir)Dependencies\FreeType;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;dsound.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>dsound.def</ModuleDefinitionFile>
