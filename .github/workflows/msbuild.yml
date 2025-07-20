@@ -25,11 +25,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      run: doskey msbuild=%msbuild%
-
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild ${{env.SOLUTION_FILE_PATH}}
+      run: |
+        - doskey msbuild=%msbuild%
+        - msbuild ${{env.SOLUTION_FILE_PATH}}
