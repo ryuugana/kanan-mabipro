@@ -14,6 +14,8 @@
 #include "AutoSetMTU.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
+#include "FieldOfView.hpp"
+#include "StatusUI.hpp"
 
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
@@ -118,6 +120,8 @@ namespace kanan {
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
         addMod(make_unique<BorderlessWindow>());
+        //addMod(make_unique<FieldOfView>());
+        addMod(make_unique<StatusUI>());
         
         log("[Mods] Finished loading mods.");
     }

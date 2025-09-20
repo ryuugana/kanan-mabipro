@@ -21,7 +21,7 @@ namespace kanan {
 
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
-			const char* nodes[] = { "Disabled", "Vier", "Funf", "Drei" };
+			const char* nodes[] = { "Disabled", "Funf", "Drei", "Test" };
 			if (ImGui::Combo("", &m_choice, nodes, IM_ARRAYSIZE(nodes))) {
 				m_isEnabled = m_choice > 0;
 			}
@@ -46,23 +46,25 @@ namespace kanan {
 		data.type = 6;
 		switch (m_choice) {
 		case 0:
-			break;
-		case 1:
-			/*// Vier
-			data.str = "162.253.176.221";
-			data.len = (int)strlen("162.253.176.221") + 1;
-			break;*/
 			return;
-		case 2:
+		case 1:
 			// Funf 75.127.4.123
 			data.str = "funf.mabi.pro";
 			data.len = (int)strlen("funf.mabi.pro") + 1;
 			break;
-		case 3:
+		case 2:
 			// Drei 192.210.185.228
 			data.str = "drei.mabi.pro";
 			data.len = (int)strlen("drei.mabi.pro") + 1;
 			break;
+		case 3:
+#ifdef TEST
+			// For testing only
+			data.str = "192.168.100.1";
+			data.len = (int)strlen("192.168.100.1") + 1;
+			break;
+#endif
+			return;
 		}
 		recvPacket.SetElement(&data, 4);
 		data.type = 6;

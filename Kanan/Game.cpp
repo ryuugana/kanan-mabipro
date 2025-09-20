@@ -16,10 +16,10 @@ namespace kanan {
         log("Entering Game constructor.");
 
         // Find the games global renderer pointer.
-        auto rendererAddress = scan("client.exe", "A1 ? ? ? ? 8D ? ? 52 8D");
+        auto rendererAddress = scan("Pleione.dll", "8B 0D ? ? ? ? 8D 45 08 50 8D 45 10 50 8D");
 
         if (rendererAddress) {
-            m_rendererPtr = *(CRendererPtr**)(*rendererAddress + 1);
+            m_rendererPtr = *(CRendererPtr**)(*rendererAddress + 2);
 
             log("Got CRendererPtr %p", m_rendererPtr);
         }
@@ -28,7 +28,7 @@ namespace kanan {
         }
 
         // Find the games global entity list pointer.
-        auto entityListAddress = scan("client.exe", "8B 0D ? ? ? ? 56 FF 75 08 E8 ? ? ? ? 85 C0 0F 84 ? ? ? ?");
+        /*auto entityListAddress = scan("client.exe", "8B 0D ? ? ? ? 56 FF 75 08 E8 ? ? ? ? 85 C0 0F 84 ? ? ? ?");
 
         if (entityListAddress) {
             m_entityListPtr = *(CEntityListPtr**)(*entityListAddress + 2);
@@ -37,10 +37,10 @@ namespace kanan {
         }
         else {
             error("Failed to find CEntityListPtr.");
-        }
+        }*/
 
         // Find the games global world pointer.
-        auto worldAddress = scan("Pleione.dll", "A1 ? ? ? ? 8B 48 1C E8 ? ? ? ? 0F B6 C0");
+        auto worldAddress = scan("Pleione.dll", "A1 60 DF FB 63 C3");
 
         if (worldAddress) {
             m_worldPtr = *(CWorldPtr**)(*worldAddress + 1);
@@ -52,7 +52,7 @@ namespace kanan {
         }
 
          // Find the games global account pointer.
-        auto accountAddress = scan("client.exe", "8B 0D ? ? ? ? 6A ? 6A ? 53 E8 ? ? ? ? 8B 06");
+        auto accountAddress = scan("Pleione.dll", "8B 0D ? ? ? ? 56 FF 75 D4 8D 45 EC 50 E8");
 
         if (accountAddress) {
             m_accountPtr = *(CAccountPtr**)(*accountAddress + 2);
@@ -101,7 +101,7 @@ namespace kanan {
 
     KCharacter* Game::getLocalCharacter() {
         auto world = getWorld();
-
+        log("World: %d", world);
         if (world == nullptr) {
             return nullptr;
         }
@@ -155,7 +155,7 @@ namespace kanan {
             return nullptr;
         }
 
-        return m_rendererPtr->renderer;
+        return m_rendererPtr->renderer + 0x504; // add offset to pointer
     }
 
     CEntityList* Game::getEntityList() const {

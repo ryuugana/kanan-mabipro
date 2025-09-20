@@ -128,7 +128,7 @@ namespace kanan {
         //
         log("Creating the Game object...");
 
-        //m_game = make_unique<Game>();
+        m_game = make_unique<Game>();
 
         //
         // Initialize all the mods.
