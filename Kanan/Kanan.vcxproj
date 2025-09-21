@@ -181,6 +181,8 @@
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
     <ClCompile Include="DisableFlashy.cpp" />
+    <ClCompile Include="MaintLogin.cpp" />
+    <ClCompile Include="MaintLogin.hpp" />
     <ClCompile Include="TickTracker.hpp" />
     <ClCompile Include="Hotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />

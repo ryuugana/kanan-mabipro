@@ -189,6 +189,12 @@
     <ClCompile Include="TickTracker.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClCompile>
+    <ClCompile Include="MaintLogin.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClCompile>
+    <ClCompile Include="MaintLogin.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">

@@ -25,6 +25,7 @@
 #include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
 #include "ChatLog.hpp"
+#include "MaintLogin.hpp"
 #include "NaoCounter.hpp"
 #include "TickTracker.hpp"
 
@@ -114,6 +115,7 @@ namespace kanan {
         addMessageMod(make_unique<ChatLog>());
 
 #ifdef TEST
+        addMessageMod(make_unique<MaintLogin>());
         addMessageMod(make_unique<MessageViewer>());
 #endif // TEST
 
