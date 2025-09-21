@@ -30,25 +30,22 @@ public:
     class CCharacterList {
     public:
         class CCharacterListNode {
-        public:
-            class CCharacterListNodeEntry {
-            public:
-                char pad_0[0x10];
-                CCharacter* character; // 0x10
-            }; // Size: 0x14
+        public:            
+            CEntityList::CCharacterList::CCharacterListNode* next; // 0x0
+            char pad_0[0xC]; // 0x4
+            CCharacter* character; // 0x10
+        }; // Size: 0x10
 
-            CCharacterListNodeEntry* entry; // 0x0
-            CEntityList::CCharacterList::CCharacterListNode* next; // 0x4
-        }; // Size: 0x8
-
-        char pad_0[0x4];
-        CCharacterListNode* root; // 0x4
+        CCharacterListNode* root; // 0x0
+        char pad_0[0x10];
         uint32_t count; // 0x8
     }; // Size: 0xc
 
-    char pad_0[0x8];
-    CItemList items; // 0x8
-    char pad_14[0x14];
-    CCharacterList characters; // 0x28
-}; // Size: 0x34
+    //char pad_0[0x8];
+    //CItemList items; // 0x8
+    //char pad_14[0x14];
+
+
+    CCharacterList characters; // 0x0
+}; // Size: ?
 #pragma pack(pop)

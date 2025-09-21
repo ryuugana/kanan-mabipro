@@ -181,17 +181,17 @@ public:
 
     char pad_0[0x4];
     uint64_t* entityID; // 0x4
-    char pad_8[0xa0];
-    CParameter* parameter; // 0xa8
-    CAction* action; // 0xac
-    CSkillMgr* skill; // 0xb0
+    char pad_8[0x80];
+    CParameter* parameter; // 0x88
+    CAction* action; // 0x8c
+    CSkillMgr* skill; // 0x90
     char pad_b4[0x10];
-    CConditionMgr* condition; // 0xc4
-    char pad_c8[0x1b0];
-    CEquipment* equipment; // 0x278
+    CConditionMgr* condition; // 0xa4
+    char pad_c8[0xf8];
+    CEquipment* equipment; // 0x19c
     char pad_27c[0x54];
-    uint64_t targetID; // 0x2d0
-    char pad_2d8[0x8];
-    uint64_t mouseTarget; // 0x2e0
-}; // Size: 0x2e8
+    uint64_t targetID; // 0x1f0
+    //char pad_2d8[0x8];
+    //uint64_t mouseTarget; // 0x1fa
+}; // Size: 0x1fa
 #pragma pack(pop)

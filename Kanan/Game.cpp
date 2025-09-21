@@ -28,16 +28,16 @@ namespace kanan {
         }
 
         // Find the games global entity list pointer.
-        /*auto entityListAddress = scan("client.exe", "8B 0D ? ? ? ? 56 FF 75 08 E8 ? ? ? ? 85 C0 0F 84 ? ? ? ?");
+        auto entityListAddress = scan("Pleione.dll", "? ? 03 01 00 00 00 00 00 00 00 00 00 00 00 D8");
 
         if (entityListAddress) {
-            m_entityListPtr = *(CEntityListPtr**)(*entityListAddress + 2);
+            m_entityListPtr = *(CEntityListPtr**)(*entityListAddress);
 
             log("Got CEntityListPtr %p", m_entityListPtr);
         }
         else {
             error("Failed to find CEntityListPtr.");
-        }*/
+        }
 
         // Find the games global world pointer.
         auto worldAddress = scan("Pleione.dll", "A1 60 DF FB 63 C3");
@@ -80,7 +80,7 @@ namespace kanan {
         auto node = characters.root;
 
         for (uint32_t i = 0; i <= highestIndex && node != nullptr; ++i, node = node->next) {
-            auto character = (KCharacter*)node->entry->character;
+            auto character = (KCharacter*)node->character;
 
             if (character == nullptr) {
                 continue;
@@ -163,7 +163,7 @@ namespace kanan {
             return nullptr;
         }
 
-        return m_entityListPtr->entityList;
+        return m_entityListPtr->entityList + 0x28; // subtract offset to pointer
     }
 
     CWorld* Game::getWorld() const {

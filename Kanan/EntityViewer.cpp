@@ -84,7 +84,7 @@ namespace kanan {
         auto node = characters.root;
 
         for (uint32_t i = 0; i <= highestIndex && node != nullptr; ++i, node = node->next) {
-            auto character = (KCharacter*)node->entry->character;
+            auto character = (KCharacter*)node->character;
 
             if (character == nullptr || !character->getID()) {
                 continue;
@@ -101,7 +101,7 @@ namespace kanan {
 
     void EntityViewer::buildItemList() {
         // Clear the current list.
-        m_items.clear();
+        /*m_items.clear();
 
         // Iterate over every item and add it to our list.
         auto game = g_kanan->getGame();
@@ -129,7 +129,7 @@ namespace kanan {
         // Sort our list.
         m_items.sort([](auto a, auto b) {
             return (a->getName().value_or("") < b->getName().value_or(""));
-            });
+            });*/
     }
 
     void EntityViewer::createCharacterTree() {
