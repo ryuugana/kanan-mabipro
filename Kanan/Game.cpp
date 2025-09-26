@@ -79,7 +79,7 @@ namespace kanan {
         auto highestIndex = characters.count;
         auto node = characters.root;
 
-        for (uint32_t i = 0; i <= highestIndex && node != nullptr; ++i, node = node->next) {
+        for (uint32_t i = 0; i < highestIndex && node != nullptr; ++i, node = node->next) {
             auto character = (KCharacter*)node->character;
 
             if (character == nullptr) {
