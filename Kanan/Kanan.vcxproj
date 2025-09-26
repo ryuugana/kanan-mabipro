@@ -77,7 +77,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)Core;$(SolutionDir)Dependencies/ImGui;$(SolutionDir)Dependencies/Json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;%(PreprocessorDefinitions);_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING</PreprocessorDefinitions>
       <RuntimeTypeInfo>
       </RuntimeTypeInfo>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
