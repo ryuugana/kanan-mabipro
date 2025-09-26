@@ -7,7 +7,7 @@ name: MSBuildGitHubHosted
 
 on:
   push:
-    branches: [ "master", "ryuugana-patch-1" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
