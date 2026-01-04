@@ -183,6 +183,7 @@
     <ClCompile Include="DisableFlashy.cpp" />
     <ClCompile Include="MaintLogin.cpp" />
     <ClCompile Include="MaintLogin.hpp" />
+    <ClCompile Include="MaxFrameRate.cpp" />
     <ClCompile Include="TickTracker.hpp" />
     <ClCompile Include="Hotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
@@ -246,6 +247,7 @@
     <ClInclude Include="EnableMultiClient.hpp" />
     <ClInclude Include="EntityViewer.hpp" />
     <ClInclude Include="EquipmentOverride.hpp" />
+    <ClInclude Include="MaxFrameRate.hpp" />
     <ClInclude Include="NaoCounter.hpp" />
     <ClInclude Include="ScrollingMessageToChat.hpp" />
     <ClInclude Include="FieldOfView.hpp" />

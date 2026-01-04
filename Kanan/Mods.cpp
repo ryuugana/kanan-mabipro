@@ -14,6 +14,7 @@
 #include "AutoSetMTU.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
+#include "MaxFrameRate.hpp"
 #include "FieldOfView.hpp"
 #include "StatusUI.hpp"
 
@@ -119,11 +120,12 @@ namespace kanan {
         addMessageMod(make_unique<MessageViewer>());
 #endif // TEST
 
-        addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<DisableNagle>());
         addMod(make_unique<BorderlessWindow>());
         //addMod(make_unique<FieldOfView>());
-        addMod(make_unique<StatusUI>());
+        addMod(make_unique<MaxFrameRate>());
+        //addMod(make_unique<StatusUI>());
+        addMod(make_unique<AutoSetMTU>());
         
         log("[Mods] Finished loading mods.");
     }
