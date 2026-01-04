@@ -53,7 +53,7 @@ namespace kanan {
         m_isNotifyUpdate{ true },
         m_isMp3Fixed{ false },
         m_defaultMods{ true },
-        m_interactiveWindows{ true },
+        m_interactiveWindows{ false },
         m_isUIOpen{ true },
         m_isLogOpen{ false },
         m_isAboutOpen{ false },
@@ -245,12 +245,11 @@ namespace kanan {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        auto& io = ImGui::GetIO();
 
         //update our metrics with framerate data
-        frameTimeMetric.AddNewValue(1.f / ImGui::GetIO().Framerate);
+        frameTimeMetric.AddNewValue(1.f / io.Framerate);
         frameTimePlot.UpdateAxes();
-
-		auto& io = ImGui::GetIO();
 
         if (m_areModsReady) {
             // Make sure the config for all the mods gets loaded.
@@ -1215,10 +1214,6 @@ namespace kanan {
             }
 
             if (ImGui::BeginMenu("Settings")) {
-                ImGui::MenuItem("Enable Interactive Windows", nullptr, &m_interactiveWindows);
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Disabling can result in performance increase depending on hardware.\nBut Kanan mod windows will only be interactive while main window is open.");
-                }
                 ImGui::MenuItem("UI Open By Default", nullptr, &m_isUIOpenByDefault);
                 ImGui::MenuItem("Notify Updates", nullptr, &m_isNotifyUpdate);
                 ImGui::MenuItem("Apply Recommended Settings", nullptr, &m_defaultMods);
@@ -1266,6 +1261,18 @@ namespace kanan {
 			m_housingKey.Display("Open Housing Board", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
 			m_astralKey.Display("Open AstralWorld", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
 		}
+        if (ImGui::CollapsingHeader("Interactive Mod Windows")) {
+            ImGui::Checkbox("Enable interactive windows", &m_interactiveWindows);
+            ImGui::TextWrapped("Allows Kanan mod windows to be moved without opening the main Kanan window.");
+            ImGui::TextWrapped("If this is disabled you will need to open the main Kanan UI to move mod windows such as ChatLog or TickTimer.");
+            ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+            ImGui::TextWrapped("WARNING: Although not common, enabling this can result in performance decrease depending on hardware.");
+            ImGui::TextWrapped("To test performance decrease look at your FPS and move your mouse around.");
+            ImGui::TextWrapped("The faster the mouse is moved the lower the FPS should get.");
+            ImGui::TextWrapped("There should be a noticeable difference in FPS if this is an issue.");
+            ImGui::TextWrapped("If this is an issue it will always occur when the main Kanan UI is open, regardless of this setting.");
+            ImGui::TextWrapped("To fix the issue make sure this setting is disabled and close the main Kanan UI by pressing %s.", KeyNames[m_key.hotkey]);
+        }
         if (ImGui::CollapsingHeader("Patches")) {
             for (auto& mod : m_mods.getMods()) {
                 mod->onPatchUI();
@@ -1418,7 +1425,6 @@ namespace kanan {
                 return;
             }
         }
-
 
         frameTimePlot.DrawList();
         frameTimePlot.DrawHistory();
