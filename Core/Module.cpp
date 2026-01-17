@@ -1,5 +1,7 @@
 #include "String.hpp"
 #include "Module.hpp"
+#include <TlHelp32.h>
+#include "Process.hpp"
 
 using namespace std;
 
@@ -29,6 +31,30 @@ namespace kanan {
 
         // OptionalHeader is not actually optional.
         return ntHeaders->OptionalHeader.SizeOfImage;
+    }
+
+    optional<uintptr_t> getModuleBase(const string& ModuleName)
+    {
+        MODULEENTRY32 ModuleEntry = { 0 };
+        HANDLE SnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, *getProcessID("client.exe"));
+
+        if (!SnapShot) return NULL;
+
+        ModuleEntry.dwSize = sizeof(ModuleEntry);
+
+        if (!Module32First(SnapShot, &ModuleEntry)) return NULL;
+
+        do
+        {
+            if (!wcscmp(ModuleEntry.szModule, widen(ModuleName).c_str()))
+            {
+                CloseHandle(SnapShot);
+                return (uintptr_t)ModuleEntry.modBaseAddr;
+            }
+        } while (Module32Next(SnapShot, &ModuleEntry));
+
+        CloseHandle(SnapShot);
+        return NULL;
     }
 
     optional<uintptr_t> ptrFromRVA(uint8_t* dll, uintptr_t rva) {

@@ -12,6 +12,7 @@ namespace kanan {
     //
     std::optional<size_t> getModuleSize(const std::string& module);
     std::optional<size_t> getModuleSize(HMODULE module);
+    std::optional<uintptr_t> getModuleBase(const std::string& ModuleName);
 
     // Note: This function doesn't validate the dll's headers so make sure you've
     // done so before calling it.
