@@ -125,11 +125,11 @@ namespace kanan {
 
         addMod(make_unique<DisableNagle>());
         addMod(make_unique<BorderlessWindow>());
-        //addMod(make_unique<FieldOfView>());
+        addMod(make_unique<FieldOfView>());
         addMod(make_unique<MaxFrameRate>());
         //addMod(make_unique<StatusUI>());
         addMod(make_unique<AutoSetMTU>());
-        
+
         log("[Mods] Finished loading mods.");
     }
 
