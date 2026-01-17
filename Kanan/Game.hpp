@@ -23,7 +23,7 @@ namespace kanan {
         CAccount* getAccount() const;
 
     private:
-        CRendererPtr* m_rendererPtr;
+        CRenderer* m_rendererPtr;
         CEntityListPtr* m_entityListPtr;
         CWorldPtr* m_worldPtr;
         CAccountPtr* m_accountPtr;

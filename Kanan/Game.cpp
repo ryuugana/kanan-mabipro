@@ -3,6 +3,7 @@
 
 #include "Log.hpp"
 #include "Game.hpp"
+#include <Module.cpp>
 
 using namespace std;
 
@@ -16,17 +17,18 @@ namespace kanan {
         log("Entering Game constructor.");
 
         // Find the games global renderer pointer.
-        auto rendererAddress = scan("Pleione.dll", "8B 0D ? ? ? ? 8D 45 08 50 8D 45 10 50 8D");
+        auto rendererAddress = getModuleBase("Renderer2.dll");
 
         if (rendererAddress) {
-            m_rendererPtr = *(CRendererPtr**)(*rendererAddress + 2);
+            // Always at the same static memory address relative to Renderer2.dll
+            m_rendererPtr = (CRenderer*)(*rendererAddress + 0x30E9D4);
 
             log("Got CRendererPtr %p", m_rendererPtr);
         }
         else {
             error("Failed to find address of CRendererPtr.");
         }
-
+        
         // Find the games global entity list pointer.
         auto entityListAddress = scan("Pleione.dll", "? ? 03 01 00 00 00 00 00 00 00 00 00 00 00 D8");
 
@@ -151,11 +153,11 @@ namespace kanan {
     }
 
     CRenderer* Game::getRenderer() const {
-        if (m_rendererPtr == nullptr || m_rendererPtr->renderer == nullptr) {
+        if (m_rendererPtr == nullptr || m_rendererPtr->camera == nullptr) {
             return nullptr;
         }
 
-        return m_rendererPtr->renderer + 0x504; // add offset to pointer
+        return m_rendererPtr;
     }
 
     CEntityList* Game::getEntityList() const {

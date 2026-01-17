@@ -30,7 +30,6 @@ public:
         CCameraState* state; // 0x0
     }; // Size: 0x4
 
-    char pad_0[0x24];
-    CCamera* camera; // 0x24
+    CCamera* camera; // 0x0
 }; // Size: 0x28
 #pragma pack(pop)
