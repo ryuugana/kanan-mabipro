@@ -108,7 +108,10 @@ namespace kanan {
         }
 
         addMessageMod(make_unique<BlockSpam>());
+#ifdef TEST
+        // There is only one node left (the slowest one)
         addMessageMod(make_unique<ChooseLoginNode>());
+#endif
         addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<TickTimer>());
         addMessageMod(make_unique<ScrollingMessageToChat>());

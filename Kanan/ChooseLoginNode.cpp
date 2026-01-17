@@ -57,8 +57,8 @@ namespace kanan {
 			data.str = "drei.mabi.pro";
 			data.len = (int)strlen("drei.mabi.pro") + 1;
 			break;
-		case 3:
 #ifdef TEST
+		case 3:
 			// For testing only
 			data.str = "192.168.100.1";
 			data.len = (int)strlen("192.168.100.1") + 1;

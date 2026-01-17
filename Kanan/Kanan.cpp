@@ -1267,10 +1267,9 @@ namespace kanan {
             ImGui::TextWrapped("If this is disabled you will need to open the main Kanan UI to move mod windows such as ChatLog or TickTimer.");
             ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
             ImGui::TextWrapped("WARNING: Although not common, enabling this can result in performance decrease depending on hardware.");
-            ImGui::TextWrapped("To test performance decrease look at your FPS and move your mouse around.");
-            ImGui::TextWrapped("The faster the mouse is moved the lower the FPS should get.");
-            ImGui::TextWrapped("There should be a noticeable difference in FPS if this is an issue.");
-            ImGui::TextWrapped("If this is an issue it will always occur when the main Kanan UI is open, regardless of this setting.");
+            ImGui::TextWrapped("To test for performance decrease look at your FPS and move your mouse around.");
+            ImGui::TextWrapped("If there is a performance issue your FPS should get lower the faster the mouse is moved and the difference in FPS should be noticeable.");
+            ImGui::TextWrapped("If this is an issue with your hardware it will always occur when the main Kanan UI is open, regardless of this setting.");
             ImGui::TextWrapped("To fix the issue make sure this setting is disabled and close the main Kanan UI by pressing %s.", KeyNames[m_key.hotkey]);
         }
         if (ImGui::CollapsingHeader("Patches")) {
