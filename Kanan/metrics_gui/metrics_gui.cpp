@@ -19,9 +19,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+#define IMGUI_DEFINE_MATH_OPERATORS
+#endif // IMGUI_DEFINE_MATH_OPERATORS
 
 #include "imgui.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 #include "metrics_gui.h"
 #include "countof.h"
@@ -457,7 +459,7 @@ void DrawMetrics(
     auto textHeight = ImGui::GetTextLineHeight();
 
     auto plotWidth = std::max(0.f,
-        ImGui::GetContentRegionAvailWidth() -
+        ImGui::GetContentRegionAvail().x -
         window->WindowPadding.x -
         plot->mWidthInfo->mLegendWidth -
         PLOT_LEGEND_PADDING);
@@ -684,7 +686,7 @@ void MetricsGuiPlot::DrawList()
 
     auto window    = ImGui::GetCurrentWindow();
     auto height    = ImGui::GetTextLineHeight();
-    auto valueX    = ImGui::GetContentRegionAvailWidth() - window->WindowPadding.x - mWidthInfo->mValueWidth;
+    auto valueX    = ImGui::GetContentRegionAvail().x  - window->WindowPadding.x - mWidthInfo->mValueWidth;
     auto barStartX = mWidthInfo->mDescWidth + DESC_HBAR_PADDING;
     auto barEndX   = valueX - HBAR_VALUE_PADDING;
 
@@ -697,7 +699,7 @@ void MetricsGuiPlot::DrawList()
         // Draw description and value
         auto x = window->DC.CursorPos.x;
         auto y = window->DC.CursorPos.y;
-        ImGui::Selectable(metric->mDescription.c_str(), &metric->mSelected, ImGuiSelectableFlags_DrawFillAvailWidth);
+        ImGui::Selectable(metric->mDescription.c_str(), &metric->mSelected, ImGuiSelectableFlags_SpanAllColumns);
         if (valueX >= barStartX) {
             auto useSiUnitPrefix  = 0 != (metric->mFlags & MetricsGuiMetric::USE_SI_UNIT_PREFIX);
             auto lastValue = metric->GetLastValue();

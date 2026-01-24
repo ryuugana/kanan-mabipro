@@ -44,6 +44,7 @@ namespace kanan {
 
 		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
 		ImGui::Button(label, ImVec2(size_arg.x * 0.50f, size_arg.y));
+		ImGui::PopItemFlag();
 		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, false);
 		ImGui::SameLine();
 		if (m_isKeyBindOpen) {
@@ -55,6 +56,7 @@ namespace kanan {
 				m_isKeyBindOpen = true;
 			}
 		}
+		ImGui::PopItemFlag();
 
 		return value_changed;
 	}

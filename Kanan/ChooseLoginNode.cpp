@@ -22,7 +22,7 @@ namespace kanan {
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
 			const char* nodes[] = { "Disabled", "Funf", "Drei", "Test" };
-			if (ImGui::Combo("", &m_choice, nodes, IM_ARRAYSIZE(nodes))) {
+			if (ImGui::Combo("Node", &m_choice, nodes, IM_ARRAYSIZE(nodes))) {
 				m_isEnabled = m_choice > 0;
 			}
 		}

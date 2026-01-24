@@ -311,19 +311,19 @@ void ChatLog::deleteOldLogs(string path, string fileName, tm tstruct) {
 			for (auto log : m_logs)
 			{
 				if (m_filter.PassFilter(log.c_str())) {
-					ImGui::TextWrappedNoFmt(log.c_str());
+					ImGui::TextWrapped(log.c_str());
 				}
 			}
 		}
 		else {
 			for (auto log : m_logs)
 			{
-				ImGui::TextWrappedNoFmt(log.c_str());
+				ImGui::TextWrapped(log.c_str());
 			}
 		}
 
 		if (m_scrollToBottom && m_autoScroll) {
-			ImGui::SetScrollHere(1.0f);
+			ImGui::SetScrollHereY(1.0f);
 		}
 
 		m_scrollToBottom = false;

@@ -53,6 +53,8 @@ namespace kanan {
         m_isNotifyUpdate{ true },
         m_isMp3Fixed{ false },
         m_defaultMods{ true },
+        m_fontSize { 16 },
+        m_tmpFontSize { m_fontSize },
         m_interactiveWindows{ false },
         m_isUIOpen{ true },
         m_isLogOpen{ false },
@@ -171,11 +173,9 @@ namespace kanan {
 
         io.IniFilename = m_uiConfigPath.c_str();
         ImFontConfig config;
-        config.MergeMode = true;
-        io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, 16.0f);
-        io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, 16.0f, &config, io.Fonts->GetGlyphRangesJapanese());
-        io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, 16.0f, &config, io.Fonts->GetGlyphRangesKorean());
-        ImGuiFreeType::BuildFontAtlas(io.Fonts, 0);
+        config.MergeMode = false;
+        io.FontAllowUserScaling = true;
+        io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, m_fontSize);
 
         if (!ImGui_ImplWin32_Init(m_wnd)) {
             error("Failed to initialize ImGui.");
@@ -296,6 +296,7 @@ namespace kanan {
                 m_dinputHook->acknowledgeInput();
             }
 
+            ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0], m_fontSize);
             if (m_isUIOpen)
             {
                 drawUI();
@@ -332,11 +333,13 @@ namespace kanan {
                 m_modWindowEnabled = mod->onWindow() || m_modWindowEnabled;
             }
 
+            ImGui::PopFont();
         }
         else {
             ImGui::OpenPopup("Loading...");
-            ImGui::SetNextWindowPosCenter(ImGuiCond_Always);
             ImGui::SetNextWindowSize(ImVec2{ 450.0f, 200.0f });
+            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
             if (ImGui::BeginPopupModal("Loading...", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
                 ImGui::TextWrapped("Kanan is currently setting things up. Please wait a moment...");
@@ -1048,13 +1051,15 @@ namespace kanan {
 
         Config cfg{ m_modConfigPath };
         m_isUIOpenByDefault = cfg.get<bool>("UI.OpenByDefault").value_or(true);
-		m_key.hotkey = cfg.get<int>("UI.Keybind").value_or(VK_INSERT);
-		m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
-		m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
         m_isNotifyUpdate = cfg.get<bool>("UI.NotifyUpdate").value_or(true);
         m_isUpdate = checkVersion() && m_isNotifyUpdate;
         m_isMp3Fixed = cfg.get<bool>("UI.Mp3Fixed").value_or(false);
         m_interactiveWindows = cfg.get<bool>("UI.InteractiveWindows").value_or(true);
+        m_fontSize = cfg.get<int>("UI.FontSize").value_or(16);
+        m_tmpFontSize = m_fontSize;
+        m_key.hotkey = cfg.get<int>("UI.Keybind").value_or(VK_INSERT);
+        m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
+        m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
         m_isUIOpen = m_isUIOpenByDefault || m_isUpdate;
 
 		if (m_key.hotkey == 0)
@@ -1089,6 +1094,7 @@ namespace kanan {
         cfg.set<bool>("UI.NotifyUpdate", m_isNotifyUpdate);
         cfg.set<bool>("UI.Mp3Fixed", m_isMp3Fixed);
         cfg.set<bool>("UI.InteractiveWindows", m_interactiveWindows);
+        cfg.set<int>("UI.FontSize", m_fontSize);
 		cfg.set<int>("UI.Keybind", m_key.hotkey);
 		cfg.set<int>("UI.HousingKey", m_housingKey.hotkey);
 		cfg.set<int>("UI.AstralKey", m_astralKey.hotkey);
@@ -1213,16 +1219,6 @@ namespace kanan {
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("Settings")) {
-                ImGui::MenuItem("UI Open By Default", nullptr, &m_isUIOpenByDefault);
-                ImGui::MenuItem("Notify Updates", nullptr, &m_isNotifyUpdate);
-                ImGui::MenuItem("Apply Recommended Settings", nullptr, &m_defaultMods);
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Only enables recommended settings, this does not disable existing settings.");
-                }
-                ImGui::EndMenu();
-            }
-
             if (ImGui::BeginMenu("Help")) {
                 ImGui::MenuItem("About Kanan", nullptr, &m_isAboutOpen);
                 ImGui::EndMenu();
@@ -1244,33 +1240,73 @@ namespace kanan {
         ImGui::Spacing();
 		ImGui::Separator();
 		ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-        if (ImGui::Button("Housing Board", ImVec2(ImGui::GetContentRegionAvailWidth() * 0.50f, 50))) {
+        if (ImGui::Button("Housing Board", ImVec2(ImGui::GetContentRegionAvail().x  * 0.50f, 50))) {
             housingBoard();
         }
         ImGui::SameLine();
-        if (ImGui::Button("AstralWorld", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+        if (ImGui::Button("AstralWorld", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
             viewAstralWorld();
         }
         ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
-		if (ImGui::CollapsingHeader("Kanan Hotkeys")) {
-			ImGui::TextWrapped("Press Esc Key to delete a hotkey\n\nHotkey combos such as Ctrl+G are not supported");
-			ImGui::Spacing();
-			ImGui::Separator();
-			m_key.Display("Open/Close/Save Kanan", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
-			m_housingKey.Display("Open Housing Board", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
-			m_astralKey.Display("Open AstralWorld", ImVec2(ImGui::GetContentRegionAvailWidth(), 25));
-		}
-        if (ImGui::CollapsingHeader("Interactive Mod Windows")) {
-            ImGui::Checkbox("Enable interactive windows", &m_interactiveWindows);
-            ImGui::TextWrapped("Allows Kanan mod windows to be moved without opening the main Kanan window.");
-            ImGui::TextWrapped("If this is disabled you will need to open the main Kanan UI to move mod windows such as ChatLog or TickTimer.");
-            ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-            ImGui::TextWrapped("WARNING: Although not common, enabling this can result in performance decrease depending on hardware.");
-            ImGui::TextWrapped("To test for performance decrease look at your FPS and move your mouse around.");
-            ImGui::TextWrapped("If there is a performance issue your FPS should get lower the faster the mouse is moved and the difference in FPS should be noticeable.");
-            ImGui::TextWrapped("If this is an issue with your hardware it will always occur when the main Kanan UI is open, regardless of this setting.");
-            ImGui::TextWrapped("To fix the issue make sure this setting is disabled and close the main Kanan UI by pressing %s.", KeyNames[m_key.hotkey]);
+
+        if (ImGui::CollapsingHeader("Kanan Settings")) {
+            if (ImGui::TreeNode("Kanan Hotkeys")) {
+                ImGui::TextWrapped("Press Esc Key to delete a hotkey\n\nHotkey combos such as Ctrl+G are not supported");
+                ImGui::Spacing();
+                ImGui::Separator();
+                m_key.Display("Open/Close/Save Kanan", ImVec2(ImGui::GetContentRegionAvail().x - 25, 25));
+                m_housingKey.Display("Open Housing Board", ImVec2(ImGui::GetContentRegionAvail().x - 25, 25));
+                m_astralKey.Display("Open AstralWorld", ImVec2(ImGui::GetContentRegionAvail().x - 25, 25));
+                ImGui::TreePop();
+            }
+            if (ImGui::TreeNode("Kanan Font Size")) {
+                ImGui::TextWrapped("Set the font size for all Kanan windows");
+                ImGui::Spacing();
+                ImGui::TextWrapped("Some mod windows may need to be toggled to adjust to the new font size.");
+                ImGui::Spacing();
+
+                ImGui::InputInt("Font Size", &m_tmpFontSize, 1, 10);
+                // Set minimum font size to 12
+                if (m_tmpFontSize < 12)
+                {
+                    m_fontSize = 12;
+                }
+                // Set maximum font size to 50
+                else if (m_tmpFontSize > 50)
+                {
+                    m_tmpFontSize = 50;
+                    m_fontSize = m_tmpFontSize;
+                }
+                else
+                {
+                    m_fontSize = m_tmpFontSize;
+                }
+
+                ImGui::TreePop();
+            }
+            if (ImGui::TreeNode("Interactive Mod Windows")) {
+                ImGui::TextWrapped("Allows Kanan mod windows to be moved without opening the main Kanan window.");
+                ImGui::TextWrapped("If this is disabled you will need to open the main Kanan UI to move mod windows such as ChatLog or TickTimer.");
+                ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+                ImGui::Checkbox("Enable interactive windows", &m_interactiveWindows);
+                ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+                ImGui::TextWrapped("WARNING: Although not common, enabling this can result in performance decrease depending on hardware.");
+                ImGui::TextWrapped("To test for performance decrease look at your FPS and move your mouse around.");
+                ImGui::TextWrapped("If there is a performance issue your FPS should get lower the faster the mouse is moved and the difference in FPS should be noticeable.");
+                ImGui::TextWrapped("If this is an issue with your hardware it will always occur when the main Kanan UI is open, regardless of this setting.");
+                ImGui::TextWrapped("To fix the issue make sure this setting is disabled and close the main Kanan UI by pressing %s.", KeyNames[m_key.hotkey]);
+                ImGui::TreePop();
+            }
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::Checkbox("UI Open By Default", &m_isUIOpenByDefault);
+            ImGui::Checkbox("Notify Updates", &m_isNotifyUpdate);
+            ImGui::Checkbox("Apply Recommended Settings", &m_defaultMods);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Only enables recommended settings, this does not disable existing settings.");
+            }
         }
         if (ImGui::CollapsingHeader("Patches")) {
             for (auto& mod : m_mods.getMods()) {
@@ -1313,7 +1349,7 @@ namespace kanan {
             ImGui::End();
             return;
         }
-
+        
         ImGui::Text("Kanan's New Mabinogi Mod");
         ImGui::Text("https://github.com/cursey/kanan-new");
 		ImGui::Text("Modified for MabiPro by Acros");
@@ -1339,7 +1375,8 @@ namespace kanan {
     void Kanan::drawUpdateMessage()
     {
         ImGui::SetNextWindowSize(ImVec2{ 475.0f, 275.0f }, ImGuiCond_Appearing);
-        ImGui::SetNextWindowPosCenter();
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
         if (!ImGui::Begin("Kanan is not up to date", &m_isUpdateOpen)) {
             ImGui::End();
@@ -1349,20 +1386,20 @@ namespace kanan {
         ImGui::Text("Would you like to close MabiPro and auto-update now?");
         ImGui::Dummy(ImVec2{ 30.0f, 30.0f });
 
-        if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+        if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
             updateKanan();
         }
 
         ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 
-        if (ImGui::Button("Update Later", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+        if (ImGui::Button("Update Later", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
             m_isUpdate = false;
             ImGui::CloseCurrentPopup();
         }
 
         ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 
-        if (ImGui::Button("Disable Updates", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+        if (ImGui::Button("Disable Updates", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
             m_isUpdate = false;
             m_isNotifyUpdate = false;
             ImGui::CloseCurrentPopup();
@@ -1374,7 +1411,8 @@ namespace kanan {
     void Kanan::drawDefaultMods()
     {
         ImGui::SetNextWindowSize(ImVec2{ 475.0f, 275.0f }, ImGuiCond_Appearing);
-        ImGui::SetNextWindowPosCenter();
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
         if (!ImGui::Begin("Default Mods", &m_defaultMods)) {
             ImGui::End();
@@ -1384,7 +1422,7 @@ namespace kanan {
         ImGui::Text("Would you like to apply recommended default mods?");
         ImGui::Dummy(ImVec2{ 30.0f, 30.0f });
 
-        if (ImGui::Button("Kanan", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+        if (ImGui::Button("Kanan", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
             applyDefaultMods(false);
             m_defaultMods = false;
             ImGui::CloseCurrentPopup();
@@ -1392,7 +1430,7 @@ namespace kanan {
 
         ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 
-        if (ImGui::Button("Kanan and AstralWorld", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+        if (ImGui::Button("Kanan and AstralWorld", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
             applyDefaultMods(true);
             m_defaultMods = false;
             ImGui::CloseCurrentPopup();
@@ -1400,7 +1438,7 @@ namespace kanan {
 
         ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 
-        if (ImGui::Button("No", ImVec2(ImGui::GetContentRegionAvailWidth(), 50))) {
+        if (ImGui::Button("No", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
             m_defaultMods = false;
             ImGui::CloseCurrentPopup();
         }

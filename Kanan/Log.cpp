@@ -119,7 +119,7 @@ namespace kanan {
             }
 
             if (m_scrollToBottom && m_autoScroll) {
-                ImGui::SetScrollHere(1.0f);
+                ImGui::SetScrollHereY(1.0f);
             }
 
             m_scrollToBottom = false;

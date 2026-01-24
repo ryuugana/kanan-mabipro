@@ -63,6 +63,8 @@ namespace kanan {
         bool m_isMp3Fixed;
         bool m_interactiveWindows;
         bool m_defaultMods;
+        int m_fontSize;
+        int m_tmpFontSize;
 
         bool m_isInitialized;
         std::atomic_bool m_areModsReady;

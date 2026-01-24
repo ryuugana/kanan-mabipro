@@ -13,7 +13,7 @@ namespace kanan {
 	}
 
 	void NaoCounter::drawWindow() {
-		ImGui::SetNextWindowSize(ImVec2{ 0.0f, 10.0f }, ImGuiCond_Appearing);
+		ImGui::SetNextWindowSize(ImVec2{ ImGui::GetFontSize() * 8.0f, ImGui::GetFontSize() * 1.7f + 5.0f }, ImGuiCond_Appearing);
 
 		if (!ImGui::Begin("NaoCounter", &m_isEnabled, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoFocusOnAppearing)) {
 			ImGui::End();
