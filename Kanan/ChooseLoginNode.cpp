@@ -53,9 +53,9 @@ namespace kanan {
 			data.len = (int)strlen("funf.mabi.pro") + 1;
 			break;
 		case 2:
-			// Drei 192.210.185.228
-			data.str = "drei.mabi.pro";
-			data.len = (int)strlen("drei.mabi.pro") + 1;
+			// Omega 192.227.153.52
+			data.str = "omega.mabi.pro";
+			data.len = (int)strlen("omega.mabi.pro") + 1;
 			break;
 #ifdef TEST
 		case 3:
