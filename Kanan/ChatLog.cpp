@@ -299,7 +299,7 @@ void ChatLog::deleteOldLogs(string path, string fileName, tm tstruct) {
 		ImGui::SameLine();
 		m_filter.Draw("Filter", -100.0f);
 		ImGui::Separator();
-		ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::BeginChild("scrolling", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
 		if (m_filter.IsActive()) {
 			for (auto log : m_logs)
