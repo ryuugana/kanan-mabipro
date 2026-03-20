@@ -62,6 +62,18 @@
         ]
     },
     {
+        "name": "Disable Auto Camera",
+        "desc": "Great for tower cylinder, might have unknown issues in others",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "0F 84 ? ? ? ? 80 7E 05 01",
+                "patch": "90 E9"
+            }
+        ]
+    },
+    {
         "name": "Keep Pet Window Open",
         "desc": "After summoning a pet, prevent the pet window from closing.",
         "category": "Interface",
@@ -367,8 +379,8 @@
     },
     {
         "name": "Disable Player Effects",
-        "desc": "Disables most player effects.",
-        "category": "Speedup",
+        "desc": "Disables most player effects\nHelps with FPS in Tara castle",
+        "category": "Graphics",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -525,6 +537,23 @@
                 "location": "mss32.dll",
                 "pattern": "81 e9 00 00 00 01",
                 "patch": "81 C1 00 00 00 10"
+            }
+        ]
+    },
+    {
+        "name": "Disable Lights",
+        "desc": "Disables most light props from lighting\nHelps with FPS in areas like Emain\nMay require cc/relog to fully enable",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "74 22 80 7D FF",
+                "patch": "EB"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "0F 84 ? ? ? ? EB 03 8B 45 F0",
+                "patch": "90 E9"
             }
         ]
     },
