@@ -41,16 +41,10 @@ namespace kanan {
 			if(ImGui::Checkbox("Enable Chat Log", &m_isEnabled))
 				startLogging();
 
-			if (m_isEnabled)
-			{
-				ImGui::Checkbox("Show Chat Log", &m_isOpen);
-			}
-			else
-			{
-				ImGui::Checkbox("", &m_isOpen);
-				ImGui::SameLine(34.0);
-				ImGui::TextDisabled("Show Chat Log");
-			}
+
+			ImGui::BeginDisabled(!m_isEnabled);
+			ImGui::Checkbox("Show Chat Log", &m_isOpen);
+			ImGui::EndDisabled();
 		}
 	}
 
