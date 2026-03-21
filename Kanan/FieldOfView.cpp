@@ -9,26 +9,30 @@ namespace kanan {
     { }
 
     void FieldOfView::onFrame() {
-        auto game = g_kanan->getGame();
-        auto renderer = game->getRenderer();
-
-        if (renderer == nullptr) {
-            return;
-        }
-
-        auto camera = renderer->camera;
-
-        if (camera == nullptr) {
-            return;
-        }
-
-        auto cameraState = camera->state;
-
-        if (cameraState == nullptr) {
-            return;
-        }
-
         if (m_isEnabled) {
+            auto game = g_kanan->getGame();
+
+            if (game == nullptr)
+                return;
+
+            auto renderer = game->getRenderer();
+
+            if (renderer == nullptr) {
+                return;
+            }
+
+            auto camera = renderer->camera;
+
+            if (camera == nullptr) {
+                return;
+            }
+
+            auto cameraState = camera->state;
+
+            if (cameraState == nullptr) {
+                return;
+            }
+
             cameraState->fov = m_fov;
         }
     }
