@@ -36,7 +36,7 @@ namespace kanan {
     optional<uintptr_t> getModuleBase(const string& ModuleName)
     {
         MODULEENTRY32 ModuleEntry = { 0 };
-        HANDLE SnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, *getProcessID("client.exe"));
+        HANDLE SnapShot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, GetCurrentProcessId());
 
         if (!SnapShot) return NULL;
 
