@@ -1,5 +1,6 @@
 #pragma once
 
 namespace kanan {
-    const int version = 12;
+    // Matches the release date
+    const int version = 20260320;
 }
