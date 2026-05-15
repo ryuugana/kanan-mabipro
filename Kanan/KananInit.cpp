@@ -49,31 +49,29 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 	char path[MAX_PATH];
 	switch (ul_reason_for_call)
 	{
-	case DLL_PROCESS_ATTACH:
-	{
-		bdcap32.dll = LoadLibrary(L"bdcap23.dll");
-		if (bdcap32.dll == false)
+		case DLL_PROCESS_ATTACH:
 		{
-			MessageBox(0, L"Cannot load original bdcap32.dll library", L"Proxy", MB_ICONERROR);
-			ExitProcess(0);
+			bdcap32.dll = LoadLibrary(L"bdcap23.dll");
+			if (bdcap32.dll == false)
+			{
+				MessageBox(0, L"Kanan cannot load bdcap23.dll library", L"Proxy", MB_ICONERROR);
+				ExitProcess(0);
+			}
+			bdcap32.OrignalCreateBandiCapture = GetProcAddress(bdcap32.dll, "CreateBandiCapture");
+
+			// We don't need DllMain getting invoked for thread attach/detach reasons.
+			DisableThreadLibraryCalls(hModule);
+
+			// Get the filepath of this dll.
+			GetModuleFileName(hModule, g_dllPath, MAX_PATH);
+
+			// Launch our init thread.
+			CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);
+			break;
 		}
-		bdcap32.OrignalCreateBandiCapture = GetProcAddress(bdcap32.dll, "CreateBandiCapture");
-
-		// We don't need DllMain getting invoked for thread attach/detach reasons.
-		DisableThreadLibraryCalls(hModule);
-
-		// Get the filepath of this dll.
-		GetModuleFileName(hModule, g_dllPath, MAX_PATH);
-
-		// Launch our init thread.
-		CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);
-		break;
+		default:
+			break;
 	}
-	case DLL_PROCESS_DETACH:
-	{
-		FreeLibrary(bdcap32.dll);
-	}
-	break;
-	}
+
 	return TRUE;
 }
