@@ -1,5 +1,6 @@
 #include <Windows.h>
 
+#include <filesystem>
 #include <String.hpp>
 
 #include "Log.hpp"
@@ -20,6 +21,38 @@ LPCSTR mImportName = "CreateBandiCapture";
 // log file and creating the global kanan object.
 //
 DWORD WINAPI kananInit(LPVOID params) {
+    string previousKananDll = "dsound.dll";
+    string batRemoveOldKanan = "remove_old_kanan.bat";
+
+    if (filesystem::exists(previousKananDll))
+    {
+        ofstream batch_file(batRemoveOldKanan);
+        batch_file <<
+            "echo \"Warning two instances of Kanan detected: " << previousKananDll << " and bdcap32.dll.\n"
+            "echo \"Removing old Kanan: " << previousKananDll << "\"\n"
+            "timeout /t 5 /nobreak\n"
+            "del " << previousKananDll << "\n"
+            "MabiProLauncher22.exe\n";
+        batch_file.close();
+
+        PROCESS_INFORMATION processInformation = { 0 };
+        STARTUPINFOA startupInfo = { 0 };
+        BOOL result = CreateProcessA(NULL,
+            const_cast<char*>(batRemoveOldKanan.c_str()),
+            NULL,
+            NULL,
+            FALSE,
+            CREATE_NO_WINDOW,
+            NULL,
+            NULL,
+            &startupInfo,
+            &processInformation);
+
+        if (result) exit(0);
+        log("Failed to remove old Kanan: %s", previousKananDll.c_str());
+        log("Please remove %s manually from your MabiPro folder.", previousKananDll.c_str());
+    }
+
     // Convert g_dllPath to a path we can use.
     auto path = narrow(g_dllPath);
 
