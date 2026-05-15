@@ -57,7 +57,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>dsound</TargetName>
+    <TargetName>bdcap32</TargetName>
     <LinkIncremental>
     </LinkIncremental>
   </PropertyGroup>
@@ -89,7 +89,7 @@
       </OptimizeReferences>
       <AdditionalLibraryDirectories>$(OutDir);$(SolutionDir)Dependencies\FreeType;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;dsound.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>dsound.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>bdcap32.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -298,9 +298,12 @@
     <CopyFileToFolders Include="Patches.json">
       <FileType>Document</FileType>
     </CopyFileToFolders>
+    <CopyFileToFolders Include="bdcap23.dll">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
-    <None Include="dsound.def" />
+    <None Include="bdcap32.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

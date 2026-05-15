@@ -11,24 +11,9 @@ using namespace kanan;
 TCHAR g_dllPath[MAX_PATH]{ 0 };
 HINSTANCE mHinstDLL = 0;
 
-extern "C" UINT_PTR  mProcs[12] = { 0 };
+extern "C" UINT_PTR  mProc = 0;
 
-LPCSTR mImportNames[] = { "DirectSoundCaptureCreate",
-						  "DirectSoundCaptureCreate8",
-						  "DirectSoundCaptureEnumerateA",
-						  "DirectSoundCaptureEnumerateW",
-						  "DirectSoundCreate",
-						  "DirectSoundCreate8",
-						  "DirectSoundEnumerateA",
-						  "DirectSoundEnumerateW",
-						  "DirectSoundFullDuplexCreate",
-						  "DllCanUnloadNow",
-						  "DllGetClassObject",
-						  "GetDeviceID" };
-
-typedef int(CALLBACK *DirectSoundEnumerate)(LPVOID, LPVOID);
-typedef HRESULT(WINAPI *DirectSoundCreate)(LPCGUID, LPVOID, LPVOID);
-typedef HRESULT(WINAPI *DirectSoundCreate8)(LPCGUID, LPVOID, LPVOID);
+LPCSTR mImportName = "CreateBandiCapture";
 
 //
 // This is the entrypoint for kanan. It's only responsible for setting up the global
@@ -53,38 +38,42 @@ DWORD WINAPI kananInit(LPVOID params) {
     return 0;
 }
 
-BOOL APIENTRY DllMain(HINSTANCE module, DWORD reason, LPVOID reserved) {
-    if (reason == DLL_PROCESS_ATTACH) {
-		TCHAR expandedPath[MAX_PATH];
-		ExpandEnvironmentStrings(L"%WINDIR%\\System32\\dsound.dll", expandedPath, MAX_PATH);
-		mHinstDLL = LoadLibrary(expandedPath);
-		if (!mHinstDLL)
-			return (FALSE);
-		for (int i = 0; i < 12; i++)
-			mProcs[i] = (UINT_PTR)GetProcAddress(mHinstDLL, mImportNames[i]);
+struct bdcap32_dll {
+	HMODULE dll;
+	FARPROC OrignalCreateBandiCapture;
+} bdcap32;
 
-        // We don't need DllMain getting invoked for thread attach/detach reasons.
-        DisableThreadLibraryCalls(module);
+__declspec(naked) void FakeCreateBandiCapture() { _asm { jmp[bdcap32.OrignalCreateBandiCapture] } }
 
-        // Get the filepath of this dll.
-        GetModuleFileName(module, g_dllPath, MAX_PATH);
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
+	char path[MAX_PATH];
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+	{
+		bdcap32.dll = LoadLibrary(L"bdcap23.dll");
+		if (bdcap32.dll == false)
+		{
+			MessageBox(0, L"Cannot load original bdcap32.dll library", L"Proxy", MB_ICONERROR);
+			ExitProcess(0);
+		}
+		bdcap32.OrignalCreateBandiCapture = GetProcAddress(bdcap32.dll, "CreateBandiCapture");
 
-        // Launch our init thread.
-        CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);
-    }
+		// We don't need DllMain getting invoked for thread attach/detach reasons.
+		DisableThreadLibraryCalls(hModule);
 
-    return TRUE;
-}
+		// Get the filepath of this dll.
+		GetModuleFileName(hModule, g_dllPath, MAX_PATH);
 
-
-HRESULT WINAPI DirectSoundCreate_wrapper(LPCGUID lpGuid, LPVOID *ppDS, LPUNKNOWN pUnkOuter)
-{
-	DirectSoundCreate dsound = (DirectSoundCreate)mProcs[4];
-	return dsound(lpGuid, ppDS, pUnkOuter);
-}
-HRESULT WINAPI DirectSoundCreate8_wrapper(LPCGUID lpGuid, LPVOID *ppDS8, LPUNKNOWN pUnkOuter)
-{
-	DirectSoundCreate8 dsound = (DirectSoundCreate8)mProcs[5];
-	HRESULT result = dsound(lpGuid, ppDS8, pUnkOuter);
-	return result;
+		// Launch our init thread.
+		CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);
+		break;
+	}
+	case DLL_PROCESS_DETACH:
+	{
+		FreeLibrary(bdcap32.dll);
+	}
+	break;
+	}
+	return TRUE;
 }
