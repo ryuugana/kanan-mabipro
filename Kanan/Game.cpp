@@ -38,7 +38,7 @@ namespace kanan {
             log("Got CEntityListPtr %p", m_entityListPtr);
         }
         else {
-            error("Failed to find CEntityListPtr.");
+            log("Failed to find CEntityListPtr.");
         }
 
         // Find the games global world pointer.
@@ -50,7 +50,7 @@ namespace kanan {
             log("Got CWorldPtr %p", m_worldPtr);
         }
         else {
-            error("Failed to find CWorldPtr.");
+            log("Failed to find CWorldPtr.");
         }
 
          // Find the games global account pointer.
@@ -62,7 +62,7 @@ namespace kanan {
             log("Got CAccountPtr %p", m_accountPtr);
         }
         else {
-            error("Failed to find CAccountPtr.");
+            log("Failed to find CAccountPtr.");
         }
 
         log("Leaving Game constructor.");

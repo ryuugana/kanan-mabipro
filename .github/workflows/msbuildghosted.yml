@@ -65,5 +65,6 @@ jobs:
       with:
         name: KananMabiPro
         path: |
-          Release\dsound.dll
+          Release\bdcap32.dll
+          Release\bdcap23.dll
           Release\Patches.json
