@@ -21,6 +21,7 @@ namespace kanan {
 	std::vector<std::unique_ptr<MessageMod>>* mabiRecvListeners = nullptr;
 
 	VOID ListenDownstream(LPVOID Buffer, LONG Size);
+	VOID ListenUpstream(LPVOID Buffer, LONG Size);
 
 
 
@@ -46,6 +47,8 @@ namespace kanan {
 
 		log("Patching ReadFromNetworkBuffer...");
 		result &= PatchReadFromNetworkBuffer();
+		log("Patching WriteToNetworkBuffer...");
+		result &= PatchWriteToNetworkBuffer();
 		log(result ? "...success" : "...failed");
 
 		return result;
@@ -55,14 +58,16 @@ namespace kanan {
 	// Hook Types & Vars
 	//
 
-	typedef DWORD(__thiscall* ReadFromNetworkBufferSignature)(LPVOID Buffer, LONG Size);
+	typedef DWORD(__thiscall* ReadFromNetworkBufferSignature)(LPVOID Buffer, LONG Size, LONG size);
 	typedef DWORD(__thiscall* WriteToNetworkBufferSignature)(LPVOID MsgPointer, LPVOID Buffer, LONG size);
 
 	ReadFromNetworkBufferSignature ReadFromNetworkBuffer = NULL;
 	WriteToNetworkBufferSignature WriteToNetworkBuffer = NULL;
 
 	LPVOID SavedRecvPointer = NULL;
+	LPVOID SavedSendPointer = NULL;
 	LONG ReadFromNetworkBufferHookContinueAddress;
+	LONG WriteToNetworkBufferHookContinueAddress;
 	BOOL InsideHookHandler = FALSE;
 
 	//
@@ -78,6 +83,10 @@ namespace kanan {
 		}
 	}
 
+	void __stdcall WriteToNetworkBufferHookHandler(LPVOID Buffer, LONG Size) {
+			ListenUpstream(Buffer, Size);
+	}
+
 	//
 	// Hook Traps
 	//
@@ -86,10 +95,16 @@ namespace kanan {
 		__asm {
 			PUSHAD
 			mov     ebp, esp
+
+			// Size
 			mov     eax, [ebp + 32 + 8]
 			push    eax
+
+			// Buffer
 			mov     eax, [ebp + 32 + 4]
 			push    eax
+
+			// MsgPointer
 			push	ecx
 			call    ReadFromNetworkBufferHookHandler
 			POPAD
@@ -103,6 +118,26 @@ namespace kanan {
 		}
 	}
 
+	__declspec(naked) void WriteToNetworkBufferHookTrap() {
+		__asm {
+			PUSHAD
+			// Size
+			mov     eax, [ebp + 0xC]
+			push    eax
+
+			// Buffer
+			mov     eax, [ebp + 8]
+			push    eax
+
+			call    WriteToNetworkBufferHookHandler
+			POPAD
+
+			mov		edi, [ebp + 8]
+			mov		eax, ebx
+			jmp     WriteToNetworkBufferHookContinueAddress
+		}
+	}
+
 	VOID ListenDownstream(LPVOID Buffer, LONG Size) {
 		MabiMessage mabiMessage;
 		mabiMessage.buffer = (unsigned char*)Buffer;
@@ -112,13 +147,37 @@ namespace kanan {
 		unsigned long op = GetOP(mabiMessage.buffer);
 		for (uint32_t i = 0; i < mabiRecvListeners->size(); i++) {
 			if ((*mabiRecvListeners)[i]->m_isEnabled) {
-				for each( int listenOp in (*mabiRecvListeners)[i]->getOp())
-				if (op ==  listenOp || -1 == listenOp) {
-					(*mabiRecvListeners)[i]->onRecv(mabiMessage);
-					break;
-				}
+				for each(int listenOp in(*mabiRecvListeners)[i]->getOp())
+					if (op == listenOp || -1 == listenOp) {
+						(*mabiRecvListeners)[i]->onRecv(mabiMessage);
+						break;
+					}
 			}
 		}
+	}
+
+	VOID ListenUpstream(LPVOID Buffer, LONG Size) {
+		if (Buffer == NULL)
+			return;
+
+		MabiMessage mabiMessage;
+		mabiMessage.buffer = (unsigned char*)Buffer;
+		mabiMessage.size = Size;
+
+#ifdef TEST
+		// Temporary workaround for viewing messages until message mods are updated to support WriteToNetworkBuffer
+		unsigned long op = GetOP(mabiMessage.buffer);
+		for (uint32_t i = 0; i < mabiRecvListeners->size(); i++) {
+			if ((*mabiRecvListeners)[i]->m_isEnabled) {
+				for each(int listenOp in(*mabiRecvListeners)[i]->getOp())
+					if (-1 == listenOp) {
+						log("listen upstream:");
+						(*mabiRecvListeners)[i]->onRecv(mabiMessage);
+						break;
+					}
+			}
+		}
+#endif // TEST
 	}
 
 	//
@@ -134,6 +193,19 @@ namespace kanan {
 		ReadFromNetworkBufferHookContinueAddress = ReadFromNetworkBufferFunctionAddressLong + 9;
 
 		Hookjmp((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 7);
+
+		return TRUE;
+	}
+
+	BOOL MabiMessageHook::PatchWriteToNetworkBuffer() {
+
+		DWORD WriteToNetworkBufferFunctionAddress = (reinterpret_cast<uintptr_t>(GetModuleHandleA("mint.dll")) + 0x60f3f);
+		LONG WriteToNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&WriteToNetworkBufferFunctionAddress);
+
+		WriteToNetworkBuffer = (WriteToNetworkBufferSignature)WriteToNetworkBufferFunctionAddressLong;
+		WriteToNetworkBufferHookContinueAddress = WriteToNetworkBufferFunctionAddressLong + 5;
+
+		Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong), WriteToNetworkBufferHookTrap, 5);
 
 		return TRUE;
 	}

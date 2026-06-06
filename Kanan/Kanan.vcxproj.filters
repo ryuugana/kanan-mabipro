@@ -404,6 +404,7 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Patches.json" />
+    <CopyFileToFolders Include="bdcap23.dll" />
   </ItemGroup>
   <ItemGroup>
     <None Include="bdcap32.def">
