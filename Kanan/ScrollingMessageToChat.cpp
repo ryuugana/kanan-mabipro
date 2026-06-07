@@ -7,6 +7,8 @@
 namespace kanan {
 	ScrollingMessageToChat::ScrollingMessageToChat()
 	{
+		m_hasSend = false;
+		m_hasRecv = true;
 		m_isEnabled = false;
 		m_isAuctionEnabled = false;
 		m_isFieldBossEnabled = false;

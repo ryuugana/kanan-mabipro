@@ -8,6 +8,8 @@ namespace kanan {
 
 	ChooseLoginNode::ChooseLoginNode()
 	{
+		m_hasSend = false;
+		m_hasRecv = true;
 		m_isEnabled = false;
 		m_op.push_back(48);
 		m_op.push_back(0x4e33);

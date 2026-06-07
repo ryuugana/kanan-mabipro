@@ -6,6 +6,8 @@
 namespace kanan {
 	NaoCounter::NaoCounter()
 	{
+		m_hasSend = false;
+		m_hasRecv = true;
 		m_count = 0;
 		m_isEnabled = false;
 		m_op.push_back(0x909A); // Login Nao

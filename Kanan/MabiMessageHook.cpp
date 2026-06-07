@@ -14,23 +14,23 @@
 
 
 namespace kanan {
-	typedef DWORD(__thiscall* MabiRecvListenerSignature)(MabiMessage mabiMessage);
 	const int PACKET_BUFFER_SIZE = 64 * 1024;
 	BYTE packetBuffer[PACKET_BUFFER_SIZE];
 	bool g_mabiMessageHook = false;
-	std::vector<std::unique_ptr<MessageMod>>* mabiRecvListeners = nullptr;
+	bool g_firstLogin = true;
+	std::vector<std::unique_ptr<MessageMod>>* mabiListeners = nullptr;
 
 	VOID ListenDownstream(LPVOID Buffer, LONG Size);
 	VOID ListenUpstream(LPVOID Buffer, LONG Size);
 
 
 
-	MabiMessageHook::MabiMessageHook(std::vector<std::unique_ptr<MessageMod>>* mabiRecvMods)
+	MabiMessageHook::MabiMessageHook(std::vector<std::unique_ptr<MessageMod>>* mabiMods)
 	{
 		if (g_mabiMessageHook == false) {
 			if (DoInjection()) {
 				g_mabiMessageHook = true;
-				mabiRecvListeners = mabiRecvMods;
+				mabiListeners = mabiMods;
 				log("MabiMessage hooked successfully.");
 			}
 			else {
@@ -84,7 +84,11 @@ namespace kanan {
 	}
 
 	void __stdcall WriteToNetworkBufferHookHandler(LPVOID Buffer, LONG Size) {
+		if (!InsideHookHandler) {
+			InsideHookHandler = TRUE;
 			ListenUpstream(Buffer, Size);
+			InsideHookHandler = FALSE;
+		}
 	}
 
 	//
@@ -145,11 +149,11 @@ namespace kanan {
 
 
 		unsigned long op = GetOP(mabiMessage.buffer);
-		for (uint32_t i = 0; i < mabiRecvListeners->size(); i++) {
-			if ((*mabiRecvListeners)[i]->m_isEnabled) {
-				for each(int listenOp in(*mabiRecvListeners)[i]->getOp())
+		for (uint32_t i = 0; i < mabiListeners->size(); i++) {
+			if ((*mabiListeners)[i]->m_isEnabled && (*mabiListeners)[i]->getHasRecv()) {
+				for each(int listenOp in(*mabiListeners)[i]->getOp())
 					if (op == listenOp || -1 == listenOp) {
-						(*mabiRecvListeners)[i]->onRecv(mabiMessage);
+						(*mabiListeners)[i]->onRecv(mabiMessage);
 						break;
 					}
 			}
@@ -157,27 +161,31 @@ namespace kanan {
 	}
 
 	VOID ListenUpstream(LPVOID Buffer, LONG Size) {
-		if (Buffer == NULL)
-			return;
-
 		MabiMessage mabiMessage;
 		mabiMessage.buffer = (unsigned char*)Buffer;
 		mabiMessage.size = Size;
 
-#ifdef TEST
-		// Temporary workaround for viewing messages until message mods are updated to support WriteToNetworkBuffer
 		unsigned long op = GetOP(mabiMessage.buffer);
-		for (uint32_t i = 0; i < mabiRecvListeners->size(); i++) {
-			if ((*mabiRecvListeners)[i]->m_isEnabled) {
-				for each(int listenOp in(*mabiRecvListeners)[i]->getOp())
+
+		// HACK: Avoid race condition for first login when logging in too quickly
+		// Only needed for first login after opening the client
+		/* TODO: Fix this
+		if (op == 0x4e22 && g_firstLogin)
+		{
+			g_firstLogin = false;
+			Sleep(3000);
+		}
+		*/
+		
+		for (uint32_t i = 0; i < mabiListeners->size(); i++) {
+			if ((*mabiListeners)[i]->m_isEnabled && (*mabiListeners)[i]->getHasSend()) {
+				for each(int listenOp in(*mabiListeners)[i]->getOp())
 					if (-1 == listenOp) {
-						log("listen upstream:");
-						(*mabiRecvListeners)[i]->onRecv(mabiMessage);
+						(*mabiListeners)[i]->onSend(mabiMessage);
 						break;
 					}
 			}
 		}
-#endif // TEST
 	}
 
 	//

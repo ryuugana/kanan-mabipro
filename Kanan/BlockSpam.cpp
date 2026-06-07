@@ -6,6 +6,8 @@
 namespace kanan {
 	BlockSpam::BlockSpam()
 	{
+		m_hasSend = false;
+		m_hasRecv = true;
 		m_isEnabled = false;
 		m_isBSEnabled = false;
 		m_isBOEEnabled = false;

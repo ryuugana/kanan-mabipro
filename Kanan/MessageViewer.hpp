@@ -13,6 +13,10 @@ namespace kanan {
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;
 
+		void onSend(MabiMessage mabimessage) override;
 		void onRecv(MabiMessage mabiMessage) override;
+
+	private:
+		void viewMessage(MabiMessage mabiMessage);
 	};
 }

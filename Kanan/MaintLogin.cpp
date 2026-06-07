@@ -7,6 +7,8 @@ namespace kanan {
 
 	MaintLogin::MaintLogin()
 	{
+		m_hasSend = false;
+		m_hasRecv = true;
 		m_isEnabled = false;
 		m_op.push_back(0x23);
 		m_op.push_back(0x26);
