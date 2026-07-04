@@ -167,16 +167,6 @@ namespace kanan {
 		mabiMessage.size = Size;
 
 		unsigned long op = GetOP(mabiMessage.buffer);
-
-		// HACK: Avoid race condition for first login when logging in too quickly
-		// Only needed for first login after opening the client
-		/* TODO: Fix this
-		if (op == 0x4e22 && g_firstLogin)
-		{
-			g_firstLogin = false;
-			Sleep(3000);
-		}
-		*/
 		
 		for (uint32_t i = 0; i < mabiListeners->size(); i++) {
 			if ((*mabiListeners)[i]->m_isEnabled && (*mabiListeners)[i]->getHasSend()) {
