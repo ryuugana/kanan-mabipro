@@ -116,8 +116,6 @@ namespace kanan {
 			push    ebp
 			mov     ebp, esp
 			sub     esp, 28
-			push	ebx
-			mov		ebx, ecx
 			jmp     ReadFromNetworkBufferHookContinueAddress
 		}
 	}
@@ -138,6 +136,9 @@ namespace kanan {
 
 			mov		edi, [ebp + 8]
 			mov		eax, ebx
+			sub     eax, edi
+			pop     edi
+			pop     esi
 			jmp     WriteToNetworkBufferHookContinueAddress
 		}
 	}
@@ -198,22 +199,27 @@ namespace kanan {
 		LONG ReadFromNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&ReadFromNetworkBufferFunctionAddress);
 
 		ReadFromNetworkBuffer = (ReadFromNetworkBufferSignature)ReadFromNetworkBufferFunctionAddressLong;
-		ReadFromNetworkBufferHookContinueAddress = ReadFromNetworkBufferFunctionAddressLong + 9;
+		ReadFromNetworkBufferHookContinueAddress = ReadFromNetworkBufferFunctionAddressLong + 6;
 
-		Hookjmp((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 7);
+		Hookjmp((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 6);
 
 		return TRUE;
 	}
 
 	BOOL MabiMessageHook::PatchWriteToNetworkBuffer() {
 
-		DWORD WriteToNetworkBufferFunctionAddress = (reinterpret_cast<uintptr_t>(GetModuleHandleA("mint.dll")) + 0x60f3f);
+		DWORD WriteToNetworkBufferFunctionAddress = (reinterpret_cast<uintptr_t>(GetModuleHandleA("Mint.dll")) + 0x60f3f);
 		LONG WriteToNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&WriteToNetworkBufferFunctionAddress);
 
 		WriteToNetworkBuffer = (WriteToNetworkBufferSignature)WriteToNetworkBufferFunctionAddressLong;
-		WriteToNetworkBufferHookContinueAddress = WriteToNetworkBufferFunctionAddressLong + 5;
+		WriteToNetworkBufferHookContinueAddress = WriteToNetworkBufferFunctionAddressLong + 9;
 
-		Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong), WriteToNetworkBufferHookTrap, 5);
+		// Hook after a few nops to avoid mid-jmp instruction crash
+		DWORD curProtection;
+		VirtualProtect((void*)(WriteToNetworkBufferFunctionAddressLong), 3, PAGE_EXECUTE_READWRITE, &curProtection);
+		memset((void*)(WriteToNetworkBufferFunctionAddressLong), 0x90, 3);
+
+		Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong+3), WriteToNetworkBufferHookTrap,6);
 
 		return TRUE;
 	}
