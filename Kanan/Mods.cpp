@@ -11,6 +11,7 @@
 
 #include "PatchMod.hpp"
 
+// Misc Mods
 #include "AutoSetMTU.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
@@ -18,9 +19,12 @@
 #include "FieldOfView.hpp"
 #include "StatusUI.hpp"
 
+// Patch Mods
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
 
+// Message Mods
+#include "AutoLoginChannel.hpp"
 #include "BlockSpam.hpp"
 #include "MessageViewer.hpp"
 #include "ScrollingMessageToChat.hpp"
@@ -107,6 +111,7 @@ namespace kanan {
             });
         }
 
+        addMessageMod(make_unique<AutoLoginChannel>());
         addMessageMod(make_unique<BlockSpam>());
 #ifdef TEST
         // There is only one node left (the slowest one)

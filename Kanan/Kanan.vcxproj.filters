@@ -198,6 +198,9 @@
     <ClCompile Include="MaxFrameRate.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="AutoLoginChannel.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -400,6 +403,9 @@
     </ClInclude>
     <ClInclude Include="MaxFrameRate.hpp">
       <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="AutoLoginChannel.hpp">
+      <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
