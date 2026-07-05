@@ -14,7 +14,7 @@ namespace kanan {
 		void onConfigLoad(const Config& cfg) override;
 		void onConfigSave(Config& cfg) override;
 
-		void onRecv(MabiMessage mabiMessage) override;
+		void onSend(MabiMessage mabiMessage) override;
 	private:
 		static int m_choice;
 		std::vector<char*> m_channels;

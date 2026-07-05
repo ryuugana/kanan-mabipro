@@ -42,30 +42,25 @@ namespace kanan {
 		cfg.set<int>("AutoLoginChannel.Choice", m_choice);
 	}
 
-	void AutoLoginChannel::onRecv(MabiMessage mabiMessage) {
-		CMabiPacket recvPacket;
-		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
-
-		PacketData data;
-		// Set Channel
-		data.type = 6;
-		switch (m_choice) {
-		case 0:
-			return;
-		case 1:
-			data.str = m_channels[1];
-			data.len = (int)strlen(m_channels[1]) + 1;
-			break;
-		case 2:
-			data.str = m_channels[2];
-			data.len = (int)strlen(m_channels[2]) + 1;
-			break;
-		default:
+	void AutoLoginChannel::onSend(MabiMessage mabiMessage) {
+		if (m_choice < 1)
+		{
 			return;
 		}
-		recvPacket.SetElement(&data, 1);
+
+		CMabiPacket sendPacket;
+		sendPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
+
+		PacketData data;
+		data.type = 6;
+
+		// Set Channel
+		data.str = m_channels[m_choice];
+		data.len = (int)strlen(m_channels[m_choice]) + 1;
+
+		sendPacket.SetElement(&data, 1);
 		BYTE* p;
-		int tmpSizw = recvPacket.BuildPacket(&p);
+		int tmpSizw = sendPacket.BuildPacket(&p);
 
 		memcpy(mabiMessage.buffer, p, tmpSizw);
 		free(p);
