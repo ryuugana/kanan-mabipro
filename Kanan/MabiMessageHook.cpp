@@ -134,12 +134,11 @@ namespace kanan {
 			call    WriteToNetworkBufferHookHandler
 			POPAD
 
-			mov		edi, [ebp + 8]
-			mov		eax, ebx
-			sub     eax, edi
 			pop     edi
 			pop     esi
-			jmp     WriteToNetworkBufferHookContinueAddress
+			pop     ebx
+			leave
+			ret     0x8
 		}
 	}
 
@@ -167,11 +166,10 @@ namespace kanan {
 		mabiMessage.size = Size;
 
 		unsigned long op = GetOP(mabiMessage.buffer);
-		
 		for (uint32_t i = 0; i < mabiListeners->size(); i++) {
 			if ((*mabiListeners)[i]->m_isEnabled && (*mabiListeners)[i]->getHasSend()) {
 				for each(int listenOp in(*mabiListeners)[i]->getOp())
-					if (-1 == listenOp) {
+					if (op == listenOp || -1 == listenOp) {
 						(*mabiListeners)[i]->onSend(mabiMessage);
 						break;
 					}
@@ -191,27 +189,20 @@ namespace kanan {
 		ReadFromNetworkBuffer = (ReadFromNetworkBufferSignature)ReadFromNetworkBufferFunctionAddressLong;
 		ReadFromNetworkBufferHookContinueAddress = ReadFromNetworkBufferFunctionAddressLong + 6;
 
-		Hookjmp((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 6);
-
-		return TRUE;
+		return Hookjmp((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 6);
 	}
 
 	BOOL MabiMessageHook::PatchWriteToNetworkBuffer() {
 
-		DWORD WriteToNetworkBufferFunctionAddress = (reinterpret_cast<uintptr_t>(GetModuleHandleA("Mint.dll")) + 0x60f3f);
+		DWORD WriteToNetworkBufferFunctionAddress = (reinterpret_cast<uintptr_t>(GetModuleHandleA("Mint.dll")) + 0x60f46);
 		LONG WriteToNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&WriteToNetworkBufferFunctionAddress);
 
 		WriteToNetworkBuffer = (WriteToNetworkBufferSignature)WriteToNetworkBufferFunctionAddressLong;
-		WriteToNetworkBufferHookContinueAddress = WriteToNetworkBufferFunctionAddressLong + 9;
 
-		// Hook after a few nops to avoid mid-jmp instruction crash
-		DWORD curProtection;
-		VirtualProtect((void*)(WriteToNetworkBufferFunctionAddressLong), 3, PAGE_EXECUTE_READWRITE, &curProtection);
-		memset((void*)(WriteToNetworkBufferFunctionAddressLong), 0x90, 3);
+		// Returning at end of function
+		// No need for a continue address
 
-		Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong+3), WriteToNetworkBufferHookTrap,6);
-
-		return TRUE;
+		return Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong), WriteToNetworkBufferHookTrap,7);
 	}
 
 }
