@@ -263,6 +263,12 @@
                 "location": "Pleione.dll",
                 "pattern": "76 03 66 89 08 8B 8E 94 01",
                 "patch": "EB"
+            }, 
+            {
+                "location": "Pleione.dll",
+                "offset": 5,
+                "pattern": "0F B7 C0 3B C1 76 0A 66 8B C1",
+                "patch": "EB"
             }
         ]
     },
