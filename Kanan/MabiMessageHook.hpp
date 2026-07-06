@@ -24,6 +24,6 @@ namespace kanan {
 
 		BOOL DoInjection();
 		BOOL PatchReadFromNetworkBuffer();
-		BOOL FindWriteToNetworkBuffer();
+		BOOL PatchWriteToNetworkBuffer();
 	};
 }

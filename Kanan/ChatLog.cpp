@@ -22,6 +22,8 @@ namespace kanan {
 		m_file{},
 		m_partyMembers{}
 	{
+		m_hasSend = false;
+		m_hasRecv = true;
 		m_op.push_back(21100);
 		m_op.push_back(21101);
 		m_op.push_back(21107);

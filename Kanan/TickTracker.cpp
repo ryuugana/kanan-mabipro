@@ -24,6 +24,8 @@ namespace kanan {
 
 	TickTimer::TickTimer()
 	{
+		m_hasSend = false;
+		m_hasRecv = true;
 		m_isEnabled = false;
 		m_op.push_back(0x520E); // Tick sync packet; 0x5BD5 for durability update
 		m_op.push_back(0x909A); // Nao count login packet
