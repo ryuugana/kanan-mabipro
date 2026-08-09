@@ -17,18 +17,24 @@ namespace kanan {
 	const int PACKET_BUFFER_SIZE = 64 * 1024;
 	BYTE packetBuffer[PACKET_BUFFER_SIZE];
 	bool g_mabiMessageHook = false;
-	bool g_firstLogin = true;
 	std::vector<std::unique_ptr<MessageMod>>* mabiListeners = nullptr;
+	std::vector<MabiMessage> mabiMessages;
+	unsigned int mintAddress = NULL;
 
 	VOID ListenDownstream(LPVOID Buffer, LONG Size);
 	VOID ListenUpstream(LPVOID Buffer, LONG Size);
+	VOID InjectRecvQueue();
+	extern "C" int Recv(BYTE * buffer, unsigned int size);
 
 
 
 	MabiMessageHook::MabiMessageHook(std::vector<std::unique_ptr<MessageMod>>* mabiMods)
 	{
 		if (g_mabiMessageHook == false) {
+			mintAddress = reinterpret_cast<uintptr_t>(GetModuleHandleA("Mint.dll"));
+			mabiMessages = vector<MabiMessage>();
 			if (DoInjection()) {
+				FindMintFunctions();
 				g_mabiMessageHook = true;
 				mabiListeners = mabiMods;
 				log("MabiMessage hooked successfully.");
@@ -57,17 +63,26 @@ namespace kanan {
 	//
 	// Hook Types & Vars
 	//
+	typedef DWORD(__cdecl* mintMessageConstructorSignature)(LPVOID Buffer, LONG Size);
+	typedef DWORD(__thiscall* mintMessageDestructorSignature)(LPVOID msgPointer);
 
-	typedef DWORD(__thiscall* ReadFromNetworkBufferSignature)(LPVOID Buffer, LONG Size, LONG size);
-	typedef DWORD(__thiscall* WriteToNetworkBufferSignature)(LPVOID MsgPointer, LPVOID Buffer, LONG size);
+	typedef UINT64(__cdecl* mintGetReceiverIdSignature)();
+	typedef LPVOID(__cdecl* vmGetInstanceSignature)(UINT64 charId);
+	typedef DWORD(__thiscall* mintPostSignature)(LPVOID mintPointer);
+	
+	typedef unsigned long(__thiscall* WriteToNetworkBuffer)(LPVOID cmsg, void* param_1, unsigned long param_2);
 
-	ReadFromNetworkBufferSignature ReadFromNetworkBuffer = NULL;
-	WriteToNetworkBufferSignature WriteToNetworkBuffer = NULL;
+	mintMessageConstructorSignature mintMessageConstructor = NULL;
+	mintMessageDestructorSignature mintMessageDestructor = NULL;
+
+	mintGetReceiverIdSignature mintGetReceiverId = NULL;
+	vmGetInstanceSignature vmGetInstance = NULL;
+	mintPostSignature mintPost = NULL;
 
 	LPVOID SavedRecvPointer = NULL;
 	LPVOID SavedSendPointer = NULL;
 	LONG ReadFromNetworkBufferHookContinueAddress;
-	LONG WriteToNetworkBufferHookContinueAddress;
+	LONG RunHookContinueAddress;
 	BOOL InsideHookHandler = FALSE;
 
 	//
@@ -87,6 +102,14 @@ namespace kanan {
 		if (!InsideHookHandler) {
 			InsideHookHandler = TRUE;
 			ListenUpstream(Buffer, Size);
+			InsideHookHandler = FALSE;
+		}
+	}
+
+	void __stdcall RunHookHandler() {
+		if (!InsideHookHandler) {
+			InsideHookHandler = TRUE;
+			InjectRecvQueue();
 			InsideHookHandler = FALSE;
 		}
 	}
@@ -142,11 +165,25 @@ namespace kanan {
 		}
 	}
 
+
+	__declspec(naked) void RunHookTrap() {
+		__asm {
+			PUSHAD
+			call    RunHookHandler
+			POPAD
+
+			push esi
+			mov esi,ecx
+			mov ecx, [esi+04]
+
+			jmp     RunHookContinueAddress
+		}
+	}
+
 	VOID ListenDownstream(LPVOID Buffer, LONG Size) {
 		MabiMessage mabiMessage;
 		mabiMessage.buffer = (unsigned char*)Buffer;
 		mabiMessage.size = Size;
-
 
 		unsigned long op = GetOP(mabiMessage.buffer);
 		for (uint32_t i = 0; i < mabiListeners->size(); i++) {
@@ -158,6 +195,7 @@ namespace kanan {
 					}
 			}
 		}
+		InjectRecvQueue();
 	}
 
 	VOID ListenUpstream(LPVOID Buffer, LONG Size) {
@@ -175,6 +213,17 @@ namespace kanan {
 					}
 			}
 		}
+		InjectRecvQueue();
+	}
+
+	VOID InjectRecvQueue()
+	{
+		if (mabiMessages.size() > 0)
+		{
+			Recv(mabiMessages.back().buffer, mabiMessages.back().size);
+			free(mabiMessages.back().buffer);
+			mabiMessages.pop_back();
+		}
 	}
 
 	//
@@ -185,24 +234,95 @@ namespace kanan {
 		std::optional<uintptr_t> ReadFromNetworkBufferFunctionAddressPtr = kanan::scan("Mint.dll", "55 8B EC 83 EC 1C 53 8B D9");
 		DWORD ReadFromNetworkBufferFunctionAddress = *ReadFromNetworkBufferFunctionAddressPtr;
 		LONG ReadFromNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&ReadFromNetworkBufferFunctionAddress);
-
-		ReadFromNetworkBuffer = (ReadFromNetworkBufferSignature)ReadFromNetworkBufferFunctionAddressLong;
 		ReadFromNetworkBufferHookContinueAddress = ReadFromNetworkBufferFunctionAddressLong + 6;
 
 		return Hookjmp((void*)(ReadFromNetworkBufferFunctionAddressLong), ReadFromNetworkBufferHookTrap, 6);
 	}
 
 	BOOL MabiMessageHook::PatchWriteToNetworkBuffer() {
-
-		DWORD WriteToNetworkBufferFunctionAddress = (reinterpret_cast<uintptr_t>(GetModuleHandleA("Mint.dll")) + 0x60f46);
+		int hookOffset = 385;
+		DWORD WriteToNetworkBufferFunctionAddress = (mintAddress + 0x60dc5);
 		LONG WriteToNetworkBufferFunctionAddressLong = *(LONG*)(void*)(&WriteToNetworkBufferFunctionAddress);
-
-		WriteToNetworkBuffer = (WriteToNetworkBufferSignature)WriteToNetworkBufferFunctionAddressLong;
 
 		// Returning at end of function
 		// No need for a continue address
 
-		return Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong), WriteToNetworkBufferHookTrap,7);
+		return Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong + hookOffset), WriteToNetworkBufferHookTrap,7);
 	}
 
+	BOOL MabiMessageHook::PatchRun() {
+		DWORD RunFunctionAddress = (mintAddress + 0x66a9b);
+		LONG RunFunctionAddressLong = *(LONG*)(void*)(&RunFunctionAddress);
+		RunHookContinueAddress = RunFunctionAddressLong + 6;
+
+		return Hookjmp((void*)(RunFunctionAddressLong), RunHookTrap, 6);
+	}
+
+	void MabiMessageHook::FindMintFunctions() {
+		// typedef DWORD(__thiscall* mintMessageConstructorSignature)(LPVOID cmsg, LPVOID Buffer, LONG Size);
+		DWORD mintMessageConsturctorFunctionAddress = (mintAddress + 0x61666);
+		LONG mintMessageConsturctorFunctionAddressLong = *(LONG*)(void*)(&mintMessageConsturctorFunctionAddress);
+
+		mintMessageConstructor = (mintMessageConstructorSignature)mintMessageConsturctorFunctionAddressLong;
+
+		// typedef DWORD(__thiscall* mintMessageDestructorSignature)(LPVOID mintPointer);
+		DWORD mintMessageDestructorFunctionAddress = (mintAddress + 0x6170a);
+		LONG mintMessageDestructorFunctionAddressLong = *(LONG*)(void*)(&mintMessageDestructorFunctionAddress);
+
+		mintMessageDestructor = (mintMessageDestructorSignature)mintMessageDestructorFunctionAddressLong;
+		
+		// typedef DWORD(__thiscall* mintGetReceiverIdSignature)(LPVOID mintPointer);
+		DWORD mintGetReceiverIdAddress = (mintAddress + 0x60d86);
+		LONG mintGetReceiverIdAddressLong = *(LONG*)(void*)(&mintGetReceiverIdAddress);
+
+		mintGetReceiverId = (mintGetReceiverIdSignature)mintGetReceiverIdAddressLong;
+
+		// typedef LPVOID(__thiscall* vmGetInstanceSignature)();
+		DWORD vmGetInstanceFunctionAddress = (mintAddress + 0x12be);
+		LONG vmGetInstanceFunctionAddressLong = *(LONG*)(void*)(&vmGetInstanceFunctionAddress);
+
+		vmGetInstance = (vmGetInstanceSignature)vmGetInstanceFunctionAddressLong;
+
+		// typedef void(__fastcall* mintPostSignature)(LPVOID mintPointer, LONG Unknown, LPVOID MsgMember1, LPVOID MsgMember2, LPVOID MsgMember3);
+		DWORD mintPostFunctionAddress = (mintAddress + 0x65a7a);
+		LONG mintPostFunctionAddressLong = *(LONG*)(void*)(&mintPostFunctionAddress);
+
+		mintPost = (mintPostSignature)mintPostFunctionAddressLong;
+		
+	}
+
+	void RecvQ(MabiMessage mabiMessage)
+	{
+		mabiMessages.push_back(mabiMessage);
+	}
+
+	__declspec(naked) int Recv(BYTE* buffer, unsigned int size)
+	{
+		__asm
+		{
+			PUSHAD
+			SUB        ESP, 0xc
+			MOV        ECX, ESP
+			MOV        EAX, dword ptr[ESP + 0x34]
+			OR         EAX, 0x80000000
+
+			PUSH       EAX
+			PUSH       dword ptr[ESP + 0x34]
+			CALL       mintMessageConstructor
+
+			MOV        ECX, ESP
+			CALL       mintGetReceiverId
+
+			PUSH       EDX
+			PUSH       EAX
+			CALL       vmGetInstance
+
+			MOV        ECX, EAX
+			CALL       mintPost
+
+			MOV        dword ptr[ESP + 0x1c], EAX
+			POPAD
+			RET        0x8
+		}
+	}
 }

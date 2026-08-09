@@ -25,5 +25,9 @@ namespace kanan {
 		BOOL DoInjection();
 		BOOL PatchReadFromNetworkBuffer();
 		BOOL PatchWriteToNetworkBuffer();
+		BOOL PatchRun();
+		void FindMintFunctions();
 	};
+
+	void RecvQ(MabiMessage);
 }
