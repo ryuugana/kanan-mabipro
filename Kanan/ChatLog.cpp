@@ -165,7 +165,11 @@ namespace kanan {
 				break;
 			}
 			if (ss.str().size() > 0)
-				addChatLog(ss.str().c_str());
+			{
+				std::string log = ss.str();
+				std::replace(log.begin(), log.end(), '%', 'p');
+				addChatLog(log.c_str());
+			}
 		}
 		catch (exception e) {
 		}
