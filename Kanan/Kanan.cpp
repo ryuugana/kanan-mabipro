@@ -36,8 +36,9 @@ namespace kanan {
 	Hotkey  m_housingKey;
 	Hotkey  m_astralKey;
 
-    Kanan::Kanan(string path)
-        : m_path{ move(path) },
+    Kanan::Kanan(string path) :
+        characterId{ 0 },
+        m_path{ move(path) },
         m_uiConfigPath{ m_path + "/ui.ini" },
         m_modConfigPath{ m_path + "/config.txt" },
         m_batchPath{ m_path + "/ExtractKanan.bat" },
