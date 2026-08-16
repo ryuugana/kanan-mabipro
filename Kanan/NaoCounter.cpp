@@ -26,7 +26,7 @@ namespace kanan {
 	}
 
 	void NaoCounter::onUI() {
-		if (ImGui::CollapsingHeader("Nao Counter")) {
+		if (ImGui::TreeNode("Nao Counter")) {
 			ImGui::TextWrapped("This mod allows you to see the nao revival counter in a separate window.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TextWrapped("Designed to be used with AstralWorld's timer mod, which breaks viewing Nao's Support from the clock.");
@@ -37,6 +37,7 @@ namespace kanan {
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
 			ImGui::Checkbox("Enable Nao Counter", &m_isEnabled);
+			ImGui::TreePop();
 		}
 	}
 

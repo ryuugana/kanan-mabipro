@@ -15,10 +15,11 @@ namespace kanan {
 	}
 
 	void MessageViewer::onUI() {
-		if (ImGui::CollapsingHeader("Message Viewer")) {
+		if (ImGui::TreeNode("Message Viewer")) {
 			ImGui::TextWrapped("This mod was created for development purposes and sends all incoming messages to logs");
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 			ImGui::Checkbox("Enable Message Viewer", &m_isEnabled);
+			ImGui::TreePop();
 		}
 	}
 

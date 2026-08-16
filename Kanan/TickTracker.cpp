@@ -47,7 +47,7 @@ namespace kanan {
 	}
 
 	void TickTimer::onUI() {
-		if (ImGui::CollapsingHeader("Tick Timer")) {
+		if (ImGui::TreeNode("Tick Timer")) {
 			ImGui::TextWrapped("This mod shows the time until the next tick in seconds in a separate window.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TextWrapped("The window can be moved by dragging it to the desired location.");
@@ -56,6 +56,7 @@ namespace kanan {
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
 			ImGui::Checkbox("Enable Tick Timer", &m_isEnabled);
+			ImGui::TreePop();
 		}
 	}
 

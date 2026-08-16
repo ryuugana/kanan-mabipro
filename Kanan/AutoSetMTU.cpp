@@ -49,7 +49,7 @@ namespace kanan {
     }
 
     void AutoSetMTU::onUI() {
-        if (ImGui::CollapsingHeader("Auto Set MTU")) {
+        if (ImGui::TreeNode("Auto Set MTU")) {
             ImGui::Text("This mod automatically sets your MTU when you login or change channels.");
             ImGui::Text("This can result in a more responsive connection with the game server, reducing apparent lag.");
             ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
@@ -60,6 +60,7 @@ namespace kanan {
             ImGui::InputText("Interface", m_interface.data(), m_interface.size());
             ImGui::SliderInt("Lowered MTU", &m_lowMTU, 0, 1500);
             ImGui::SliderInt("Normal MTU", &m_normalMTU, 0, 1500);
+            ImGui::TreePop();
         }
     }
 

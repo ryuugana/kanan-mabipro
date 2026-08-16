@@ -1332,12 +1332,14 @@ namespace kanan {
             }
         }
 
-        for (const auto& mod : m_mods.m_messageMods) {
-            mod->onUI();
-        }
+        if (ImGui::CollapsingHeader("Configurable")) {
+            for (const auto& mod : m_mods.m_messageMods) {
+                mod->onUI();
+            }
 
-        for (const auto& mod : m_mods.getMods()) {
-            mod->onUI();
+            for (const auto& mod : m_mods.getMods()) {
+                mod->onUI();
+            }
         }
 
         ImGui::End();

@@ -24,7 +24,7 @@ namespace kanan {
 	}
 
 	void AutoLoginChannel::onUI() {
-		if (ImGui::CollapsingHeader("Auto Login Channel")) {
+		if (ImGui::TreeNode("Auto Login Channel")) {
 			ImGui::TextWrapped("This mod will automatically log you into the chosen channel.\n"
 				"This will ignore the channel choice in game and force the channel below.");
 
@@ -34,6 +34,7 @@ namespace kanan {
 			if (ImGui::Combo("Channel", &m_choice, m_channels.data(), m_channels.size())) {
 				m_isEnabled = m_choice > 0;
 			}
+			ImGui::TreePop();
 		}
 	}
 

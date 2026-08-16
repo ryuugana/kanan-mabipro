@@ -38,12 +38,13 @@ namespace kanan {
     }
 
     void FieldOfView::onUI() {
-        if (ImGui::CollapsingHeader("Field Of View")) {
+        if (ImGui::TreeNode("Field Of View")) {
             ImGui::Checkbox("Enable Field Of View", &m_isEnabled);
             ImGui::SliderFloat("FOV", &m_fov, 10.0f, 120.0f, "%.0f");
             if (ImGui::Button("Reset")) {
                 m_fov = 45.0f;
             }
+            ImGui::TreePop();
         }
     }
 

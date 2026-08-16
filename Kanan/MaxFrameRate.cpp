@@ -55,7 +55,7 @@ namespace kanan {
 	// UI Functions
 
 	void MaxFrameRate::onUI() {
-		if (ImGui::CollapsingHeader("Max Frame Rate")) {
+		if (ImGui::TreeNode("Max Frame Rate")) {
 			ImGui::TextWrapped("Max Frame Rate");
 			ImGui::InputInt("FPS", &m_maxFPS, 1, 10);
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
@@ -65,6 +65,7 @@ namespace kanan {
 			ImGui::TextWrapped("Set the max frame rate for Mabinogi. Set to 0 to disable.");
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 			ImGui::TextWrapped("Background frame rate will limit the frame rate of Mabinogi while another window is focused.");
+			ImGui::TreePop();
 		}
 
 		if (m_maxFPS || m_maxBackgroundFPS)
