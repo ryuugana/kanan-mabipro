@@ -220,9 +220,12 @@ namespace kanan {
 	{
 		if (mabiMessages.size() > 0)
 		{
-			Recv(mabiMessages.back().buffer, mabiMessages.back().size);
-			free(mabiMessages.back().buffer);
-			mabiMessages.pop_back();
+			for each(MabiMessage msg in mabiMessages)
+			{
+				Recv(msg.buffer, msg.size);
+				free(msg.buffer);
+			}
+			mabiMessages.clear();
 		}
 	}
 
@@ -291,7 +294,7 @@ namespace kanan {
 		
 	}
 
-	void RecvQ(MabiMessage mabiMessage)
+	void AddToRecvQ(MabiMessage mabiMessage)
 	{
 		mabiMessages.push_back(mabiMessage);
 	}

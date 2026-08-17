@@ -28,6 +28,4 @@ namespace kanan {
 		BOOL PatchRun();
 		void FindMintFunctions();
 	};
-
-	void RecvQ(MabiMessage);
 }
