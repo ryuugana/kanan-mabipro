@@ -9,6 +9,10 @@ A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) that p
 * Press the INSERT key on your keyboard while in game to enable and disable mods
 * Pressing INSERT to close Kanan will also save your mod selection
 
+## Verification
+* All release builds are built automatically using a build pipeline. This ensures that the library built is using code from the repository. The release can be verified by comparing the hash of the release with the hash of the upload from the pipeline.
+* To check for updates, Kanan compares its local version with the remote version.h file on GitHub, then downloads the latest release directly from the repository's latest release.
+
 ## Requirements
 You need the Microsoft Visual C++ Redistributable for Visual Studio 2017 available at the bottom of [this page](https://www.visualstudio.com/downloads/). Make sure to choose the x86 version of the download!
 
