@@ -17,7 +17,7 @@ namespace kanan {
 	}
 
 	void ScrollingMessageToChat::onUI() {
-		if (ImGui::CollapsingHeader("Scrolling Messages To Chat")) {
+		if (ImGui::TreeNode("Scrolling Messages To Chat")) {
 			ImGui::TextWrapped("This mod moves scrolling messages from the top of the screen to the middle of the screen and chat as <System> messages.");
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 			if (ImGui::Checkbox("Enable Auction Messages To Chat", &m_isAuctionEnabled))
@@ -28,6 +28,7 @@ namespace kanan {
 			ImGui::BeginDisabled(!m_isFieldBossEnabled);
 			ImGui::Checkbox("Enable Field Boss Notification", &m_isFieldBNotifyEnabled);
 			ImGui::EndDisabled();
+			ImGui::TreePop();
 		}
 	}
 

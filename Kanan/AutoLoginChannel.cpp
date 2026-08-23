@@ -2,8 +2,12 @@
 #include "MabiPacket.h"
 #include "imgui.h"
 #include "Log.hpp"
+#include "MabiMessageHook.hpp"
+#include "Game.hpp"
+#include "Kanan.hpp"
 
 namespace kanan {
+	bool sendTest = false;
 	int AutoLoginChannel::m_choice = 0;
 
 	AutoLoginChannel::AutoLoginChannel()
@@ -20,7 +24,7 @@ namespace kanan {
 	}
 
 	void AutoLoginChannel::onUI() {
-		if (ImGui::CollapsingHeader("Auto Login Channel")) {
+		if (ImGui::TreeNode("Auto Login Channel")) {
 			ImGui::TextWrapped("This mod will automatically log you into the chosen channel.\n"
 				"This will ignore the channel choice in game and force the channel below.");
 
@@ -30,6 +34,7 @@ namespace kanan {
 			if (ImGui::Combo("Channel", &m_choice, m_channels.data(), m_channels.size())) {
 				m_isEnabled = m_choice > 0;
 			}
+			ImGui::TreePop();
 		}
 	}
 
@@ -50,19 +55,22 @@ namespace kanan {
 
 		CMabiPacket sendPacket;
 		sendPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
+		
+		if (strcmp("Housing", sendPacket.GetElement(1)->str) != 0)
+		{
+			PacketData data;
+			data.type = 6;
 
-		PacketData data;
-		data.type = 6;
+			// Set Channel
+			data.str = m_channels[m_choice];
+			data.len = (int)strlen(m_channels[m_choice]) + 1;
 
-		// Set Channel
-		data.str = m_channels[m_choice];
-		data.len = (int)strlen(m_channels[m_choice]) + 1;
+			sendPacket.SetElement(&data, 1);
+			BYTE* p;
+			int tmpSizw = sendPacket.BuildPacket(&p);
 
-		sendPacket.SetElement(&data, 1);
-		BYTE* p;
-		int tmpSizw = sendPacket.BuildPacket(&p);
-
-		memcpy(mabiMessage.buffer, p, tmpSizw);
-		free(p);
+			memcpy(mabiMessage.buffer, p, tmpSizw);
+			free(p);
+		}
 	}
 }

@@ -44,10 +44,11 @@ namespace kanan {
     }
 
     void DisableNagle::onUI() {
-        if (ImGui::CollapsingHeader("Disable Nagle")) {
+        if (ImGui::TreeNode("Disable Nagle")) {
             ImGui::Text("Disabling the nagle algorithm will reduce apparent lag to the server.");
             ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
             ImGui::Checkbox("Enable Disable Nagle", &m_isEnabled);
+            ImGui::TreePop();
         }
     }
 

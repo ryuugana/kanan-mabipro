@@ -3,7 +3,7 @@
 
 #include "Log.hpp"
 #include "Game.hpp"
-#include <Module.cpp>
+#include <Module.hpp>
 
 using namespace std;
 
@@ -15,6 +15,13 @@ namespace kanan {
         m_accountPtr{nullptr}
     {
         log("Entering Game constructor.");
+
+        LPVOID CPleioneInstance = NULL;
+
+        // CPleione instance
+        auto pleioneAddress = getModuleBase("Pleione.dll");
+        DWORD CPleioneInstanceAddress = (*pleioneAddress + 0x5becec);
+        CPleioneInstance = (void*)*(LONG*)(void*)(&CPleioneInstanceAddress);
 
         // Find the games global renderer pointer.
         auto rendererAddress = getModuleBase("Renderer2.dll");

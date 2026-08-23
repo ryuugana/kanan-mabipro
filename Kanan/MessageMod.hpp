@@ -29,4 +29,6 @@ namespace kanan {
         bool            m_hasSend;
         bool            m_hasRecv;
     };
+
+    void AddToRecvQ(MabiMessage);
 }

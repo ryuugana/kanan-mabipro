@@ -1,12 +1,14 @@
 #pragma once
 
+#include <chrono>
+
 #include "MessageMod.hpp"
 
 
 namespace kanan {
-	class TickTimer : public MessageMod {
+	class DpsMeter : public MessageMod {
 	public:
-		TickTimer();
+		DpsMeter();
 
 		void onUI() override;
 
@@ -20,6 +22,9 @@ namespace kanan {
 	private:
 		void drawWindow();
 
-		UINT_PTR m_timerId;
+		std::chrono::time_point<std::chrono::steady_clock> m_startTime;
+		std::chrono::time_point<std::chrono::steady_clock> m_lastTime;
+		UINT64 m_dps;
+		int m_timeout;
 	};
 }

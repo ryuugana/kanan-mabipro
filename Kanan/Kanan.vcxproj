@@ -138,6 +138,8 @@
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
     <ClCompile Include="DisableFlashy.cpp" />
+    <ClCompile Include="DpsMeter.cpp" />
+    <ClCompile Include="GetInfo.cpp" />
     <ClCompile Include="MaintLogin.cpp" />
     <ClCompile Include="MaintLogin.hpp" />
     <ClCompile Include="MaxFrameRate.cpp" />
@@ -192,6 +194,8 @@
     <ClInclude Include="ChangeChannelHotkey.hpp" />
     <ClInclude Include="dirent.h" />
     <ClInclude Include="DisableFlashy.h" />
+    <ClInclude Include="DpsMeter.hpp" />
+    <ClInclude Include="GetInfo.hpp" />
     <ClInclude Include="Hotkey.hpp" />
     <ClInclude Include="ChatLog.hpp" />
     <ClInclude Include="ChooseLoginNode.hpp" />

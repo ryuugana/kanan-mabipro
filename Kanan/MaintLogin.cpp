@@ -15,7 +15,7 @@ namespace kanan {
 	}
 
 	void MaintLogin::onUI() {
-		if (ImGui::CollapsingHeader("Maintenance Login")) {
+		if (ImGui::TreeNode("Maintenance Login")) {
 			ImGui::TextWrapped("This mod ignores the server status when logging in.\n"
 				"This will allow you to login during channel maintenance.\n\n"
 				"Note: Only works with GM accounts, mainly used for development.");
@@ -24,6 +24,7 @@ namespace kanan {
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
 			ImGui::Checkbox("Enabled", &m_isEnabled);
+			ImGui::TreePop();
 		}
 	}
 

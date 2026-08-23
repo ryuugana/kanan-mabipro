@@ -99,7 +99,7 @@ namespace kanan {
     }
 
     void BorderlessWindow::onUI() {
-        if (ImGui::CollapsingHeader("Borderless Window")) {
+        if (ImGui::TreeNode("Borderless Window")) {
             ImGui::Combo("Style", &m_styleChoice, "Disabled\0Borderless Window\0Borderless Fullscreen\0Custom\0\0");
 
             if (m_styleChoice == 3) {
@@ -122,6 +122,7 @@ namespace kanan {
             if (ImGui::Button("Apply")) {
                 apply();
             }
+            ImGui::TreePop();
         }
     }
 

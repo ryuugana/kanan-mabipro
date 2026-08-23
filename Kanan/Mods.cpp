@@ -26,6 +26,8 @@
 // Message Mods
 #include "AutoLoginChannel.hpp"
 #include "BlockSpam.hpp"
+#include "DpsMeter.hpp"
+#include "GetInfo.hpp"
 #include "MessageViewer.hpp"
 #include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
@@ -113,6 +115,8 @@ namespace kanan {
 
         addMessageMod(make_unique<AutoLoginChannel>());
         addMessageMod(make_unique<BlockSpam>());
+        addMessageMod(make_unique<DpsMeter>());
+        addMessageMod(make_unique<GetInfo>());
 #ifdef TEST
         // There is only one node left (the slowest one)
         addMessageMod(make_unique<ChooseLoginNode>());

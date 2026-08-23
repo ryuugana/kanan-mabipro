@@ -18,7 +18,7 @@ namespace kanan {
 
 	void BlockSpam::onUI() 
 	{
-		if (ImGui::CollapsingHeader("Block Spam")) 
+		if (ImGui::TreeNode("Block Spam"))
 		{
 			if (ImGui::TreeNode("Exploration Cap"))
 			{
@@ -53,6 +53,7 @@ namespace kanan {
 				ImGui::Checkbox("Enable Block >skill Spam", &m_isBSEnabled);
 				ImGui::TreePop();
 			}
+			ImGui::TreePop();
 		}
 	}
 

@@ -16,7 +16,7 @@ namespace kanan {
 	}
 
 	void ChooseLoginNode::onUI() {
-		if (ImGui::CollapsingHeader("Choose Node")) {
+		if (ImGui::TreeNode("Choose Node")) {
 			ImGui::TextWrapped("This mod allows you to choose which node to connect to on login and changing channels.\n\n"
 				"This will overwrite the >cc command if used and >server should always show the server chosen.");
 
@@ -27,6 +27,7 @@ namespace kanan {
 			if (ImGui::Combo("Node", &m_choice, nodes, IM_ARRAYSIZE(nodes))) {
 				m_isEnabled = m_choice > 0;
 			}
+			ImGui::TreePop();
 		}
 	}
 

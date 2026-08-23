@@ -39,6 +39,8 @@ namespace kanan {
             return m_isUIOpen;
         }
 
+        UINT64 characterId;
+
     private:
         std::string m_path;
         std::string m_uiConfigPath;

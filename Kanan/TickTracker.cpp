@@ -3,6 +3,8 @@
 #include "imgui.h"
 #include "Log.hpp"
 
+#include "Kanan.hpp"
+
 namespace kanan {
 	// Seconds between each tick
 	unsigned int g_tickTimerSeconds;
@@ -28,11 +30,9 @@ namespace kanan {
 		m_hasRecv = true;
 		m_isEnabled = false;
 		m_op.push_back(0x520E); // Tick sync packet; 0x5BD5 for durability update
-		m_op.push_back(0x909A); // Nao count login packet
 
 		g_tickTimerSeconds = 0;
 		m_timerId = NULL;
-		m_charId = 0;
 	}
 
 	void TickTimer::drawWindow() {
@@ -47,7 +47,7 @@ namespace kanan {
 	}
 
 	void TickTimer::onUI() {
-		if (ImGui::CollapsingHeader("Tick Timer")) {
+		if (ImGui::TreeNode("Tick Timer")) {
 			ImGui::TextWrapped("This mod shows the time until the next tick in seconds in a separate window.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TextWrapped("The window can be moved by dragging it to the desired location.");
@@ -56,6 +56,7 @@ namespace kanan {
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
 			ImGui::Checkbox("Enable Tick Timer", &m_isEnabled);
+			ImGui::TreePop();
 		}
 	}
 
@@ -78,27 +79,15 @@ namespace kanan {
 	void TickTimer::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
-		if (recvPacket.GetReciverId() < 0x10010000000000)
+		if (m_timerId == NULL)
 		{
-			// Find out who we are on login
-			// Move this to a global mod if our character ID is needed elsewhere
-			if (recvPacket.GetOP() == 0x909A)
-			{
-				m_charId = recvPacket.GetReciverId();
-			}
+			m_timerId = SetTimer(NULL, m_timerId, 1000, TickTimerProc);
+		}
 
-			// Create timer with 1 second interval 
-			// Use TickTimerProc callback to update remaining seconds in window
-			if (m_timerId == NULL)
-			{
-				m_timerId = SetTimer(NULL, m_timerId, 1000, TickTimerProc);
-			}
-
-			// Set max time for tick countdown if the packet is ours
-			if (recvPacket.GetReciverId() == m_charId)
-			{
-				g_tickTimerSeconds = g_tickTimerMax;
-			}
+		// Set max time for tick countdown if the packet is ours
+		if (recvPacket.GetReciverId() == g_kanan->characterId)
+		{
+			g_tickTimerSeconds = g_tickTimerMax;
 		}
 	}
 }
