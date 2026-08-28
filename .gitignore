@@ -7,3 +7,5 @@ build/
 
 *.orig
 *.user
+/Update/bin/Debug
+/Update/obj/Debug
