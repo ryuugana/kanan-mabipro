@@ -9,6 +9,7 @@
 #include <Config.hpp>
 #include <filesystem>
 #include <iostream>
+#include <Shlwapi.h>
 #include <String.hpp>
 #include <Utility.hpp>
 
@@ -18,6 +19,7 @@
 #include "MabiMessageHook.hpp"
 #include "../Kanan/metrics_gui/metrics_gui.h"
 #include "Hotkey.hpp"
+#include "HttpCore.hpp"
 #include "Version.h"
 
 using namespace std;
@@ -41,8 +43,8 @@ namespace kanan {
         m_path{ move(path) },
         m_uiConfigPath{ m_path + "/ui.ini" },
         m_modConfigPath{ m_path + "/config.txt" },
-        m_batchPath{ m_path + "/ExtractKanan.bat" },
-        m_updatePath{ m_path + "/KananUpdate.zip" },
+        m_updateExecPath{ m_path + "/Update.exe" },
+        m_updateZipPath{ m_path + "/KananUpdater.zip" },
         m_astralPath{ m_path + "/astral.ini" },
         m_d3d9Hook{ nullptr },
         m_dinputHook{ nullptr },
@@ -405,7 +407,7 @@ namespace kanan {
         memset(szBuffer, 0, size);
 
         // Delete previously created batch file
-        if (std::filesystem::exists(m_batchPath)) std::filesystem::remove(m_batchPath);
+        if (std::filesystem::exists(m_updateExecPath)) std::filesystem::remove(m_updateExecPath);
 
         if (URLOpenBlockingStream(NULL, L"https://raw.githubusercontent.com/ryuugana/kanan-mabipro/master/Kanan/Version.h", &lpSrc, 0, NULL) != S_OK)
         {
@@ -433,31 +435,73 @@ namespace kanan {
 
     void Kanan::updateKanan()
     {
-        URLDownloadToFileA(NULL, "https://github.com/ryuugana/kanan-mabipro/releases/latest/download/KananMabiPro.zip", m_updatePath.c_str(), 0, NULL);
+        std::string fileHash = "";
+        std::string fileName = PathFindFileNameA(m_updateZipPath.data());
 
-        std::ofstream batch_file(m_batchPath);
-        batch_file <<
-            "echo \"Extracting Kanan Update\"\n"
-            "timeout /t 5 /nobreak\n"
-            "tar -xf KananUpdate.zip\n"
-            "del KananUpdate.zip\n"
-            "MabiProLauncher22.exe\n";
-        batch_file.close();
+        std::string fileURL = "https://github.com/ryuugana/kanan-mabipro/releases/latest/download/";
+        fileURL.append(fileName);
 
-        PROCESS_INFORMATION processInformation = { 0 };
-        STARTUPINFOA startupInfo = { 0 };
-        BOOL result = CreateProcessA(NULL,
-            const_cast<char*>(m_batchPath.c_str()),
-            NULL,
-            NULL,
-            FALSE,
-            CREATE_NO_WINDOW,
-            NULL,
-            NULL,
-            &startupInfo,
-            &processInformation);
+        log("Grabbing Kanan updater from latest release: ");
 
-        if(result) exit(0);
+        std::string updateHash = GetKananReleaseHash(fileName);
+
+        while (updateHash.length() < 1)
+        {
+            log("Failed to obtain hash, retrying...");
+            Sleep(1000);
+            updateHash = GetKananReleaseHash(fileName);
+        }
+
+        log("Obtained hash: %s", updateHash);
+
+
+        log("Downloading Kanan updater zip to %s", m_updateZipPath);
+
+        log("Comparing downloaded file hash to actual file hash: ");
+
+        while (updateHash != fileHash)
+        {
+            if (!fileHash.empty())
+            {
+                log("Failed with hash - %s", fileHash);
+                log("Retrying download and verifying hash : ");
+                Sleep(1000);
+            }
+            URLDownloadToFileA(NULL, fileURL.c_str(), m_updateZipPath.c_str(), 0, NULL);
+            fileHash = sha256_file(m_updateZipPath);
+        }
+
+        log("Success");
+
+        log("Extracting update: ");
+
+        if (unzip_file(m_updateZipPath, m_path))
+        {
+            log("Success");
+        }
+        else
+        {
+            log("Failed");
+        }
+
+        log("Update complete - Relaunching client.exe!");
+
+        if (start_application(m_updateExecPath))
+        {
+            if (GetLastError() != 0)
+            {
+                log("Failed to relaunch patcher. Error: %d", GetLastError());
+            }
+            else
+            {
+                exit(0);
+            }
+        }
+        else
+        {
+            exit(0);
+        }
+
         log("Failed to update Kanan.");
     }
 
@@ -1390,7 +1434,9 @@ namespace kanan {
         ImGui::Dummy(ImVec2{ 30.0f, 30.0f });
 
         if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
-            updateKanan();
+            m_isLogOpen = true;
+            m_isUpdate = false;
+            m_thread = std::thread(&Kanan::updateKanan, this);
         }
 
         ImGui::Dummy(ImVec2{ 5.0f, 5.0f });

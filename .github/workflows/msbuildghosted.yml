@@ -42,7 +42,7 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
 
-    - name: Upload Artifacts
+    - name: Upload Kanan
       uses: actions/upload-artifact@v4
       with:
         name: KananMabiPro
@@ -50,3 +50,10 @@ jobs:
           Release\bdcap32.dll
           Release\bdcap23.dll
           Release\Patches.json
+
+    - name: Upload Updater
+      uses: actions/upload-artifact@v4
+      with:
+        name: KananUpdater
+        path: |
+          Release\Update.exe
