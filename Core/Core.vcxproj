@@ -17,6 +17,7 @@
   <ItemGroup>
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="FunctionHook.cpp" />
+    <ClCompile Include="HttpCore.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Module.cpp" />
     <ClCompile Include="Patch.cpp" />
@@ -33,6 +34,7 @@
   <ItemGroup>
     <ClInclude Include="Config.hpp" />
     <ClInclude Include="FunctionHook.hpp" />
+    <ClInclude Include="HttpCore.hpp" />
     <ClInclude Include="Memory.hpp" />
     <ClInclude Include="Module.hpp" />
     <ClInclude Include="Patch.hpp" />
@@ -108,7 +110,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/MinHook;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/MinHook;$(SolutionDir)Dependencies/Json%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeTypeInfo>
       </RuntimeTypeInfo>
@@ -127,7 +129,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/MinHook;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies/MinHook;$(SolutionDir)Dependencies/miniz;$(SolutionDir)Dependencies/Json;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeTypeInfo>
       </RuntimeTypeInfo>

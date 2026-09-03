@@ -1,5 +1,8 @@
+#include <filesystem>
+#include <Shlwapi.h>
 #include <Windows.h>
 
+#include "miniz.h"
 #include "Utility.hpp"
 
 using namespace std;
@@ -43,5 +46,104 @@ namespace kanan {
 
     string hexify(const vector<uint8_t>& data) {
         return hexify(data.data(), data.size());
+    }
+
+    std::string sha256_file(const std::string& path) {
+        HANDLE hFile = CreateFileA(path.c_str(), GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hFile == INVALID_HANDLE_VALUE) return "Failed to open file " + path;
+
+        HCRYPTPROV hProv;
+        HCRYPTHASH hHash;
+
+        // Acquire context and create hash
+        if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT)) {
+            CloseHandle(hFile);
+            return "Failed to aquire crypt context";
+        }
+        if (!CryptCreateHash(hProv, CALG_SHA_256, 0, 0, &hHash)) {
+            CryptReleaseContext(hProv, 0);
+            CloseHandle(hFile);
+            return "Failed to create hash";
+        }
+
+        BYTE buffer[4096];
+        DWORD dwRead;
+        while (ReadFile(hFile, buffer, sizeof(buffer), &dwRead, NULL) && dwRead > 0) {
+            CryptHashData(hHash, buffer, dwRead, 0);
+        }
+
+        DWORD dwHashLen = 32;
+        BYTE hashValue[32];
+        CryptGetHashParam(hHash, HP_HASHVAL, hashValue, &dwHashLen, 0);
+
+        std::string hexStr = hexify(hashValue, dwHashLen);
+
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        CloseHandle(hFile);
+        return hexStr;
+    }
+
+    bool unzip_file(const std::string& zipFilePath, const std::string& outputDir) 
+    {
+        mz_zip_archive zipArchive;
+        memset(&zipArchive, 0, sizeof(zipArchive));
+
+        if (!mz_zip_reader_init_file(&zipArchive, zipFilePath.c_str(), 0)) {
+            return false;
+        }
+
+        int fileCount = (int)mz_zip_reader_get_num_files(&zipArchive);
+        for (int i = 0; i < fileCount; ++i) {
+            mz_zip_archive_file_stat fileStat;
+            if (mz_zip_reader_file_stat(&zipArchive, i, &fileStat)) {
+                std::string outputPath = outputDir + "/" + fileStat.m_filename;
+                if (!mz_zip_reader_extract_to_file(&zipArchive, i, outputPath.c_str(), 0)) {
+                    return false;
+                }
+            }
+        }
+
+        mz_zip_reader_end(&zipArchive);
+
+        return true;
+    }
+
+    // Application argumenst can be passed in directly to appPath
+    bool start_application(std::string appPath)
+    {
+        std::filesystem::path path(appPath);
+
+        PROCESS_INFORMATION processInformation = { 0 };
+        STARTUPINFOA startupInfo = { 0 };
+        startupInfo.cb = sizeof(STARTUPINFOA);
+        BOOL result = CreateProcessA(
+            NULL,
+            path.u8string().data(),
+            NULL,
+            NULL,
+            FALSE,
+            NULL,
+            NULL,
+            path.parent_path().u8string().data(),
+            &startupInfo,
+            &processInformation);
+
+        return result;
+    }
+
+    bool launch_client(std::string mabiFolderPath)
+    {
+        std::string clientLaunch = mabiFolderPath;
+        if (std::filesystem::exists(clientLaunch + "\\MabiModManager.exe"))
+        {
+            clientLaunch.append("\\MabiModManager.exe");
+        }
+        else
+        {
+            clientLaunch.append("\\MabiProLauncher22.exe");
+        }
+
+        return start_application(clientLaunch);
     }
 }
