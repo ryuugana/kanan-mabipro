@@ -84,6 +84,7 @@ namespace kanan {
         return hexStr;
     }
 
+    // Extracts all files and deletes zip file if successful
     bool unzip_file(const std::string& zipFilePath, const std::string& outputDir) 
     {
         mz_zip_archive zipArchive;
@@ -105,6 +106,8 @@ namespace kanan {
         }
 
         mz_zip_reader_end(&zipArchive);
+        
+        if (std::filesystem::exists(zipFilePath)) std::filesystem::remove(zipFilePath);
 
         return true;
     }
