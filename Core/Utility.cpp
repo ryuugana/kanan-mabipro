@@ -109,7 +109,7 @@ namespace kanan {
         return true;
     }
 
-    // Application argumenst can be passed in directly to appPath
+    // Application arguments can be passed in directly to appPath
     bool start_application(std::string appPath)
     {
         std::filesystem::path path(appPath);
@@ -132,6 +132,7 @@ namespace kanan {
         return result;
     }
 
+    // Provide Mabinogi root folder
     bool launch_client(std::string mabiFolderPath)
     {
         std::string clientLaunch = mabiFolderPath;

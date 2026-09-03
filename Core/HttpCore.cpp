@@ -67,7 +67,7 @@ namespace kanan
         return json;
     }
 
-    std::string GetKananReleaseHash() {
+    std::string GetKananReleaseHash(std::string assetName) {
         std::string hash = "";
         try
         {
@@ -77,7 +77,7 @@ namespace kanan
             std::cout << j.at("name").get<std::string>() << std::endl;
 
             for (const auto& asset : j.at("assets")) {
-                if (asset.at("name").get<std::string>() == "KananMabiPro.zip")
+                if (asset.at("name").get<std::string>() == assetName)
                 {
                     hash = asset.at("digest").get<std::string>();
                 }

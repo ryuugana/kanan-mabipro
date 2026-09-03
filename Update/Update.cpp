@@ -34,7 +34,7 @@ bool IsProcessRunning(const std::string& processName) {
 
 int main()
 {
-    std::string fileName = "kananUpdate.zip";
+    std::string fileName = "KananMabiPro.zip";
     std::string fileHash = "";
 
     char path[MAX_PATH];
@@ -54,15 +54,15 @@ int main()
         Sleep(1000);
     }
 
-    std::cout << "Grabbing Kanan update for release: ";
+    std::cout << "Grabbing Kanan update from release: ";
 
-    std::string updateHash = GetKananReleaseHash();
+    std::string updateHash = GetKananReleaseHash(fileName);
 
     while (updateHash.length() < 1)
     {
         std::cout << "Failed to obtain hash, retrying..." << std::endl;
         Sleep(1000);
-        updateHash = GetKananReleaseHash();
+        updateHash = GetKananReleaseHash(fileName);
     }
 
     std::cout << "Obtained hash: " << updateHash.c_str() << std::endl;
