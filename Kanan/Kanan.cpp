@@ -1252,6 +1252,9 @@ namespace kanan {
                 if (ImGui::MenuItem("Save Config")) {
                     saveConfig();
                 }
+                if (ImGui::MenuItem("New Client")) {
+                    launch_client(m_path);
+                }
                 if (ImGui::MenuItem("Force close Game")) {
                     ExitProcess(0);
                 }
