@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MessageMod.hpp"
+#include "WinProcServer.hpp"
 
 
 namespace kanan {
@@ -17,6 +18,9 @@ namespace kanan {
 		void onRecv(MabiMessage mabiMessage) override;
 
 	private:
-		void viewMessage(MabiMessage mabiMessage);
+		void viewMessage(MabiMessage mabiMessage, bool isSend);
+
+		bool m_logMsgs;
+		WinProcServer m_wps;
 	};
 }

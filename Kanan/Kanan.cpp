@@ -38,9 +38,10 @@ namespace kanan {
 	Hotkey  m_housingKey;
 	Hotkey  m_astralKey;
 
-    Kanan::Kanan(string path) :
+    Kanan::Kanan(string path, HMODULE hmod) :
         characterId{ 0 },
         m_path{ move(path) },
+        m_hmod{ hmod },
         m_uiConfigPath{ m_path + "/ui.ini" },
         m_modConfigPath{ m_path + "/config.txt" },
         m_updateExecPath{ m_path + "/Update.exe" },

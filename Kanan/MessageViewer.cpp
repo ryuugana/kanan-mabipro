@@ -1,9 +1,12 @@
 #include "MessageViewer.hpp"
-#include "MabiPacket.h"
-#include "imgui.h"
-#include "Log.hpp"
+
 #include <sstream>
 #include <iomanip>
+
+#include "imgui.h"
+#include "Log.hpp"
+#include "Kanan.hpp"
+#include "MabiPacket.h"
 
 namespace kanan {
 	MessageViewer::MessageViewer()
@@ -11,44 +14,77 @@ namespace kanan {
 		m_hasSend = true;
 		m_hasRecv = true;
 		m_isEnabled = false;
+		m_logMsgs = false;
 		m_op.push_back(-1);
 	}
 
 	void MessageViewer::onUI() {
 		if (ImGui::TreeNode("Message Viewer")) {
-			ImGui::TextWrapped("This mod was created for development purposes and sends all incoming messages to logs");
+			ImGui::TextWrapped("This mod was created for development purposes and sends all incoming messages to MabiPale and Kanan logs");
+			ImGui::TextWrapped("Requires a Kanan config save to initialize on first enable.");
+
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+
 			ImGui::Checkbox("Enable Message Viewer", &m_isEnabled);
+
+			ImGui::BeginDisabled(!m_logMsgs);
+			ImGui::Checkbox("Record all messages to Kanan log", &m_logMsgs);
+			ImGui::EndDisabled();
+
 			ImGui::TreePop();
 		}
 	}
 
 	void MessageViewer::onConfigLoad(const Config& cfg) {
 		m_isEnabled = cfg.get<bool>("MessageViewer.Enabled").value_or(false);
+		m_logMsgs = cfg.get<bool>("MessageLogger.Enabled").value_or(false);
+
+		if (m_isEnabled)
+		{
+			log("Initialize wps: %d", m_wps.Initialize(g_kanan->getHModule()));
+		}
 	}
 
 	void MessageViewer::onConfigSave(Config& cfg) {
 		cfg.set<bool>("MessageViewer.Enabled", m_isEnabled);
+		cfg.set<bool>("MessageLogger.Enabled", m_logMsgs);
+
+		if (m_isEnabled)
+		{
+			log("Initialize wps: %d\n", m_wps.Initialize(g_kanan->getHModule()));
+		}
 	}
 
 	void MessageViewer::onSend(MabiMessage mabiMessage) {
-		log("Sending:");
-		viewMessage(mabiMessage);
+		viewMessage(mabiMessage, true);
+
+		m_wps.SendToClient(Sign::Send, mabiMessage.buffer, mabiMessage.size);
 	}
 
 	void MessageViewer::onRecv(MabiMessage mabiMessage) {
-		log("Receiving:");
-		viewMessage(mabiMessage);
+		viewMessage(mabiMessage, false);
+
+		m_wps.SendToClient(Sign::Recv, mabiMessage.buffer, mabiMessage.size);
 	}
 
-	void MessageViewer::viewMessage(MabiMessage mabiMessage)
+	void MessageViewer::viewMessage(MabiMessage mabiMessage, bool isSend)
 	{
+		if (!m_logMsgs) return;
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
 		std::ostringstream ss{};
 
 		string binary;
+
+		if (isSend)
+		{
+			log("Sending:");
+		}
+		else
+		{
+			log("Receiving:");
+		}
 
 		try {
 			ss << "OP: " << std::hex << recvPacket.GetOP() << "\n";

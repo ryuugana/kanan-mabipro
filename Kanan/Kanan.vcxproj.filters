@@ -207,6 +207,9 @@
     <ClCompile Include="GetInfo.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
+    <ClCompile Include="WinProcServer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -418,6 +421,9 @@
     </ClInclude>
     <ClInclude Include="GetInfo.hpp">
       <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="WinProcServer.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
