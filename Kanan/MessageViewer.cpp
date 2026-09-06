@@ -27,7 +27,7 @@ namespace kanan {
 
 			ImGui::Checkbox("Enable Message Viewer", &m_isEnabled);
 
-			ImGui::BeginDisabled(!m_logMsgs);
+			ImGui::BeginDisabled(!m_isEnabled);
 			ImGui::Checkbox("Record all messages to Kanan log", &m_logMsgs);
 			ImGui::EndDisabled();
 
