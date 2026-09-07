@@ -46,6 +46,12 @@
     <Filter Include="Source Files\MessageMods">
       <UniqueIdentifier>{abfdf516-58b4-4d4a-b292-a6c9935eecf6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Mabinogi\Entity">
+      <UniqueIdentifier>{32540969-d7d7-4c1e-abbe-f54b76a90b2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Mabinogi\Entity">
+      <UniqueIdentifier>{a800eb7a-d4a5-40d0-bf82-e91e4a7a414b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="KananInit.cpp">
@@ -74,9 +80,6 @@
     </ClCompile>
     <ClCompile Include="Game.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EntityViewer.cpp">
-      <Filter>Source Files\Mods</Filter>
     </ClCompile>
     <ClCompile Include="KItem.cpp">
       <Filter>Source Files\Mabinogi</Filter>
@@ -189,9 +192,6 @@
     <ClCompile Include="TickTracker.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClCompile>
-    <ClCompile Include="MaintLogin.hpp">
-      <Filter>Header Files\MessageMods</Filter>
-    </ClCompile>
     <ClCompile Include="MaintLogin.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
@@ -209,6 +209,18 @@
     </ClCompile>
     <ClCompile Include="WinProcServer.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Creature.cpp">
+      <Filter>Source Files\Mabinogi\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="Prop.cpp">
+      <Filter>Source Files\Mabinogi\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="EntityWindow.cpp">
+      <Filter>Source Files\Mabinogi\Entity</Filter>
+    </ClCompile>
+    <ClCompile Include="EntityViewer.cpp">
+      <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -241,9 +253,6 @@
     </ClInclude>
     <ClInclude Include="KCharacter.hpp">
       <Filter>Header Files\Mabinogi</Filter>
-    </ClInclude>
-    <ClInclude Include="EntityViewer.hpp">
-      <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="KItem.hpp">
       <Filter>Header Files\Mabinogi</Filter>
@@ -424,6 +433,24 @@
     </ClInclude>
     <ClInclude Include="WinProcServer.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IEntity.hpp">
+      <Filter>Header Files\Mabinogi\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="Creature.hpp">
+      <Filter>Header Files\Mabinogi\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="Prop.hpp">
+      <Filter>Header Files\Mabinogi\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityViewer.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityWindow.hpp">
+      <Filter>Header Files\Mabinogi\Entity</Filter>
+    </ClInclude>
+    <ClInclude Include="MaintLogin.hpp">
+      <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

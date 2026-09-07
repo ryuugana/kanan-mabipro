@@ -1,319 +1,275 @@
-#include <imgui.h>
-
-#include "Mabinogi.hpp"
-#include "KCharacter.hpp"
-#include "KItem.hpp"
-#include "Kanan.hpp"
 #include "EntityViewer.hpp"
 
-using namespace std;
+#include "imgui.h"
 
-namespace kanan {
-    int countOfPlayer, countOfNPC, countOfPet, countOfOther;
+#include "Creature.hpp"
+#include "Prop.hpp"
 
-    void EntityViewer::onUI() {
+#include <vector>
+#include <mutex>
+#include <memory>
+#include <algorithm>
 
-        if (ImGui::CollapsingHeader("Character List")) {
+namespace kanan
+{
+	EntityViewer::EntityViewer()
+	{
+		m_hasSend = false;
+		m_hasRecv = true;
+		m_isEnabled = false;
+		m_op.push_back(0x520C);
+        m_op.push_back(0x52D0);
+        m_op.push_back(0x5334);
+	}
 
+	void EntityViewer::onUI() {
+		if (ImGui::TreeNode("Entity Viewer")) {
+			ImGui::TextWrapped("This mod opens a new window with entity information.");
+			ImGui::TextWrapped("This can be useful for multiple things like seeing what a character is wearing.");
+			ImGui::TextWrapped("The window can be moved by dragging it to the desired location.");
+			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
-            //by default we will assume that no entitys exist
-            bool noentitexists = true;
-            
+			ImGui::Checkbox("Enable Entity", &m_isEnabled);
+			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+			ImGui::TreePop();
+		}
+	}
 
-            if (countOfPlayer != 0) {
+	bool EntityViewer::onWindow() {
+		if (m_isEnabled) {
+			eWindow.Draw(&m_isEnabled, entities, entitiesMutex);
+		}
 
-                // just some bad int to string to char const* cause idk how to show ints in imgui lol
-                std::string s = std::to_string(countOfPlayer);
-                char const* pchar = s.c_str();
-                ImGui::TextWrapped("Player entitys: %s", pchar);
-                noentitexists = false;
-            }
-            if (countOfPet != 0) {
-                std::string s = std::to_string(countOfPet);
-                char const* pchar = s.c_str();
-                ImGui::TextWrapped("Pet entitys: %s", pchar);
-                noentitexists = false;
-            }
-            if (countOfNPC != 0) {
-                std::string s = std::to_string(countOfNPC);
-                char const* pchar = s.c_str();
-                ImGui::TextWrapped("NPC entitys: %s", pchar);
-                noentitexists = false;
-            }
-            if (countOfOther != 0) {
-                if (countOfOther < 0) {}
-                else {
-                    std::string s = std::to_string(countOfOther);
-                    char const* pchar = s.c_str();
-                    ImGui::TextWrapped("Misc entitys: %s", pchar);
-                    noentitexists = false;
-                }
-            }
+		return m_isEnabled;
+	}
 
-            //if no entitys exists say so
-            if (noentitexists) {
-                ImGui::Text("No known entity types in range");
-            }
+	void EntityViewer::onConfigLoad(const Config& cfg) {
+		m_isEnabled = cfg.get<bool>("EntityViewer.Enabled").value_or(false);
+	}
 
-            buildCharacterList();
-            createCharacterTree();
+	void EntityViewer::onConfigSave(Config& cfg) {
+		cfg.set<bool>("EntityViewer.Enabled", m_isEnabled);
+	}
+
+    void EntityViewer::onRecv(MabiMessage msg) {
+        unsigned int op = GetOP(msg.buffer);
+        if (op == 0x520C) {
+            AddCreatureInfo(CMabiPacket(msg.buffer, msg.size));
         }
+        else if (op == 0x52D0) {
+            AddProp(CMabiPacket(msg.buffer, msg.size));
+        }
+        else if (op == 0x5334) {
+			CMabiPacket mPacket(msg.buffer, msg.size);
+			
+			int count = 1;
+			for (int i = 0; i < mPacket.GetElement(0)->word16; ++i)
+			{
+				short type = mPacket.GetElement(count++)->word16;
+				int len = mPacket.GetElement(count++)->int32;
+				auto binary = mPacket.GetElement(count++);
+				CMabiPacket entityData((unsigned char*)binary->str, binary->len);
 
-        if (ImGui::CollapsingHeader("Item List")) {
-            buildItemList();
-            createItemTree();
+				// Creature
+				if (type == 16)
+				{
+					AddCreatureInfo(entityData);
+				}
+				// Prop
+				else if (type == 160)
+				{
+					AddProp(entityData);
+				}
+			}
         }
     }
 
+    void EntityViewer::AddCreatureInfo(CMabiPacket packet) {
+        auto creature = std::make_shared<Creature>();
+		int p = 0;
+		int count = 0;
 
-    void EntityViewer::buildCharacterList() {
-        // Clear the current list.
-        m_characters.clear();
+		creature->EntityId = packet.GetElement(p++)->ID;
+		creature->Type = packet.GetElement(p++)->byte8;
 
-        // Iterate over every character and add it to our list.
-        auto game = g_kanan->getGame();
-        auto entityList = game->getEntityList();
+		// Public
+		if (creature->Type != 5)
+			return;
 
-        if (entityList == nullptr) {
-            ImGui::Text("Couldn't find the entity list.");
+		creature->Name = packet.GetElement(p++)->str;
+		p += 2;
+
+		creature->Race = packet.GetElement(p++)->int32;
+		creature->SkinColor = packet.GetElement(p++)->byte8;
+
+		// [180600, NA187 (25.06.2014)] Changed from byte to short
+		if (packet.GetElement(p)->type == T_BYTE)
+			creature->EyeType = packet.GetElement(p++)->byte8;
+		else if (packet.GetElement(p)->type == T_SHORT)
+			creature->EyeType = packet.GetElement(p++)->word16;
+
+		creature->EyeColor = packet.GetElement(p++)->byte8;
+		creature->MouthType = packet.GetElement(p++)->byte8;
+		creature->State = packet.GetElement(p++)->int32;
+		// Public only
+		if (creature->Type == 5)
+		{
+			creature->StateEx = packet.GetElement(p++)->int32;
+
+			// [180300, NA166 (18.09.2013)]
+			if (packet.GetElement(p)->type == T_INT)
+				packet.GetElement(p++)->int32;
+		}
+		creature->Height = packet.GetElement(p++)->float32;
+		creature->Weight = packet.GetElement(p++)->float32;
+		creature->Upper = packet.GetElement(p++)->float32;
+		creature->Lower = packet.GetElement(p++)->float32;
+		creature->Region = packet.GetElement(p++)->int32;
+		creature->X = packet.GetElement(p++)->int32;
+		creature->Y = packet.GetElement(p++)->int32;
+		creature->Direction = packet.GetElement(p++)->byte8;
+		creature->BattleState = packet.GetElement(p++)->int32;
+		creature->WeaponSet = packet.GetElement(p++)->byte8;
+		creature->Color1 = packet.GetElement(p++)->int32;
+		creature->Color2 = packet.GetElement(p++)->int32;
+		creature->Color3 = packet.GetElement(p++)->int32;
+		creature->CombatPower = packet.GetElement(p++)->float32;
+		creature->StandStyle = packet.GetElement(p++)->str;
+
+		// [200400, NA267 (2018-01-11)] OddEye support
+		if (packet.GetElement(p)->type == T_BYTE)
+		{
+			packet.GetElement(p++)->byte8;
+			packet.GetElement(p++)->byte8;
+		}
+
+		// [210300, NA292 (2018-12-07)] ?
+		if (packet.GetElement(p)->type == T_SHORT)
+		{
+			packet.GetElement(p++)->word16;
+			packet.GetElement(p++)->int32;
+		}
+
+		// [250100, NA360 (2020-12-19)] ?
+		if (packet.GetElement(p)->type == T_SHORT)
+		{
+			packet.GetElement(p++)->word16;
+		}
+
+		creature->LifeRaw = packet.GetElement(p++)->float32;
+		creature->LifeMaxBase = packet.GetElement(p++)->float32;
+		creature->LifeMaxMod = packet.GetElement(p++)->float32;
+		creature->LifeInjured = packet.GetElement(p++)->float32;
+
+		// [180800, NA196 (14.10.2014)] ?
+		if (packet.GetElement(p)->type == T_SHORT)
+			packet.GetElement(p++)->word16; // ?
+
+		// [220100, NA293 (2019-01-12)] ? (same as in private?)
+		if (packet.GetElement(p)->type == T_FLOAT)
+		{
+			packet.GetElement(p++)->float32;
+			packet.GetElement(p++)->float32;
+		}
+
+		int regenCount = packet.GetElement(p++)->int32;
+		for (int i = 0; i < regenCount; ++i)
+		{
+			packet.GetElement(p++)->int32;
+			packet.GetElement(p++)->float32;
+			packet.GetElement(p++)->int32;
+			packet.GetElement(p++)->int32;
+			packet.GetElement(p++)->byte8;
+			packet.GetElement(p++)->float32;
+			if (packet.GetElement(p)->type == T_BYTE)
+				packet.GetElement(p++)->byte8; // [200300, NA262 (2017-10-20)] ?
+		}
+
+		int unkCount = packet.GetElement(p++)->int32;
+		for (int i = 0; i < unkCount; ++i)
+		{
+			p+=6;
+		}
+
+		if (packet.GetElement(p)->type == T_SHORT)
+			creature->Title = packet.GetElement(p++)->word16;
+		else
+			creature->Title = packet.GetElement(p++)->int32;
+
+		creature->TitleApplied = packet.GetElement(p++)->ID;
+
+		if (packet.GetElement(p)->type == T_SHORT)
+			creature->OptionTitle = packet.GetElement(p++)->word16;
+		else
+			creature->OptionTitle = packet.GetElement(p++)->int32;
+
+		creature->MateName = packet.GetElement(p++)->str;
+		creature->Destiny = packet.GetElement(p++)->byte8;
+
+		// [250200, NA371 (2021-07-16)] ?
+		if (packet.GetElement(p)->type == T_SHORT && packet.GetElement(p+1)->type == T_INT)
+		{
+			packet.GetElement(p++)->word16;
+			packet.GetElement(p++)->int32;
+		}
+
+		unsigned int itemCount = packet.GetElement(p++)->int32;
+		for (int i = 0; i < itemCount; ++i)
+		{
+			auto itemOId = packet.GetElement(p++)->ID;
+
+			ItemInfo itemInfo = *(ItemInfo*)packet.GetElement(p++)->str;
+
+			if (packet.GetElement(p)->type == T_STRING)
+				packet.GetElement(p++)->str; // Extra Item Info
+			creature->Items.try_emplace(itemOId, itemInfo);
+		}
+
+		AddEntity(creature);
+    }
+
+    void EntityViewer::AddProp(CMabiPacket packet) {
+        auto prop = std::make_shared<Prop>();
+		int p = 0;
+
+		prop->EntityId = packet.GetElement(p++)->ID;
+		prop->Id = packet.GetElement(p++)->int32;
+
+		if (prop->IsServerProp())
+		{
+			prop->Name = packet.GetElement(p++)->str;
+			prop->Title = packet.GetElement(p++)->str;
+			p++;
+			// TODO: Add propinfo
+			//prop->Info = packet.GetObj<PropInfo>();
+		}
+
+		prop->State = packet.GetElement(p++)->str;
+		packet.GetElement(p++)->ID;
+
+		if (packet.GetElement(p++)->byte8)
+			prop->Xml = packet.GetElement(p++)->str;
+
+		if (!prop->IsServerProp())
+			prop->Direction = packet.GetElement(p++)->float32;
+
+        AddEntity(prop);
+    }
+
+    void EntityViewer::AddEntity(std::shared_ptr<IEntity> entity) {
+        if (CheckDuplicate(entity))
             return;
+
+        {
+            std::lock_guard<std::mutex> lock(entitiesMutex);
+            entities.push_back(entity);
         }
+    }
 
-        auto& characters = entityList->characters;
-        auto highestIndex = characters.count;
-        auto node = characters.root;
-
-        for (uint32_t i = 0; i < highestIndex && node != nullptr; ++i, node = node->next) {
-            auto character = (KCharacter*)node->character;
-
-            if (character == nullptr || !character->getID()) {
-                continue;
-            }
-
-            m_characters.emplace_front(character);
-        }
-
-        // Sort our list.
-        m_characters.sort([](auto a, auto b) {
-            return (a->getName().value_or("") < b->getName().value_or(""));
+    bool EntityViewer::CheckDuplicate(const std::shared_ptr<IEntity>& newEntity) {
+        std::lock_guard<std::mutex> lock(entitiesMutex);
+        return std::any_of(entities.begin(), entities.end(), [&newEntity](const std::shared_ptr<IEntity>& e) {
+            return e->Equals(newEntity.get());
             });
-    }
-
-    void EntityViewer::buildItemList() {
-        // Clear the current list.
-        /*m_items.clear();
-
-        // Iterate over every item and add it to our list.
-        auto game = g_kanan->getGame();
-        auto entityList = game->getEntityList();
-
-        if (entityList == nullptr) {
-            ImGui::Text("Couldn't find the entity list.");
-            return;
-        }
-
-        auto& items = entityList->items;
-        auto highestIndex = items.count;
-        auto node = items.root;
-
-        for (uint32_t i = 0; i < highestIndex && node != nullptr; ++i, node = node->next) {
-            auto item = (KItem*)node->entry->item;
-
-            if (item == nullptr || !item->getID()) {
-                continue;
-            }
-
-            m_items.emplace_front(item);
-        }
-
-        // Sort our list.
-        m_items.sort([](auto a, auto b) {
-            return (a->getName().value_or("") < b->getName().value_or(""));
-            });*/
-    }
-
-    void EntityViewer::createCharacterTree() {
-        //set counts to 0 at start
-        countOfPlayer = 0;
-        countOfNPC = 0;
-        countOfPet = 0;
-        countOfOther = 0;
-
-        if (m_characters.empty()) {
-            ImGui::Text("There are no characters yet.");
-            return;
-        }
-
-
-
-        int totalConfirmedEnt = 0;
-        for (auto& character : m_characters) {
-            auto name = character->getName();
-            //get the id for all chars in cahnge
-            auto id = character->getID();
-            //count all ents
-            countOfOther++;
-            //check if id is that of a player
-            if (*id >= 0x0010000000000001 && *id <= 0x0010000000FFFFFF) {
-                countOfPlayer++;
-                totalConfirmedEnt++;
-            }
-            //check if id is that of a pet
-            if (*id >= 0x0010010000000001 && *id <= 0x0010010000FFFFFF) {
-                countOfPet++;
-                totalConfirmedEnt++;
-            }
-            //check if id is that of a npc
-            if (*id >= 0x0010f00000000001 && *id <= 0x0010f00000FFFFFF) {
-                countOfNPC++;
-                totalConfirmedEnt++;
-            }
-            //remove all counted entitys from total
-            countOfOther = countOfOther - totalConfirmedEnt;
-
-
-
-            if (!name) {
-                continue;
-            }
-            if (ImGui::TreeNode(character, "%s", name->c_str())) {
-                displayCharacter(character);
-                ImGui::TreePop();
-            }
-
-        }
-    }
-
-    void EntityViewer::createItemTree() {
-
-        if (m_items.empty()) {
-            ImGui::Text("There are no items yet.");
-            return;
-        }
-
-        for (auto& item : m_items) {
-            auto name = item->getName();
-
-            if (!name) {
-                continue;
-            }
-
-            if (ImGui::TreeNode(item, "%s", name->c_str())) {
-                displayItem(item);
-                ImGui::TreePop();
-            }
-        }
-
-    }
-
-    void EntityViewer::displayCharacter(KCharacter* character) {
-        auto id = character->getID();
-        auto name = character->getName();
-        auto pos = character->getPosition();
-        auto parameter = character->parameter;
-
-        if (!id || !name || !pos || parameter == nullptr) {
-            ImGui::Text("This character has no data.");
-            return;
-        }
-
-        auto target = g_kanan->getGame()->getCharacterByID(character->targetID);
-        auto equipment = character->equipment;
-        ImGui::BulletText("Address: %p", character);
-        ImGui::BulletText("Name: %s", name->c_str());
-        ImGui::BulletText("ID: %llX", *id);
-        ImGui::BulletText("Pos: %f, %f, %f", pos->x, pos->y, pos->z);
-        ImGui::BulletText("Combat Power: %f", parameter->combatPower.value);
-        ImGui::BulletText("Age: %d", parameter->age.value);
-        ImGui::BulletText("Health: %f/%f", parameter->life.value, parameter->lifeMaxBase.value + parameter->lifeMaxMod.value);
-        ImGui::BulletText("Race: %s (%d)", raceToString(parameter->type.value), parameter->type.value);
-        ImGui::BulletText("Target: %s", (!target) ? "No Target" : target->getName()->c_str());
-
-        if (equipment != nullptr && ImGui::TreeNode(equipment, "Equipment")) {
-            displayEquipment(equipment);
-            ImGui::TreePop();
-        }
-    }
-
-    void EntityViewer::displayEquipment(CCharacter::CEquipment* equipment) {
-        static const map<int, string> equipmentNames{
-        { 1, "Torso\\Armor\\Shirt" },
-        { 2, "Head\\Helmet\\Hat" },
-        { 4, "Hands\\Gauntlets\\Gloves" },
-        { 5, "Feet\\Boots\\Shoes" },
-        { 7, "Hair" },
-        { 8, "Back\\Wings\\Robe" },
-        { 10, "Weapon 1" },
-        { 11, "Weapon 2" },
-        { 12, "Arrow\\Shield 1" },
-        { 13, "Arrow\\Shield 2" },
-        { 15, "Face Accessory" },
-        { 16, "Accessory 1" },
-        { 17, "Accessory 2" },
-        { 18, "Tail" }
-        };
-
-        for (auto [id, name] : equipmentNames) {
-            auto& itemInfo = equipment->itemInfo[id];
-
-            // Skip empty slots.
-            if (itemInfo.classID == 0) {
-                continue;
-            }
-
-            ImGui::BulletText("[%s] ID: %d Colors: #%08X #%08X #%08X", name.c_str(), itemInfo.classID, itemInfo.color1, itemInfo.color2, itemInfo.color3);
-        }
-    }
-
-    void EntityViewer::displayItem(KItem* item) {
-        auto id = item->getID();
-        auto name = item->getName();
-        auto maxStackCount = item->getMaxStackCount();
-
-        if (!id || !name) {
-            ImGui::Text("This item has no data.");
-            return;
-        }
-
-        ImGui::BulletText("Address: %p", item);
-        ImGui::BulletText("Name: %s", name->c_str());
-        ImGui::BulletText("ID: %llX", *id);
-        ImGui::BulletText("Item ID: %d", item->itemID);
-        ImGui::BulletText("Inventory ID: %d", item->inventoryID);
-        ImGui::BulletText("Pos: %d, %d", item->positionX, item->positionY);
-        ImGui::BulletText("Color: %X %X %X %X %X %X", item->color1, item->color2, item->color3, item->color4, item->color5, item->color6);
-        ImGui::BulletText("Price: %d", item->price);
-        ImGui::BulletText("Sell price: %d", item->sellPrice);
-        ImGui::BulletText("Durability: %0.4f/%0.4f", durabilityToDouble(item->durability, item->maxDurability), durabilityToDouble(item->maxDurability));
-        ImGui::BulletText("Stack count: %d/%d", item->stackCount, *maxStackCount);
-    }
-
-    double EntityViewer::durabilityToDouble(uint32_t dura, uint32_t maxDura) {
-        // Get the length of max dura to determine where to place the decimal
-        if (std::to_string(maxDura).length() > 5) {
-            return (double)dura * 0.0001;
-        }
-        else return (double)dura * 0.001;
-
-    }
-
-    double EntityViewer::durabilityToDouble(uint32_t maxDura) {
-        // same as above, but return maxDura instead
-        if (std::to_string(maxDura).length() > 5) {
-            return (double)maxDura * 0.0001;
-        }
-        else return (double)maxDura * 0.001;
-    }
-
-    char* EntityViewer::raceToString(uint32_t raceType) {
-        switch (raceType) {
-        case  8001: return "Female Giant";
-        case  8002: return "Male Giant";
-        case  9001: return "Female Elf";
-        case  9002: return "Male Elf";
-        case 10001: return "Female Human";
-        case 10002: return "Male Human";
-        default: return "Error: Unknown Race";
-        }
     }
 }
