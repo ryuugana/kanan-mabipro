@@ -9,7 +9,13 @@ namespace kanan
 {
     
 struct PropInfo {
+    int32_t Id = 0;
+    int32_t Region = 0;
+    float X = 0.0f;
     float Altitude = 0.0f;
+    float Y = 0.0f;
+    float Direction = 0.0f;
+    float Scale = 0.0f;
     uint32_t Color1 = 0;
     uint32_t Color2 = 0;
     uint32_t Color3 = 0;
@@ -19,13 +25,10 @@ struct PropInfo {
     uint32_t Color7 = 0;
     uint32_t Color8 = 0;
     uint32_t Color9 = 0;
-    float Direction = 0.0f;
-    int FixedAltitude = 0;
-    int Id = 0;
-    int Region = 0;
-    float Scale = 0.0f;
-    float X = 0.0f;
-    float Y = 0.0f;
+    uint8_t FixedAltitude = 0;
+    uint8_t __unknown65 = 0;
+    uint8_t __unknown66 = 0;
+    uint8_t __unknown67 = 0;
 
     bool operator==(const PropInfo& o) const {
         return Altitude == o.Altitude && Color1 == o.Color1 && Color2 == o.Color2 &&
