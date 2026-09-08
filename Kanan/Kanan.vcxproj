@@ -148,7 +148,7 @@
     <ClInclude Include="MaintLogin.hpp" />
     <ClCompile Include="MaxFrameRate.cpp" />
     <ClCompile Include="Prop.cpp" />
-    <ClCompile Include="TickTracker.hpp" />
+    <ClInclude Include="TickTracker.hpp" />
     <ClCompile Include="Hotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
     <ClCompile Include="ChooseLoginNode.cpp" />
