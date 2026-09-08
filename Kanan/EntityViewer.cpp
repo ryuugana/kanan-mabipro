@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 
+#include "Kanan.hpp"
 #include "Creature.hpp"
 #include "Prop.hpp"
 
@@ -24,31 +25,45 @@ namespace kanan
 
 	void EntityViewer::onUI() {
 		if (ImGui::TreeNode("Entity Viewer")) {
-			ImGui::TextWrapped("This mod opens a new window with entity information.");
-			ImGui::TextWrapped("This can be useful for multiple things like seeing what a character is wearing.");
-			ImGui::TextWrapped("The window can be moved by dragging it to the desired location.");
+			ImGui::TextWrapped("This mod keeps track of entity information while enabled.");
+			ImGui::TextWrapped("This can be useful for seeing what a character is wearing or hidden values like conditions.");
+			ImGui::TextWrapped("The window can be moved and resized.");
 			ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
-			ImGui::Checkbox("Enable Entity", &m_isEnabled);
+			ImGui::Checkbox("Enable Entity Viewer", &m_isEnabled);
+			ImGui::BeginDisabled(!m_isEnabled);
+			ImGui::Checkbox("Show Window", &m_window);
+			ImGui::BeginDisabled(!m_window);
+			ImGui::Checkbox("Show when Kanan is closed", &m_kananClosed);
+			ImGui::EndDisabled();
+			ImGui::EndDisabled();
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TreePop();
 		}
 	}
 
 	bool EntityViewer::onWindow() {
-		if (m_isEnabled) {
-			eWindow.Draw(&m_isEnabled, entities, entitiesMutex);
+		if (m_isEnabled && m_window) {
+			if (m_kananClosed || g_kanan->isUIOpen())
+			{
+				eWindow.Draw(&m_window, entities, entitiesMutex);
+				return true;
+			}
 		}
 
-		return m_isEnabled;
+		return false;
 	}
 
 	void EntityViewer::onConfigLoad(const Config& cfg) {
 		m_isEnabled = cfg.get<bool>("EntityViewer.Enabled").value_or(false);
+		m_window = cfg.get<bool>("EntityViewer.Window").value_or(false);
+		m_kananClosed = cfg.get<bool>("EntityViewer.KClosed").value_or(false);
 	}
 
 	void EntityViewer::onConfigSave(Config& cfg) {
 		cfg.set<bool>("EntityViewer.Enabled", m_isEnabled);
+		cfg.set<bool>("EntityViewer.Window", m_window);
+		cfg.set<bool>("EntityViewer.KClosed", m_kananClosed);
 	}
 
     void EntityViewer::onRecv(MabiMessage msg) {
@@ -239,9 +254,7 @@ namespace kanan
 		{
 			prop->Name = packet.GetElement(p++)->str;
 			prop->Title = packet.GetElement(p++)->str;
-			p++;
-			// TODO: Add propinfo
-			//prop->Info = packet.GetObj<PropInfo>();
+			prop->Info = *(PropInfo*)packet.GetElement(p++)->str;
 		}
 
 		prop->State = packet.GetElement(p++)->str;
@@ -267,9 +280,17 @@ namespace kanan
     }
 
     bool EntityViewer::CheckDuplicate(const std::shared_ptr<IEntity>& newEntity) {
-        std::lock_guard<std::mutex> lock(entitiesMutex);
-        return std::any_of(entities.begin(), entities.end(), [&newEntity](const std::shared_ptr<IEntity>& e) {
-            return e->Equals(newEntity.get());
-            });
+		std::lock_guard<std::mutex> lock(entitiesMutex);
+
+		auto it = std::find_if(entities.begin(), entities.end(), [&newEntity](const std::shared_ptr<IEntity>& e) {
+			return e->Equals(newEntity.get());
+			});
+
+		if (it != entities.end()) {
+			*it = newEntity;
+			return true;
+		}
+
+		return false;
     }
 }

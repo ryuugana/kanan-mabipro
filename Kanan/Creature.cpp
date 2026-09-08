@@ -59,13 +59,7 @@ bool Creature::Equals(const IEntity* obj) const {
     const auto* other = dynamic_cast<const Creature*>(obj);
     if (!other) return false;
 
-    return (this->EntityId == other->EntityId) &&
-        (this->Title == other->Title) &&
-        (this->Race == other->Race) &&
-        (this->SkinColor == other->SkinColor) &&
-        (this->EyeType == other->EyeType) &&
-        (this->EyeColor == other->EyeColor) &&
-        (this->MouthType == other->MouthType);
+    return (this->EntityId == other->EntityId) ;
 }
 
 }

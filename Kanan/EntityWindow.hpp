@@ -21,6 +21,12 @@ private:
     int m_sortColumn = 1;      // 0: Type, 1: ID, 2: Name
     bool m_sortAscending = true;
 
+    bool m_player = true;
+    bool m_pet = true;
+    bool m_npc = false;
+    bool m_mob = false;
+    bool m_prop = false;
+
     std::string m_infoText;
     bool m_showAboutModal = false;
 

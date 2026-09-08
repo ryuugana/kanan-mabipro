@@ -56,7 +56,7 @@ public:
     std::string GetEntityType() const override { return "Prop"; }
 
     bool IsServerProp() const {
-        constexpr long long ServerPropsThreshold = 0x4000000000000000LL; // Example MabiId threshold
+        constexpr long long ServerPropsThreshold = 0x00A1000000000000;
         return EntityId >= ServerPropsThreshold;
     }
 

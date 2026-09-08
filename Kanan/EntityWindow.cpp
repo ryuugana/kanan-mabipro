@@ -26,25 +26,32 @@ void EntityWindow::Draw(bool* p_open, std::vector<std::shared_ptr<IEntity>>& ent
     if (!p_open || !*p_open) return;
 
     ImGui::SetNextWindowSize(ImVec2(850, 600), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Entity Logger", p_open)) {
+    if (!ImGui::Begin("Entity Viewer", p_open)) {
         ImGui::End();
         return;
     }
 
     // --- Top Action Bar ---
+    ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+    ImGui::SameLine();
     if (ImGui::Button("Clear")) {
         std::lock_guard<std::mutex> lock(entitiesMutex);
         entities.clear();
         Clear();
     }
+    // Viewing options for prop / mob / npc / people / pet as checkboxes
     ImGui::SameLine();
-    if (ImGui::Button("Info")) {
-        m_showAboutModal = true;
-    }
+    ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
     ImGui::SameLine();
-    if (ImGui::Button("Close")) {
-        *p_open = false;
-    }
+    ImGui::Checkbox("Player", &m_player);
+    ImGui::SameLine();
+    ImGui::Checkbox("Pet", &m_pet);
+    ImGui::SameLine();
+    ImGui::Checkbox("NPC", &m_npc);
+    ImGui::SameLine();
+    ImGui::Checkbox("Monster", &m_mob);
+    ImGui::SameLine();
+    ImGui::Checkbox("Prop", &m_prop);
 
     ImGui::Separator();
 
@@ -69,21 +76,6 @@ void EntityWindow::Draw(bool* p_open, std::vector<std::shared_ptr<IEntity>>& ent
     ImGui::InputTextMultiline("##EntityInfo", m_infoText.data(), m_infoText.length(), boxSize, ImGuiInputTextFlags_ReadOnly);
 
     ImGui::EndChild();
-
-    // --- Info Modal Window ---
-    if (m_showAboutModal) {
-        ImGui::OpenPopup("About Entity Logger");
-        m_showAboutModal = false;
-    }
-
-    if (ImGui::BeginPopupModal("About Entity Logger", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Entity Logger reads all logged packets and displays\ninformation about the creatures and props found.");
-        ImGui::Spacing();
-        if (ImGui::Button("OK", ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
-    }
 
     ImGui::End();
 }
@@ -130,6 +122,17 @@ void EntityWindow::RenderTable(const std::vector<std::shared_ptr<IEntity>>& enti
         for (size_t i = 0; i < indices.size(); ++i) {
             size_t realIdx = indices[i];
             const auto& entity = entities[realIdx];
+
+            if (!m_player && entity.get()->GetEntityType() == "Player")
+                continue;
+            else if (!m_pet && entity.get()->GetEntityType() == "Pet")
+                continue;
+            else if (!m_npc && entity.get()->GetEntityType() == "NPC")
+                continue;
+            else if (!m_mob && entity.get()->GetEntityType() == "Monster")
+                continue;
+            else if (!m_prop && entity.get()->GetEntityType() == "Prop")
+                continue;
 
             ImGui::TableNextRow();
             ImGui::TableNextColumn();

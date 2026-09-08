@@ -100,22 +100,18 @@ public:
     long long GetEntityId() const override { return EntityId; }
     std::string GetName() const override { return Name; }
 
-    bool IsMonster() const {
-        return std::regex_match(Name, std::regex("^[0-9]+$")) &&
-            std::regex_match(std::to_string(EntityId), std::regex("^[0-9]+$"));
-    }
-
+    bool IsMonster() const { constexpr uint64_t MOB_MASK = 0x0010F00000000000; return (EntityId & MOB_MASK) == MOB_MASK;  }
     bool IsNpc() const { return !Name.empty() && Name[0] == '_'; }
-    bool IsPlayer() const { return !IsMonster() && !IsNpc(); }
+    bool IsPet() const { constexpr uint64_t PET_MASK = 0x0010010000000000; return (EntityId & PET_MASK) == PET_MASK; }
 
     float GetLifeMax() const { return LifeMaxBase + LifeMaxMod; }
     float GetLife() const { return (std::min)(GetLifeMax(), LifeRaw); }
 
     std::string GetEntityType() const override {
-        if (IsMonster()) return "Monster";
         if (IsNpc()) return "NPC";
-        if (IsPlayer()) return "Player";
-        return "Unknown";
+        else if (IsMonster()) return "Monster";
+        else if (IsPet()) return "Pet";
+        else return "Player";
     }
 
     std::string GetInfo() const override;

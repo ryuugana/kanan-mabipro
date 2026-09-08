@@ -31,6 +31,9 @@ namespace kanan {
 
 		bool CheckDuplicate(const std::shared_ptr<IEntity>& newEntity);
 
+		bool            m_window;
+		bool            m_kananClosed;
+
 		EntityWindow eWindow;
 		std::vector<std::shared_ptr<IEntity>> entities;
 		std::mutex entitiesMutex;

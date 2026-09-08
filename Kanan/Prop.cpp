@@ -7,7 +7,7 @@ std::string Prop::GetInfo() const {
     std::ostringstream sb;
     sb << (IsServerProp() ? "Server" : "Client") << " sided prop\r\n\r\n";
 
-    sb << "Entity id: " << std::hex << std::uppercase << std::setfill('0') << std::setw(8) << EntityId << "\r\n";
+    sb << "Entity id: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << EntityId << "\r\n";
     sb << "Prop id: " << std::dec << Id << "\r\n";
     sb << "State: " << State << "\r\n";
     sb << "XML: " << Xml << "\r\n";
@@ -45,13 +45,7 @@ bool Prop::Equals(const IEntity* obj) const {
     const auto* other = dynamic_cast<const Prop*>(obj);
     if (!other) return false;
 
-    return (this->EntityId == other->EntityId) &&
-        (this->Id == other->Id) &&
-        (this->State == other->State) &&
-        (this->Xml == other->Xml) &&
-        (this->Name == other->Name) &&
-        (this->Title == other->Title) &&
-        (this->Info == other->Info);
+    return (this->EntityId == other->EntityId);
 }
 
 }
