@@ -114,31 +114,37 @@ namespace kanan {
             });
         }
 
+// At the top to grab messages before they are seen by other message mods
 #ifdef TEST
         addMessageMod(make_unique<MessageViewer>());
-        // There is only one node left
-        addMessageMod(make_unique<ChooseLoginNode>());
-        addMessageMod(make_unique<MaintLogin>());
-#endif // TEST
+#endif
 
         addMessageMod(make_unique<AutoLoginChannel>());
+        addMod(make_unique<AutoSetMTU>());
         addMessageMod(make_unique<BlockSpam>());
+        addMod(make_unique<BorderlessWindow>());
+#ifdef TEST
+        // There is only one node left
+        addMessageMod(make_unique<ChooseLoginNode>());
+#endif
+        addMod(make_unique<DisableNagle>());
         addMessageMod(make_unique<DpsMeter>());
         addMessageMod(make_unique<EntityViewer>());
+        addMod(make_unique<FieldOfView>());
         addMessageMod(make_unique<GetInfo>());
+#ifdef TEST
+        addMessageMod(make_unique<MaintLogin>());
+#endif
+        addMod(make_unique<MaxFrameRate>());
         addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<TickTimer>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
+
         // Keep ChatLog below ScrollingMessageToChat to log the messages
         addMessageMod(make_unique<ChatLog>());
 
 
-        addMod(make_unique<DisableNagle>());
-        addMod(make_unique<BorderlessWindow>());
-        addMod(make_unique<FieldOfView>());
-        addMod(make_unique<MaxFrameRate>());
         //addMod(make_unique<StatusUI>());
-        addMod(make_unique<AutoSetMTU>());
 
         log("[Mods] Finished loading mods.");
     }
