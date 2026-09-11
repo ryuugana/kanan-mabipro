@@ -1,5 +1,6 @@
 #pragma once
-#include "IEntity.hpp"
+#include "Creature.hpp"
+#include "Prop.hpp"
 #include <vector>
 #include <memory>
 #include <mutex>
@@ -32,5 +33,11 @@ private:
 
     void RenderTable(const std::vector<std::shared_ptr<IEntity>>& entities);
     void UpdateSelection(const std::shared_ptr<IEntity>& entity);
+
+    std::string GetCreatureInfo(const std::shared_ptr<Creature>& creature);
+    std::string GetPropInfo(const std::shared_ptr<Prop>& prop);
+
+    std::string GetPocketName(int pocket);
+    std::string GetConditionEngName(int conditionID);
 };
 }

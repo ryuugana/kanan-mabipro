@@ -63,7 +63,6 @@ public:
         return EntityId >= ServerPropsThreshold;
     }
 
-    std::string GetInfo() const override;
     bool Equals(const IEntity* other) const override;
 };
 

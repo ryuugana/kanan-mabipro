@@ -12,7 +12,6 @@ public:
     virtual std::string GetEntityType() const = 0;
     virtual std::string GetName() const = 0;
 
-    virtual std::string GetInfo() const = 0;
     virtual bool Equals(const IEntity* other) const = 0;
 };
 

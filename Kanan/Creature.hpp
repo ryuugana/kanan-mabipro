@@ -95,6 +95,7 @@ public:
     uint8_t Destiny = 0;
 
     std::unordered_map<long long, ItemInfo> Items;
+    std::vector<uint32_t> Conditions;
 
     // Interface Implementations
     long long GetEntityId() const override { return EntityId; }
@@ -114,7 +115,6 @@ public:
         else return "Player";
     }
 
-    std::string GetInfo() const override;
     bool Equals(const IEntity* other) const override;
 };
 

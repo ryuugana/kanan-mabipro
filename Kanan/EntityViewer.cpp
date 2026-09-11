@@ -240,6 +240,15 @@ namespace kanan
 			creature->Items.try_emplace(itemOId, itemInfo);
 		}
 
+		p += 20;
+
+		unsigned int conditionCount = packet.GetElement(p++)->int32;
+		for (int i = 0; i < conditionCount; ++i)
+		{
+			creature->Conditions.push_back(packet.GetElement(p++)->int32);
+			packet.GetElement(p++)->str;
+		}
+
 		AddEntity(creature);
     }
 
