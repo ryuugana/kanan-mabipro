@@ -93,6 +93,7 @@ public:
 
     std::string MateName;
     uint8_t Destiny = 0;
+    std::string Guild;
 
     std::unordered_map<long long, ItemInfo> Items;
     std::vector<uint32_t> Conditions;

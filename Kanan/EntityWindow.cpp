@@ -59,8 +59,10 @@ void EntityWindow::Draw(bool* p_open, std::vector<std::shared_ptr<IEntity>>& ent
     ImGui::SameLine();
     ImGui::Checkbox("Pet", &m_pet);
     ImGui::SameLine();
+#ifdef TEST
     ImGui::Checkbox("NPC", &m_npc);
     ImGui::SameLine();
+#endif
     ImGui::Checkbox("Monster", &m_mob);
     ImGui::SameLine();
     ImGui::Checkbox("Prop", &m_prop);
@@ -231,8 +233,13 @@ void EntityWindow::RenderTable(const std::vector<std::shared_ptr<IEntity>>& enti
                 continue;
             else if (!m_pet && entity.get()->GetEntityType() == "Pet")
                 continue;
+#ifdef TEST
             else if (!m_npc && entity.get()->GetEntityType() == "NPC")
                 continue;
+#else
+            else if (entity.get()->GetEntityType() == "NPC")
+                continue;
+#endif
             else if (!m_mob && entity.get()->GetEntityType() == "Monster")
                 continue;
             else if (!m_prop && entity.get()->GetEntityType() == "Prop")
@@ -276,6 +283,7 @@ std::string EntityWindow::GetCreatureInfo(const std::shared_ptr<Creature>& creat
     float l = (creature->Lower < 1.0f && creature->Lower > 0.999f) ? 1.0f : creature->Lower;
 
     sb << "Name: " << creature->Name << "\r\n";
+    sb << "Guild: " << std::dec << creature->Guild << "\r\n\r\n";
     sb << "Race: " << std::dec << creature->Race << "\r\n\r\n";
 
     sb << "CP: " << creature->CombatPower << "\r\n";

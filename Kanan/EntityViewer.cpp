@@ -249,6 +249,13 @@ namespace kanan
 			packet.GetElement(p++)->str;
 		}
 
+		p++; // Long
+
+		if (packet.GetElement(p)->len > 0)
+		{
+			creature->Guild = packet.GetElement(p++)->str;
+		}
+
 		AddEntity(creature);
     }
 
