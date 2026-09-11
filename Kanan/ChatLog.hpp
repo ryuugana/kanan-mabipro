@@ -36,7 +36,10 @@ namespace kanan {
 
 		bool m_fileLogEnabled;
 		bool m_startedLogging;
+		bool m_isChatLog;
 		bool m_isOpen;
+		bool m_isTime;
+		bool m_is24hour;
 		bool m_scrollToBottom;
 		bool m_autoScroll;
 		int m_daysToKeepLogs;

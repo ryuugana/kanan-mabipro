@@ -18,7 +18,10 @@ namespace kanan {
 		m_filter{},
 		m_scrollToBottom{ false },
 		m_autoScroll{ true },
+		m_isChatLog{ false },
 		m_isOpen{ false },
+		m_isTime{ false },
+		m_is24hour {false},
 		m_file{},
 		m_partyMembers{}
 	{
@@ -43,9 +46,14 @@ namespace kanan {
 			if(ImGui::Checkbox("Enable Chat Log", &m_isEnabled))
 				startLogging();
 
-
 			ImGui::BeginDisabled(!m_isEnabled);
 			ImGui::Checkbox("Show Chat Log", &m_isOpen);
+
+			ImGui::TextWrapped("24-hour clock affects both in-game time and Chat Log time. \n");
+			ImGui::Checkbox("Use 24 hour clock", &m_is24hour);
+
+			ImGui::TextWrapped("Displays time in the ingame chat log.\n");
+			ImGui::Checkbox("Add Time to Chat", &m_isTime);
 			ImGui::EndDisabled();
 			ImGui::TreePop();
 		}
@@ -60,17 +68,20 @@ namespace kanan {
 	}
 
 	void ChatLog::onConfigLoad(const Config& cfg) {
-		m_isEnabled = cfg.get<bool>("ModChatLog.Enabled").value_or(false);
+		m_isChatLog = cfg.get<bool>("ModChatLog.Enabled").value_or(false);
 		m_isOpen = cfg.get<bool>("ChatLog.OpenByDefault").value_or(false);
-		//m_fileLogEnabled = cfg.get<bool>("ChatLog.FileLogEnabled").value_or(false);
+		m_isTime = cfg.get<bool>("ChatTime.Enabled").value_or(false);
 		
+		m_isEnabled = m_isTime || m_isChatLog;
+
 		if (m_isEnabled)
 			startLogging();
 	}
 
 	void ChatLog::onConfigSave(Config& cfg) {
-		cfg.set<bool>("ModChatLog.Enabled", m_isEnabled);
+		cfg.set<bool>("ModChatLog.Enabled", m_isChatLog);
 		cfg.set<bool>("ChatLog.OpenByDefault", m_isOpen);
+		cfg.set<bool>("ChatTime.Enabled", m_isTime);
 	}
 
 	std::string ChatLog::getTime() {
@@ -78,10 +89,25 @@ namespace kanan {
 		time_t now = time(0);
 		tm localTimeNow;
 		localtime_s(&localTimeNow, &now);
-		if(localTimeNow.tm_min < 10)
-			ss << localTimeNow.tm_hour << ":0" << localTimeNow.tm_min;
+		std::string hour;
+		std::string ampm;
+
+		if (m_is24hour)
+		{
+			hour = std::to_string(localTimeNow.tm_hour);
+		}
 		else
-			ss << localTimeNow.tm_hour << ":" << localTimeNow.tm_min;
+		{
+			ampm = (localTimeNow.tm_hour >= 12) ? "PM" : "AM";
+			int hour12 = localTimeNow.tm_hour % 12;
+			if (hour12 == 0) hour12 = 12; // Convert 0 (midnight) or 12 (noon) to 12
+			hour = std::to_string(hour12);
+		}
+
+		if(localTimeNow.tm_min < 10)
+			ss << hour << ":0" << localTimeNow.tm_min << " " << ampm;
+		else
+			ss << hour << ":" << localTimeNow.tm_min << " " << ampm;
 		return ss.str();
 	}
 
@@ -92,84 +118,124 @@ namespace kanan {
 		ostringstream ss{};
 
 		try {
-			string message = "";
-			switch (recvPacket.GetOP())
+			if (m_isChatLog)
 			{
-			case 21100: // All + Personal Shop
-				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
-					return;
-				message = recvPacket.GetElement(2)->str;
-				if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
-					break;
-				if (strcmp(recvPacket.GetElement(1)->str, "<PERSONALSHOP>") == 0) {
-					ss << getTime() << " | <PERSONALSHOP> " << ": " << message;
-				}
-				else if (strcmp(recvPacket.GetElement(1)->str, "<PARTY>") == 0) {
-					ss << getTime() << " | <PARTY> " << ": " << message;
-				}
-				else {
-					bool isEmote = false;
-					for each(auto emote in m_emotes) {
-						if (message.find(emote) != string::npos)
-							return;
+				string message = "";
+				switch (recvPacket.GetOP())
+				{
+				case 21100: // All + Personal Shop
+					if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
+						return;
+					message = recvPacket.GetElement(2)->str;
+					if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
+						break;
+					if (strcmp(recvPacket.GetElement(1)->str, "<PERSONALSHOP>") == 0) {
+						ss << getTime() << " | <PERSONALSHOP> " << ": " << message;
 					}
-
-					ss << getTime() << " | " << recvPacket.GetElement(1)->str << ": " << message;
-				}
-				break;
-			case 21101: // System
-				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
-					return;
-				if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
-					break;
-				message = recvPacket.GetElement(1)->str;
-				if (recvPacket.GetElement(0)->byte8 == 7)
-					ss << getTime() << " | <SYSTEM> " << ": " << recvPacket.GetElement(1)->str;
-				break;
-			case 21107: // Whisper
-				message = recvPacket.GetElement(1)->str;
-				ss << getTime() << " | <WHISPER> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
-				break;
-			case 21109: // Beginner
-				message = recvPacket.GetElement(1)->str;
-				ss << getTime() << " | <GLOBAL> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
-				break;
-			case 36502:
-				 m_partyMembers[recvPacket.GetElement(2)->ID] = recvPacket.GetElement(3)->str;
-				 break;
-			case 36504:
-				for (int i = 14; i < recvPacket.GetElementNum();) {
-					log("Party joined elements: %d, i: %d, id: %lld", recvPacket.GetElementNum(), i, recvPacket.GetElement(i)->ID);
-					if (recvPacket.GetElement(i)->type == T_LONG) {
-						m_partyMembers[recvPacket.GetElement(i)->ID] = recvPacket.GetElement(i + 1)->str;
-						i += 11;
+					else if (strcmp(recvPacket.GetElement(1)->str, "<PARTY>") == 0) {
+						ss << getTime() << " | <PARTY> " << ": " << message;
 					}
 					else {
-						i += 8;
+						bool isEmote = false;
+						for each(auto emote in m_emotes) {
+							if (message.find(emote) != string::npos)
+								return;
+						}
+
+						ss << getTime() << " | " << recvPacket.GetElement(1)->str << ": " << message;
 					}
+					break;
+				case 21101: // System
+					if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
+						return;
+					if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
+						break;
+					message = recvPacket.GetElement(1)->str;
+					if (recvPacket.GetElement(0)->byte8 == 7)
+						ss << getTime() << " | <SYSTEM> " << ": " << recvPacket.GetElement(1)->str;
+					break;
+				case 21107: // Whisper
+					message = recvPacket.GetElement(1)->str;
+					ss << getTime() << " | <WHISPER> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
+					break;
+				case 21109: // Beginner
+					message = recvPacket.GetElement(1)->str;
+					ss << getTime() << " | <GLOBAL> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
+					break;
+				case 36502: // Party info
+					 m_partyMembers[recvPacket.GetElement(2)->ID] = recvPacket.GetElement(3)->str;
+					 break;
+				case 36504: // Party info
+					for (int i = 14; i < recvPacket.GetElementNum();) {
+						log("Party joined elements: %d, i: %d, id: %lld", recvPacket.GetElementNum(), i, recvPacket.GetElement(i)->ID);
+						if (recvPacket.GetElement(i)->type == T_LONG) {
+							m_partyMembers[recvPacket.GetElement(i)->ID] = recvPacket.GetElement(i + 1)->str;
+							i += 11;
+						}
+						else {
+							i += 8;
+						}
+					}
+					break;
+				case 36520: // Party
+					message = recvPacket.GetElement(1)->str;
+					if (m_partyMembers.find(recvPacket.GetElement(0)->ID) == m_partyMembers.end()) {
+						ss << getTime() << " | <PARTY> " << ": " << message;
+					}
+					else {
+						ss << getTime() << " | <PARTY> " << m_partyMembers[recvPacket.GetElement(0)->ID] << ": " << message;
+					}
+					break;
+				case 50031: // Guild
+					message = recvPacket.GetElement(1)->str;
+					ss << getTime() << " | <GUILD> " << recvPacket.GetElement(0)->str << ": " << message;
+					break;
+				default:
+					break;
 				}
-				break;
-			case 36520: // Party
-				message = recvPacket.GetElement(1)->str;
-				if (m_partyMembers.find(recvPacket.GetElement(0)->ID) == m_partyMembers.end()) {
-					ss << getTime() << " | <PARTY> " << ": " << recvPacket.GetElement(1)->str;
+				if (ss.str().size() > 0)
+				{
+					std::string log = ss.str();
+					std::replace(log.begin(), log.end(), '%', 'p');
+					addChatLog(log.c_str());
 				}
-				else {
-					ss << getTime() << " | <PARTY> " << m_partyMembers[recvPacket.GetElement(0)->ID] << ": " << recvPacket.GetElement(1)->str;
-				}
-				break;
-			case 50031: // Guild
-				message = recvPacket.GetElement(1)->str;
-				ss << getTime() << " | <GUILD> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
-				break;
-			default:
-				break;
 			}
-			if (ss.str().size() > 0)
+
+			if (m_isTime)
 			{
-				std::string log = ss.str();
-				std::replace(log.begin(), log.end(), '%', 'p');
-				addChatLog(log.c_str());
+				int op = recvPacket.GetOP();
+				std::string addTime;
+				int index = 1;
+				if (op == 21100)
+				{
+					addTime = recvPacket.GetElement(index)->str;
+					addTime.append(" [" + getTime() + ']');
+				}
+				else if (op == 36502 || op == 36504)
+				{
+					return;
+				}
+				else
+				{
+					addTime = '[' + getTime() + "] ";
+					addTime.append(recvPacket.GetElement(index)->str);
+				}
+
+				PacketData data;
+				data.type = T_STRING;
+				data.str = addTime.data();
+				data.len = addTime.length();
+				recvPacket.SetElement(&data, index);
+
+				BYTE* p;
+				int tmpSizw = recvPacket.BuildPacket(&p);
+
+				MabiMessage newMsg;
+				newMsg.buffer = p;
+				newMsg.size = tmpSizw;
+				AddToRecvQ(newMsg);
+
+			    memset(mabiMessage.buffer, 0, mabiMessage.size);
 			}
 		}
 		catch (exception e) {
