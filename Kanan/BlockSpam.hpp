@@ -19,5 +19,6 @@ namespace kanan {
 		bool m_isBSEnabled;
 		bool m_isBOEEnabled;
 		bool m_isBECEnabled;
+		bool m_isBWMEnabled;
 	};
 }
