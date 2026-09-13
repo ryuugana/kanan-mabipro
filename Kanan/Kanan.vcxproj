@@ -137,13 +137,18 @@
     <ClCompile Include="BlockSpam.cpp" />
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
+    <ClCompile Include="Creature.cpp" />
     <ClCompile Include="DisableFlashy.cpp" />
     <ClCompile Include="DpsMeter.cpp" />
+    <ClCompile Include="EntityViewer.cpp" />
+    <ClCompile Include="EntityWindow.cpp" />
+    <ClInclude Include="EntityWindow.hpp" />
     <ClCompile Include="GetInfo.cpp" />
     <ClCompile Include="MaintLogin.cpp" />
-    <ClCompile Include="MaintLogin.hpp" />
+    <ClInclude Include="MaintLogin.hpp" />
     <ClCompile Include="MaxFrameRate.cpp" />
-    <ClCompile Include="TickTracker.hpp" />
+    <ClCompile Include="Prop.cpp" />
+    <ClInclude Include="TickTracker.hpp" />
     <ClCompile Include="Hotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
     <ClCompile Include="ChooseLoginNode.cpp" />
@@ -155,7 +160,6 @@
     <ClCompile Include="DisableNagle.cpp" />
     <ClCompile Include="DontMoveToSquadChat.cpp" />
     <ClCompile Include="EnableMultiClient.cpp" />
-    <ClCompile Include="EntityViewer.cpp" />
     <ClCompile Include="EquipmentOverride.cpp" />
     <ClCompile Include="NaoCounter.cpp" />
     <ClCompile Include="ScrollingMessageToChat.cpp" />
@@ -183,6 +187,7 @@
     <ClCompile Include="TTFFontSize.cpp" />
     <ClCompile Include="UseDataFolder.cpp" />
     <ClCompile Include="WindowsMessageHook.cpp" />
+    <ClCompile Include="WinProcServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AutoChangeChannels.hpp" />
@@ -192,9 +197,11 @@
     <ClInclude Include="BlockSpam.hpp" />
     <ClInclude Include="BorderlessWindow.hpp" />
     <ClInclude Include="ChangeChannelHotkey.hpp" />
+    <ClInclude Include="Creature.hpp" />
     <ClInclude Include="dirent.h" />
     <ClInclude Include="DisableFlashy.h" />
     <ClInclude Include="DpsMeter.hpp" />
+    <ClInclude Include="EntityViewer.hpp" />
     <ClInclude Include="GetInfo.hpp" />
     <ClInclude Include="Hotkey.hpp" />
     <ClInclude Include="ChatLog.hpp" />
@@ -207,10 +214,11 @@
     <ClInclude Include="DisableNagle.hpp" />
     <ClInclude Include="DontMoveToSquadChat.hpp" />
     <ClInclude Include="EnableMultiClient.hpp" />
-    <ClInclude Include="EntityViewer.hpp" />
     <ClInclude Include="EquipmentOverride.hpp" />
+    <ClInclude Include="IEntity.hpp" />
     <ClInclude Include="MaxFrameRate.hpp" />
     <ClInclude Include="NaoCounter.hpp" />
+    <ClInclude Include="Prop.hpp" />
     <ClInclude Include="ScrollingMessageToChat.hpp" />
     <ClInclude Include="FieldOfView.hpp" />
     <ClInclude Include="FontData.hpp" />
@@ -255,6 +263,7 @@
     <ClInclude Include="UseDataFolder.hpp" />
     <ClInclude Include="Version.h" />
     <ClInclude Include="WindowsMessageHook.hpp" />
+    <ClInclude Include="WinProcServer.hpp" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Patches.json">

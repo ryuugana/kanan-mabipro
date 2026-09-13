@@ -32,6 +32,7 @@
 #include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
 #include "ChatLog.hpp"
+#include "EntityViewer.hpp"
 #include "MaintLogin.hpp"
 #include "NaoCounter.hpp"
 #include "TickTracker.hpp"
@@ -113,31 +114,35 @@ namespace kanan {
             });
         }
 
+// At the top to grab messages before they are seen by other message mods
+#ifdef TEST
+        addMessageMod(make_unique<MessageViewer>());
+#endif
+
         addMessageMod(make_unique<AutoLoginChannel>());
         addMessageMod(make_unique<BlockSpam>());
+        addMessageMod(make_unique<ChatLog>());
+#ifdef TEST
+        // There is only one node left
+        addMessageMod(make_unique<ChooseLoginNode>());
+#endif
         addMessageMod(make_unique<DpsMeter>());
+        addMessageMod(make_unique<EntityViewer>());
         addMessageMod(make_unique<GetInfo>());
 #ifdef TEST
-        // There is only one node left (the slowest one)
-        addMessageMod(make_unique<ChooseLoginNode>());
+        addMessageMod(make_unique<MaintLogin>());
 #endif
         addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<TickTimer>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
-        // Keep ChatLog below ScrollingMessageToChat to log the messages
-        addMessageMod(make_unique<ChatLog>());
 
-#ifdef TEST
-        addMessageMod(make_unique<MaintLogin>());
-        addMessageMod(make_unique<MessageViewer>());
-#endif // TEST
 
-        addMod(make_unique<DisableNagle>());
+        addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<BorderlessWindow>());
+        addMod(make_unique<DisableNagle>());
         addMod(make_unique<FieldOfView>());
         addMod(make_unique<MaxFrameRate>());
         //addMod(make_unique<StatusUI>());
-        addMod(make_unique<AutoSetMTU>());
 
         log("[Mods] Finished loading mods.");
     }

@@ -17,7 +17,7 @@ namespace kanan {
     // This is the main object that sets up all the patches and stuff.
     class Kanan {
     public:
-        Kanan(std::string path);
+        Kanan(std::string path, HMODULE hmod);
 
         auto getGame() const {
             return m_game.get();
@@ -37,6 +37,10 @@ namespace kanan {
 
         auto isUIOpen() {
             return m_isUIOpen;
+        }
+
+        auto getHModule() const {
+            return m_hmod;
         }
 
         UINT64 characterId;
@@ -73,6 +77,7 @@ namespace kanan {
         bool m_isInitialized;
         std::atomic_bool m_areModsReady;
         bool m_areModsLoaded;
+        HMODULE m_hmod;
         HWND m_wnd;
         bool m_modWindowEnabled;
 

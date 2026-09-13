@@ -12,13 +12,14 @@ namespace kanan {
 		m_isBSEnabled = false;
 		m_isBOEEnabled = false;
 		m_isBECEnabled = false;
-		m_op.push_back(21101);
-		m_op.push_back(21103);
+		m_isBSEnabled = false;
+		m_op.push_back(0x526D);
+		m_op.push_back(0x526F);
 	}
 
 	void BlockSpam::onUI() 
 	{
-		if (ImGui::TreeNode("Block Spam"))
+		if (ImGui::TreeNode(getName().c_str()))
 		{
 			if (ImGui::TreeNode("Exploration Cap"))
 			{
@@ -53,6 +54,14 @@ namespace kanan {
 				ImGui::Checkbox("Enable Block >skill Spam", &m_isBSEnabled);
 				ImGui::TreePop();
 			}
+			if (ImGui::TreeNode("Welcome Messages"))
+			{
+				ImGui::TextWrapped("Blocks the following related messages:\n"
+					"\"Welcome to MabiPro! Have fun and enjoy your stay!\"\n");
+				ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+				ImGui::Checkbox("Enable Block Welcome Messages", &m_isBWMEnabled);
+				ImGui::TreePop();
+			}
 			ImGui::TreePop();
 		}
 	}
@@ -61,28 +70,31 @@ namespace kanan {
 		m_isBSEnabled = cfg.get<bool>("BlockSpam.Enabled").value_or(false);
 		m_isBOEEnabled = cfg.get<bool>("BlockOverEnc.Enabled").value_or(false);
 		m_isBECEnabled = cfg.get<bool>("BlockExplorationCap.Enabled").value_or(false);
-		m_isEnabled = m_isBOEEnabled || m_isBSEnabled || m_isBECEnabled;
+		m_isBWMEnabled = cfg.get<bool>("BlockWelcomeMessages.Enabled").value_or(false);
+		m_isEnabled = m_isBOEEnabled || m_isBSEnabled || m_isBECEnabled || m_isBWMEnabled;
 	}
 
 	void BlockSpam::onConfigSave(Config& cfg) {
 		cfg.set<bool>("BlockSpam.Enabled", m_isBSEnabled);
 		cfg.set<bool>("BlockOverEnc.Enabled", m_isBOEEnabled);
 		cfg.set<bool>("BlockExplorationCap.Enabled", m_isBECEnabled);
-		m_isEnabled = m_isBOEEnabled || m_isBSEnabled || m_isBECEnabled;
+		cfg.set<bool>("BlockWelcomeMessages.Enabled", m_isBWMEnabled);
+		m_isEnabled = m_isBOEEnabled || m_isBSEnabled || m_isBECEnabled || m_isBWMEnabled;
 	}
 
 	void BlockSpam::onRecv(MabiMessage mabiMessage) {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
-		if (m_isBSEnabled && recvPacket.GetOP() == 21101)
+		if ((m_isBSEnabled || m_isBECEnabled || m_isBWMEnabled) && recvPacket.GetOP() == 0x526D)
 		{
 			std::string message = recvPacket.GetElement(1)->str;
 
 			if (message.length() >= 38)
 			{
-				if (message.compare(0, 38, "Your skill latency reduction value has") == 0 ||
-					message.compare(0, 38, "In order to reach the next exploration") == 0)
+				if ((message.compare(0, 38, "Your skill latency reduction value has") == 0 && m_isBSEnabled) ||
+					(message.compare(0, 38, "In order to reach the next exploration") == 0 && m_isBECEnabled) ||
+					(message.compare(0, 18, "Welcome to MabiPro") == 0 && m_isBWMEnabled))
 				{
 					// Hide spam
 					PacketData data;
@@ -97,7 +109,7 @@ namespace kanan {
 				}
 			}
 		}
-		else if (m_isBOEEnabled && recvPacket.GetOP() == 21103)
+		else if (m_isBOEEnabled && recvPacket.GetOP() == 0x526F)
 		{
 			if (strcmp(recvPacket.GetElement(0)->str, "You are over encumbered. Please clean out your Temporary Inventory.") == 0)
 			{

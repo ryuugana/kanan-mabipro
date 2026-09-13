@@ -1,0 +1,43 @@
+#pragma once
+#include "Creature.hpp"
+#include "Prop.hpp"
+#include <vector>
+#include <memory>
+#include <mutex>
+#include <string>
+
+namespace kanan
+{
+class EntityWindow {
+public:
+    EntityWindow();
+
+    // Renders the ImGui window (call this inside your main rendering/ImGui loop)
+    void Draw(bool* p_open, std::vector<std::shared_ptr<IEntity>>& entities, std::mutex& entitiesMutex);
+
+    void Clear();
+
+private:
+    int m_selectedIdx = -1;
+    int m_sortColumn = 1;      // 0: Type, 1: ID, 2: Name
+    bool m_sortAscending = true;
+
+    bool m_player = true;
+    bool m_pet = true;
+    bool m_npc = false;
+    bool m_mob = false;
+    bool m_prop = false;
+
+    std::string m_infoText;
+    bool m_showAboutModal = false;
+
+    void RenderTable(const std::vector<std::shared_ptr<IEntity>>& entities);
+    void UpdateSelection(const std::shared_ptr<IEntity>& entity);
+
+    std::string GetCreatureInfo(const std::shared_ptr<Creature>& creature);
+    std::string GetPropInfo(const std::shared_ptr<Prop>& prop);
+
+    std::string GetPocketName(int pocket);
+    std::string GetConditionEngName(int conditionID);
+};
+}

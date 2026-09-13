@@ -1,12 +1,15 @@
 #pragma once
 
 #include "MessageMod.hpp"
+#include "WinProcServer.hpp"
 
 
 namespace kanan {
 	class MessageViewer : public MessageMod {
 	public:
 		MessageViewer();
+
+		std::string getName() override { return "Message Viewer"; }
 
 		void onUI() override;
 
@@ -17,6 +20,9 @@ namespace kanan {
 		void onRecv(MabiMessage mabiMessage) override;
 
 	private:
-		void viewMessage(MabiMessage mabiMessage);
+		void viewMessage(MabiMessage mabiMessage, bool isSend);
+
+		bool m_logMsgs;
+		WinProcServer m_wps;
 	};
 }

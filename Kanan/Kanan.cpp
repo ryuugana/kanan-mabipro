@@ -38,9 +38,10 @@ namespace kanan {
 	Hotkey  m_housingKey;
 	Hotkey  m_astralKey;
 
-    Kanan::Kanan(string path) :
+    Kanan::Kanan(string path, HMODULE hmod) :
         characterId{ 0 },
         m_path{ move(path) },
+        m_hmod{ hmod },
         m_uiConfigPath{ m_path + "/ui.ini" },
         m_modConfigPath{ m_path + "/config.txt" },
         m_updateExecPath{ m_path + "/Update.exe" },
@@ -1064,7 +1065,9 @@ namespace kanan {
         cfg.set<bool>("BlockSpam.Enabled", true);
         cfg.set<bool>("BlockPetPickupMessages.Enabled", true);
         cfg.set<bool>("BlockPetStatusMessages.Enabled", true);
+        cfg.set<bool>("ChatTime.Enabled", true);
         cfg.set<bool>("DelagSkill.Enabled", true);
+        cfg.set<bool>("DisableNagle.Enabled", true);
         cfg.set<bool>("DisableSkillLocks.Enabled", true);
         cfg.set<bool>("DisableSkillRankUpMessage.Enabled", true);
         cfg.set<bool>("EnableMoneyLetters.Enabled", true);
@@ -1249,6 +1252,9 @@ namespace kanan {
         //
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("New Client")) {
+                    launch_client(m_path);
+                }
                 if (ImGui::MenuItem("Save Config")) {
                     saveConfig();
                 }
@@ -1377,11 +1383,21 @@ namespace kanan {
         }
 
         if (ImGui::CollapsingHeader("Configurable")) {
+            std::vector<kanan::Mod*> sortedMods;
+            sortedMods.reserve(m_mods.m_messageMods.size() + m_mods.getMods().size());
+
             for (const auto& mod : m_mods.m_messageMods) {
-                mod->onUI();
+                if (mod) sortedMods.push_back(mod.get());
+            }
+            for (const auto& mod : m_mods.getMods()) {
+                if (mod) sortedMods.push_back(mod.get());
             }
 
-            for (const auto& mod : m_mods.getMods()) {
+            std::sort(sortedMods.begin(), sortedMods.end(), [](auto* a, auto* b) {
+                return a->getName() < b->getName();
+                });
+
+            for (auto* mod : sortedMods) {
                 mod->onUI();
             }
         }
