@@ -24,7 +24,7 @@ namespace kanan
 	}
 
 	void EntityViewer::onUI() {
-		if (ImGui::TreeNode("Entity Viewer")) {
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::TextWrapped("This mod keeps track of entity information while enabled.");
 			ImGui::TextWrapped("This can be useful for seeing what a character is wearing or hidden values like conditions.");
 			ImGui::TextWrapped("The window can be moved and resized.");

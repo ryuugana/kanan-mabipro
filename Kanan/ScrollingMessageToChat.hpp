@@ -8,6 +8,8 @@ namespace kanan {
 	public:
 		ScrollingMessageToChat();
 
+		std::string getName() override { return "Scrolling Message To Chat"; }
+
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;

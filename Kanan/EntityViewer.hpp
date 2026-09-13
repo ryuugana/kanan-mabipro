@@ -13,6 +13,8 @@ namespace kanan {
 	public:
 		EntityViewer();
 
+		std::string getName() override { return "Entity Viewer"; }
+
 		void onUI() override;
 
 		bool onWindow() override;

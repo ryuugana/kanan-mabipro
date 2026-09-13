@@ -38,7 +38,7 @@ namespace kanan {
 	}
 
 	void ChatLog::onUI() {
-		if (ImGui::TreeNode("Chat Log")) {
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::TextWrapped("This mod logs most chat messages when enabled. \n\n"
 			"Logged chat messages are sent to txt files in the \"Kanan Chat Log\" folder in your MabiPro folder for reference. \n\n"
 			"Logged chat messages can also be viewed using Show Chat Log, which can be used as an alternative chat window with time stamps.");

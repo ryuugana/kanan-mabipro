@@ -44,7 +44,7 @@ namespace kanan {
 	}
 
 	void DpsMeter::onUI() {
-		if (ImGui::TreeNode("DPS Meter")) {
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::TextWrapped("This mod displays a DPS meter in a separate window.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TextWrapped("Timeout is the amount of time spent not attacking in seconds before the DPS resets.");

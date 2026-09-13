@@ -9,6 +9,8 @@ namespace kanan {
 	public:
 		MessageViewer();
 
+		std::string getName() override;
+
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;

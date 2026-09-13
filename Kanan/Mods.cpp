@@ -120,30 +120,28 @@ namespace kanan {
 #endif
 
         addMessageMod(make_unique<AutoLoginChannel>());
-        addMod(make_unique<AutoSetMTU>());
         addMessageMod(make_unique<BlockSpam>());
-        addMod(make_unique<BorderlessWindow>());
+        addMessageMod(make_unique<ChatLog>());
 #ifdef TEST
         // There is only one node left
         addMessageMod(make_unique<ChooseLoginNode>());
 #endif
-        addMod(make_unique<DisableNagle>());
         addMessageMod(make_unique<DpsMeter>());
         addMessageMod(make_unique<EntityViewer>());
-        addMod(make_unique<FieldOfView>());
         addMessageMod(make_unique<GetInfo>());
 #ifdef TEST
         addMessageMod(make_unique<MaintLogin>());
 #endif
-        addMod(make_unique<MaxFrameRate>());
         addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<TickTimer>());
         addMessageMod(make_unique<ScrollingMessageToChat>());
 
-        // Keep ChatLog below ScrollingMessageToChat to log the messages
-        addMessageMod(make_unique<ChatLog>());
 
-
+        addMod(make_unique<AutoSetMTU>());
+        addMod(make_unique<BorderlessWindow>());
+        addMod(make_unique<DisableNagle>());
+        addMod(make_unique<FieldOfView>());
+        addMod(make_unique<MaxFrameRate>());
         //addMod(make_unique<StatusUI>());
 
         log("[Mods] Finished loading mods.");

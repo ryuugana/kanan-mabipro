@@ -7,6 +7,8 @@ namespace kanan {
     public:
         FieldOfView();
 
+        std::string getName() override { return "Field Of View"; }
+
         void onFrame() override;
 
         void onUI() override;

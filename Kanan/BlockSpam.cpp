@@ -19,7 +19,7 @@ namespace kanan {
 
 	void BlockSpam::onUI() 
 	{
-		if (ImGui::TreeNode("Block Spam"))
+		if (ImGui::TreeNode(getName().c_str())) {
 		{
 			if (ImGui::TreeNode("Exploration Cap"))
 			{

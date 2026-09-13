@@ -8,6 +8,8 @@ namespace kanan {
 	public:
 		BlockSpam();
 
+		std::string getName() override { return "Block Spam"; }
+
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;

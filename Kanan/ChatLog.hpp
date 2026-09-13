@@ -17,6 +17,8 @@ namespace kanan {
 	public:
 		ChatLog();
 
+		std::string getName() override { return "Chat Mods"; }
+
 		void onUI() override;
 
 		bool onWindow() override;

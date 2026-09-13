@@ -19,7 +19,7 @@ namespace kanan {
 	}
 
 	void MessageViewer::onUI() {
-		if (ImGui::TreeNode("Message Viewer")) {
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::TextWrapped("This mod was created for development purposes and sends all incoming messages to MabiPale and Kanan logs");
 			ImGui::TextWrapped("Requires a Kanan config save to initialize on first enable.");
 

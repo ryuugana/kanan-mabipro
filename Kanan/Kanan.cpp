@@ -1067,6 +1067,7 @@ namespace kanan {
         cfg.set<bool>("BlockPetStatusMessages.Enabled", true);
         cfg.set<bool>("ChatTime.Enabled", true);
         cfg.set<bool>("DelagSkill.Enabled", true);
+        cfg.set<bool>("DisableNagle.Enabled", true);
         cfg.set<bool>("DisableSkillLocks.Enabled", true);
         cfg.set<bool>("DisableSkillRankUpMessage.Enabled", true);
         cfg.set<bool>("EnableMoneyLetters.Enabled", true);
@@ -1382,11 +1383,21 @@ namespace kanan {
         }
 
         if (ImGui::CollapsingHeader("Configurable")) {
+            std::vector<kanan::Mod*> sortedMods;
+            sortedMods.reserve(m_mods.m_messageMods.size() + m_mods.getMods().size());
+
             for (const auto& mod : m_mods.m_messageMods) {
-                mod->onUI();
+                if (mod) sortedMods.push_back(mod.get());
+            }
+            for (const auto& mod : m_mods.getMods()) {
+                if (mod) sortedMods.push_back(mod.get());
             }
 
-            for (const auto& mod : m_mods.getMods()) {
+            std::sort(sortedMods.begin(), sortedMods.end(), [](auto* a, auto* b) {
+                return a->getName() < b->getName();
+                });
+
+            for (auto* mod : sortedMods) {
                 mod->onUI();
             }
         }

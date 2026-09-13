@@ -8,6 +8,8 @@ namespace kanan {
 	public:
 		MaintLogin();
 
+		std::string getName() override { return "Maintenance Login"; }
+
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;

@@ -8,6 +8,8 @@ namespace kanan {
 	public:
 		ChooseLoginNode();
 
+		std::string getName() override { return "Choose Login Node"; }
+
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;

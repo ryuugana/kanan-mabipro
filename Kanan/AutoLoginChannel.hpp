@@ -9,6 +9,8 @@ namespace kanan {
 	public:
 		AutoLoginChannel();
 
+		std::string getName() override { return "Auto Login Channel"; }
+
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;
