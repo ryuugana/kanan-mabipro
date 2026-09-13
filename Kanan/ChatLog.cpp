@@ -215,7 +215,7 @@ namespace kanan {
 				std::string addTime;
 				int index = 1;
 
-				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
+				if (recvPacket.GetElement(1)->type == T_STRING && recvPacket.GetElement(1)->len > 0 && !string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
 					return;
 				else if (op == 21101)
 				{
