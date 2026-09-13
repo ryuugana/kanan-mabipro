@@ -283,7 +283,6 @@ std::string EntityWindow::GetCreatureInfo(const std::shared_ptr<Creature>& creat
     float l = (creature->Lower < 1.0f && creature->Lower > 0.999f) ? 1.0f : creature->Lower;
 
     sb << "Name: " << creature->Name << "\r\n";
-    sb << "Guild: " << std::dec << creature->Guild << "\r\n\r\n";
     sb << "Race: " << std::dec << creature->Race << "\r\n\r\n";
 
     sb << "CP: " << creature->CombatPower << "\r\n";
