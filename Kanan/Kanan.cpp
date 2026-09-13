@@ -1065,6 +1065,7 @@ namespace kanan {
         cfg.set<bool>("BlockSpam.Enabled", true);
         cfg.set<bool>("BlockPetPickupMessages.Enabled", true);
         cfg.set<bool>("BlockPetStatusMessages.Enabled", true);
+        cfg.set<bool>("ChatTime.Enabled", true);
         cfg.set<bool>("DelagSkill.Enabled", true);
         cfg.set<bool>("DisableSkillLocks.Enabled", true);
         cfg.set<bool>("DisableSkillRankUpMessage.Enabled", true);
