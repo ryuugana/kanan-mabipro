@@ -43,28 +43,36 @@ namespace kanan {
 			"Logged chat messages are sent to txt files in the \"Kanan Chat Log\" folder in your MabiPro folder for reference. \n\n"
 			"Logged chat messages can also be viewed using Show Chat Log, which can be used as an alternative chat window with time stamps.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
-			if(ImGui::Checkbox("Enable Chat Log", &m_isEnabled))
+			if(ImGui::Checkbox("Enable Chat Log", &m_isChatLog))
 				startLogging();
 
-			ImGui::BeginDisabled(!m_isEnabled);
+			ImGui::BeginDisabled(!m_isChatLog);
 			ImGui::Checkbox("Show Chat Log", &m_isOpen);
+			ImGui::EndDisabled();
 
+			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+
+			ImGui::BeginDisabled(!m_isEnabled);
 			ImGui::TextWrapped("24-hour clock affects both in-game time and Chat Log time. \n");
 			ImGui::Checkbox("Use 24 hour clock", &m_is24hour);
+			ImGui::EndDisabled();
+
+			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 
 			ImGui::TextWrapped("Displays time in the ingame chat log.\n");
 			ImGui::Checkbox("Add Time to Chat", &m_isTime);
-			ImGui::EndDisabled();
 			ImGui::TreePop();
+
+			m_isEnabled = m_isChatLog || m_isTime;
 		}
 	}
 
 	bool ChatLog::onWindow() {
-		if (m_isOpen && m_startedLogging && m_isEnabled) {
+		if (m_isOpen && m_startedLogging && m_isChatLog) {
 			drawChatLog();
 		}
 
-		return m_isOpen && m_startedLogging && m_isEnabled;
+		return m_isOpen && m_startedLogging && m_isChatLog;
 	}
 
 	void ChatLog::onConfigLoad(const Config& cfg) {
@@ -74,7 +82,7 @@ namespace kanan {
 		
 		m_isEnabled = m_isTime || m_isChatLog;
 
-		if (m_isEnabled)
+		if (m_isChatLog)
 			startLogging();
 	}
 
@@ -128,7 +136,7 @@ namespace kanan {
 						return;
 					message = recvPacket.GetElement(2)->str;
 					if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
-						break;
+						return;
 					if (strcmp(recvPacket.GetElement(1)->str, "<PERSONALSHOP>") == 0) {
 						ss << getTime() << " | <PERSONALSHOP> " << ": " << message;
 					}
@@ -149,7 +157,7 @@ namespace kanan {
 					if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
 						return;
 					if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
-						break;
+						return;
 					message = recvPacket.GetElement(1)->str;
 					if (recvPacket.GetElement(0)->byte8 == 7)
 						ss << getTime() << " | <SYSTEM> " << ": " << recvPacket.GetElement(1)->str;
@@ -206,6 +214,17 @@ namespace kanan {
 				int op = recvPacket.GetOP();
 				std::string addTime;
 				int index = 1;
+
+				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
+					return;
+				else if (op == 21101)
+				{
+					if (recvPacket.GetElement(0)->byte8 != 7)
+					{
+						return;
+					}
+				}
+
 				if (op == 21100)
 				{
 					addTime = recvPacket.GetElement(index)->str;
