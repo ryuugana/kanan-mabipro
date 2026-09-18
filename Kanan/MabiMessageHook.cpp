@@ -185,11 +185,11 @@ namespace kanan {
 		mabiMessage.buffer = (unsigned char*)Buffer;
 		mabiMessage.size = Size;
 
-		unsigned long op = GetOP(mabiMessage.buffer);
 		for (uint32_t i = 0; i < mabiListeners->size(); i++) {
 			if ((*mabiListeners)[i]->m_isEnabled && (*mabiListeners)[i]->getHasRecv()) {
 				for each(int listenOp in(*mabiListeners)[i]->getOp())
-					if (op == listenOp || -1 == listenOp) {
+					// Call GetOP every time incase OP has changed
+					if (GetOP(mabiMessage.buffer) == listenOp || -1 == listenOp) {
 						(*mabiListeners)[i]->onRecv(mabiMessage);
 						break;
 					}
@@ -203,11 +203,11 @@ namespace kanan {
 		mabiMessage.buffer = (unsigned char*)Buffer;
 		mabiMessage.size = Size;
 
-		unsigned long op = GetOP(mabiMessage.buffer);
 		for (uint32_t i = 0; i < mabiListeners->size(); i++) {
 			if ((*mabiListeners)[i]->m_isEnabled && (*mabiListeners)[i]->getHasSend()) {
 				for each(int listenOp in(*mabiListeners)[i]->getOp())
-					if (op == listenOp || -1 == listenOp) {
+					// Call GetOP every time incase OP has changed
+					if (GetOP(mabiMessage.buffer) == listenOp || -1 == listenOp) {
 						(*mabiListeners)[i]->onSend(mabiMessage);
 						break;
 					}
