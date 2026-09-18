@@ -18,13 +18,17 @@ namespace kanan {
 	BYTE packetBuffer[PACKET_BUFFER_SIZE];
 	bool g_mabiMessageHook = false;
 	std::vector<std::unique_ptr<MessageMod>>* mabiListeners = nullptr;
-	std::vector<MabiMessage> mabiMessages;
+	std::vector<MabiMessage> mabiMessagesR;
+	std::vector<MabiMessage> mabiMessagesS;
 	unsigned int mintAddress = NULL;
+	unsigned int pleioneAddress = NULL;
 
 	VOID ListenDownstream(LPVOID Buffer, LONG Size);
 	VOID ListenUpstream(LPVOID Buffer, LONG Size);
 	VOID InjectRecvQueue();
-	extern "C" int Recv(BYTE * buffer, unsigned int size);
+	VOID InjectSendQueue();
+	extern "C" int Recv(BYTE* buffer, unsigned int size);
+	extern "C" int Send(BYTE* buffer, unsigned int size);
 
 
 
@@ -32,9 +36,11 @@ namespace kanan {
 	{
 		if (g_mabiMessageHook == false) {
 			mintAddress = reinterpret_cast<uintptr_t>(GetModuleHandleA("Mint.dll"));
-			mabiMessages = vector<MabiMessage>();
+			pleioneAddress = reinterpret_cast<uintptr_t>(GetModuleHandleA("Pleione.dll"));
+			mabiMessagesR = vector<MabiMessage>();
+			mabiMessagesS = vector<MabiMessage>();
 			if (DoInjection()) {
-				FindMintFunctions();
+				FindMessageFunctions();
 				g_mabiMessageHook = true;
 				mabiListeners = mabiMods;
 				log("MabiMessage hooked successfully.");
@@ -69,6 +75,7 @@ namespace kanan {
 	typedef UINT64(__cdecl* mintGetReceiverIdSignature)();
 	typedef LPVOID(__cdecl* vmGetInstanceSignature)(UINT64 charId);
 	typedef DWORD(__thiscall* mintPostSignature)(LPVOID mintPointer);
+	typedef DWORD(__thiscall* pleioneSendSignature)(LPVOID cmessage);
 	
 	typedef unsigned long(__thiscall* WriteToNetworkBuffer)(LPVOID cmsg, void* param_1, unsigned long param_2);
 
@@ -78,6 +85,7 @@ namespace kanan {
 	mintGetReceiverIdSignature mintGetReceiverId = NULL;
 	vmGetInstanceSignature vmGetInstance = NULL;
 	mintPostSignature mintPost = NULL;
+	pleioneSendSignature pleioneSend = NULL;
 
 	LPVOID SavedRecvPointer = NULL;
 	LPVOID SavedSendPointer = NULL;
@@ -195,7 +203,30 @@ namespace kanan {
 					}
 			}
 		}
+
+		if (GetOP(mabiMessage.buffer) == 0x5BCF)
+		{
+			PacketData data;
+			CMabiPacket lpacket;
+			lpacket.SetOP(0x5BCD);
+			lpacket.SetReciverId(0x0010000000011D36);
+
+			data.type = T_BYTE;
+			data.byte8 = 1;
+			lpacket.AddElement(&data);
+
+			BYTE* p;
+			int len;
+			len = lpacket.BuildPacket(&p);
+
+			MabiMessage test;
+			test.buffer = p;
+			test.size = len;
+			AddToSendQ(test);
+		}
+
 		InjectRecvQueue();
+		InjectSendQueue();
 	}
 
 	VOID ListenUpstream(LPVOID Buffer, LONG Size) {
@@ -214,18 +245,32 @@ namespace kanan {
 			}
 		}
 		InjectRecvQueue();
+		InjectSendQueue();
 	}
 
 	VOID InjectRecvQueue()
 	{
-		if (mabiMessages.size() > 0)
+		if (mabiMessagesR.size() > 0)
 		{
-			for each(MabiMessage msg in mabiMessages)
+			for each(MabiMessage msg in mabiMessagesR)
 			{
 				Recv(msg.buffer, msg.size);
 				free(msg.buffer);
 			}
-			mabiMessages.clear();
+			mabiMessagesR.clear();
+		}
+	}
+
+	VOID InjectSendQueue()
+	{
+		if (mabiMessagesS.size() > 0)
+		{
+			for each(MabiMessage msg in mabiMessagesS)
+			{
+				Send(msg.buffer, msg.size);
+				free(msg.buffer);
+			}
+			mabiMessagesS.clear();
 		}
 	}
 
@@ -261,7 +306,7 @@ namespace kanan {
 		return Hookjmp((void*)(RunFunctionAddressLong), RunHookTrap, 6);
 	}
 
-	void MabiMessageHook::FindMintFunctions() {
+	void MabiMessageHook::FindMessageFunctions() {
 		// typedef DWORD(__thiscall* mintMessageConstructorSignature)(LPVOID cmsg, LPVOID Buffer, LONG Size);
 		DWORD mintMessageConsturctorFunctionAddress = (mintAddress + 0x61666);
 		LONG mintMessageConsturctorFunctionAddressLong = *(LONG*)(void*)(&mintMessageConsturctorFunctionAddress);
@@ -286,17 +331,27 @@ namespace kanan {
 
 		vmGetInstance = (vmGetInstanceSignature)vmGetInstanceFunctionAddressLong;
 
-		// typedef void(__fastcall* mintPostSignature)(LPVOID mintPointer, LONG Unknown, LPVOID MsgMember1, LPVOID MsgMember2, LPVOID MsgMember3);
+		// typedef void(__thiscall* mintPostSignature)(LPVOID mintPointer);
 		DWORD mintPostFunctionAddress = (mintAddress + 0x65a7a);
 		LONG mintPostFunctionAddressLong = *(LONG*)(void*)(&mintPostFunctionAddress);
 
 		mintPost = (mintPostSignature)mintPostFunctionAddressLong;
-		
+
+		// typedef void(__thiscall* pleioneSendSignature)(LPVOID mintPointer);
+		DWORD pleioneSendFunctionAddress = (pleioneAddress + 0x4F988);
+		LONG pleioneSendFunctionAddressLong = *(LONG*)(void*)(&pleioneSendFunctionAddress);
+
+		pleioneSend = (pleioneSendSignature)pleioneSendFunctionAddressLong;
 	}
 
 	void AddToRecvQ(MabiMessage mabiMessage)
 	{
-		mabiMessages.push_back(mabiMessage);
+		mabiMessagesR.push_back(mabiMessage);
+	}
+
+	void AddToSendQ(MabiMessage mabiMessage)
+	{
+		mabiMessagesS.push_back(mabiMessage);
 	}
 
 	__declspec(naked) int Recv(BYTE* buffer, unsigned int size)
@@ -322,6 +377,30 @@ namespace kanan {
 
 			MOV        ECX, EAX
 			CALL       mintPost
+
+			MOV        dword ptr[ESP + 0x1c], EAX
+			POPAD
+			RET        0x8
+		}
+	}
+
+	__declspec(naked) int Send(BYTE* buffer, unsigned int size)
+	{
+		__asm
+		{
+			PUSHAD
+			SUB        ESP, 0xc
+			MOV        ECX, ESP
+			MOV        EAX, dword ptr[ESP + 0x34]
+			OR         EAX, 0x80000000
+
+			PUSH       EAX
+			PUSH       dword ptr[ESP + 0x34]
+			CALL       mintMessageConstructor
+
+			MOV        EAX, [ESI]
+			MOV        ECX, ESI
+			CALL       pleioneSend
 
 			MOV        dword ptr[ESP + 0x1c], EAX
 			POPAD

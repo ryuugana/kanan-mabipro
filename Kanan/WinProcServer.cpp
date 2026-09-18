@@ -45,10 +45,21 @@ namespace kanan {
                         log("WinProc disconnected");
                     }
                 }
-                else if (command == Sign::Recv && m_isConnected) {
-                    // Handle incoming packet data sent from the client to the server
+                else if (command == Sign::Send && m_isConnected) {
+                    // Handle Send
                     if (cds->cbData > 0 && cds->lpData != nullptr) {
-                        // Allocate a copy of the buffer so it persists outside the WM_COPYDATA scope
+                        MabiMessage msg;
+                        msg.buffer = new unsigned char[cds->cbData];
+                        std::memcpy(msg.buffer, cds->lpData, cds->cbData);
+
+                        msg.size = static_cast<LONG>(cds->cbData);
+
+                        AddToSendQ(msg);
+                    }
+                }
+                else if (command == Sign::Recv && m_isConnected) {
+                    // Handle Recv
+                    if (cds->cbData > 0 && cds->lpData != nullptr) {
                         MabiMessage msg;
                         msg.buffer = new unsigned char[cds->cbData];
                         std::memcpy(msg.buffer, cds->lpData, cds->cbData);
