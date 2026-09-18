@@ -29,7 +29,6 @@
 #include "DpsMeter.hpp"
 #include "GetInfo.hpp"
 #include "MessageViewer.hpp"
-#include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
 #include "ChatLog.hpp"
 #include "EntityViewer.hpp"
@@ -134,7 +133,6 @@ namespace kanan {
 #endif
         addMessageMod(make_unique<NaoCounter>());
         addMessageMod(make_unique<TickTimer>());
-        addMessageMod(make_unique<ScrollingMessageToChat>());
 
 
         addMod(make_unique<AutoSetMTU>());

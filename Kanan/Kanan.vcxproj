@@ -162,7 +162,6 @@
     <ClCompile Include="EnableMultiClient.cpp" />
     <ClCompile Include="EquipmentOverride.cpp" />
     <ClCompile Include="NaoCounter.cpp" />
-    <ClCompile Include="ScrollingMessageToChat.cpp" />
     <ClCompile Include="FieldOfView.cpp" />
     <ClCompile Include="FreezeTimeOfDay.cpp" />
     <ClCompile Include="Game.cpp" />
@@ -219,7 +218,6 @@
     <ClInclude Include="MaxFrameRate.hpp" />
     <ClInclude Include="NaoCounter.hpp" />
     <ClInclude Include="Prop.hpp" />
-    <ClInclude Include="ScrollingMessageToChat.hpp" />
     <ClInclude Include="FieldOfView.hpp" />
     <ClInclude Include="FontData.hpp" />
     <ClInclude Include="FreezeTimeOfDay.hpp" />

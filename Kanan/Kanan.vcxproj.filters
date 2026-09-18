@@ -162,9 +162,6 @@
     <ClCompile Include="MessageViewer.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
-    <ClCompile Include="ScrollingMessageToChat.cpp">
-      <Filter>Source Files\MessageMods</Filter>
-    </ClCompile>
     <ClCompile Include="ChatLog.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
@@ -387,9 +384,6 @@
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
     <ClInclude Include="ChatLog.hpp">
-      <Filter>Header Files\MessageMods</Filter>
-    </ClInclude>
-    <ClInclude Include="ScrollingMessageToChat.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
     <ClInclude Include="ChooseLoginNode.hpp">
