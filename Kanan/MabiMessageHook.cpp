@@ -204,27 +204,6 @@ namespace kanan {
 			}
 		}
 
-		if (GetOP(mabiMessage.buffer) == 0x5BCF)
-		{
-			PacketData data;
-			CMabiPacket lpacket;
-			lpacket.SetOP(0x5BCD);
-			lpacket.SetReciverId(0x0010000000011D36);
-
-			data.type = T_BYTE;
-			data.byte8 = 1;
-			lpacket.AddElement(&data);
-
-			BYTE* p;
-			int len;
-			len = lpacket.BuildPacket(&p);
-
-			MabiMessage test;
-			test.buffer = p;
-			test.size = len;
-			AddToSendQ(test);
-		}
-
 		InjectRecvQueue();
 		InjectSendQueue();
 	}
