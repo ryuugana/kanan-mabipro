@@ -216,6 +216,9 @@
     <ClCompile Include="EntityViewer.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
+    <ClCompile Include="AutoMount.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -444,6 +447,9 @@
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
     <ClInclude Include="TickTracker.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
+    <ClInclude Include="AutoMount.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
   </ItemGroup>

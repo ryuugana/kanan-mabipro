@@ -132,6 +132,7 @@
   <ItemGroup>
     <ClCompile Include="AutoChangeChannels.cpp" />
     <ClCompile Include="AutoLoginChannel.cpp" />
+    <ClCompile Include="AutoMount.cpp" />
     <ClCompile Include="AutoMute.cpp" />
     <ClCompile Include="AutoSetMTU.cpp" />
     <ClCompile Include="BlockSpam.cpp" />
@@ -142,6 +143,7 @@
     <ClCompile Include="DpsMeter.cpp" />
     <ClCompile Include="EntityViewer.cpp" />
     <ClCompile Include="EntityWindow.cpp" />
+    <ClInclude Include="AutoMount.hpp" />
     <ClInclude Include="EntityWindow.hpp" />
     <ClCompile Include="GetInfo.cpp" />
     <ClCompile Include="MaintLogin.cpp" />

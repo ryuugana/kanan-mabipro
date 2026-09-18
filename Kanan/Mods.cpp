@@ -25,6 +25,7 @@
 
 // Message Mods
 #include "AutoLoginChannel.hpp"
+#include "AutoMount.hpp"
 #include "BlockSpam.hpp"
 #include "DpsMeter.hpp"
 #include "GetInfo.hpp"
@@ -119,6 +120,7 @@ namespace kanan {
 #endif
 
         addMessageMod(make_unique<AutoLoginChannel>());
+        addMessageMod(make_unique<AutoMount>());
         addMessageMod(make_unique<BlockSpam>());
         addMessageMod(make_unique<ChatLog>());
 #ifdef TEST
