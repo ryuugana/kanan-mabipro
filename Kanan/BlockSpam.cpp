@@ -86,7 +86,9 @@ namespace kanan {
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 
-		if ((m_isBSEnabled || m_isBECEnabled || m_isBWMEnabled) && recvPacket.GetOP() == 0x526D)
+		int op = recvPacket.GetOP();
+
+		if ((m_isBSEnabled || m_isBECEnabled || m_isBWMEnabled) && op == 0x526D)
 		{
 			std::string message = recvPacket.GetElement(1)->str;
 
@@ -96,20 +98,11 @@ namespace kanan {
 					(message.compare(0, 38, "In order to reach the next exploration") == 0 && m_isBECEnabled) ||
 					(message.compare(0, 18, "Welcome to MabiPro") == 0 && m_isBWMEnabled))
 				{
-					// Hide spam
-					PacketData data;
-					data.type = 1;
-					data.byte8 = 0;
-					recvPacket.SetElement(&data, 0);
-					BYTE* p;
-					int tmpSizw = recvPacket.BuildPacket(&p);
-
-					memcpy(mabiMessage.buffer, p, tmpSizw);
-					free(p);
+					memset(mabiMessage.buffer, 0, mabiMessage.size);
 				}
 			}
 		}
-		else if (m_isBOEEnabled && recvPacket.GetOP() == 0x526F)
+		else if (m_isBOEEnabled && op == 0x526F)
 		{
 			if (strcmp(recvPacket.GetElement(0)->str, "You are over encumbered. Please clean out your Temporary Inventory.") == 0)
 			{
