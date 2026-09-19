@@ -10,6 +10,8 @@ namespace kanan {
 	public:
 		MaxFrameRate();
 
+		std::string getName() override { return "Max Frame Rate"; }
+
 		void onFrame() override;
 
 		void onUI() override;

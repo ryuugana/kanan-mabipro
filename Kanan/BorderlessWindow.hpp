@@ -15,6 +15,8 @@ namespace kanan {
 
         BorderlessWindow();
 
+        std::string getName() override { return "Borderless Window"; }
+
         void onFrame() override;
         void onUI() override;
 

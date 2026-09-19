@@ -8,6 +8,8 @@ namespace kanan {
 	public:
 		BlockSpam();
 
+		std::string getName() override { return "Block Spam"; }
+
 		void onUI() override;
 
 		void onConfigLoad(const Config& cfg) override;
@@ -19,5 +21,6 @@ namespace kanan {
 		bool m_isBSEnabled;
 		bool m_isBOEEnabled;
 		bool m_isBECEnabled;
+		bool m_isBWMEnabled;
 	};
 }

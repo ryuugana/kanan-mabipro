@@ -64,7 +64,7 @@ DWORD WINAPI kananInit(LPVOID params) {
     log("Welcome to Kanan for Mabinogi.");
     log("Creating Kanan object.");
 
-    g_kanan = make_unique<Kanan>(path);
+    g_kanan = make_unique<Kanan>(path, mHinstDLL);
 
     log("Leaving kananInit.");
 
@@ -97,6 +97,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 			// Get the filepath of this dll.
 			GetModuleFileName(hModule, g_dllPath, MAX_PATH);
+
+            // Grab for Kanan
+            mHinstDLL = hModule;
 
 			// Launch our init thread.
 			CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);

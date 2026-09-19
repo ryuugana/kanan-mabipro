@@ -8,6 +8,8 @@ namespace kanan {
 	public:
 		TickTimer();
 
+		std::string getName() override { return "Tick Timer"; }
+
 		void onUI() override;
 
 		bool onWindow() override;

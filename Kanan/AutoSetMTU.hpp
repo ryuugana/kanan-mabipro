@@ -14,6 +14,8 @@ namespace kanan {
     public:
         AutoSetMTU();
 
+        std::string getName() override { return "Auto Set MTU"; }
+
         void onUI() override;
 
         void onConfigLoad(const Config& cfg) override;

@@ -15,7 +15,7 @@ namespace kanan {
 	}
 
 	void MaintLogin::onUI() {
-		if (ImGui::TreeNode("Maintenance Login")) {
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::TextWrapped("This mod ignores the server status when logging in.\n"
 				"This will allow you to login during channel maintenance.\n\n"
 				"Note: Only works with GM accounts, mainly used for development.");
