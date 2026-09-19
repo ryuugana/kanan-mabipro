@@ -251,8 +251,13 @@ namespace kanan {
 					bool isEmote = false;
 					for each(auto emote in m_emotes) {
 						if (message.find(emote) != string::npos)
+						{
+							isEmote = true;
 							break;
+						}
 					}
+
+					if (isEmote) break;
 
 					ss << getTime() << " | " << recvPacket.GetElement(1)->str << ": " << message;
 				}
