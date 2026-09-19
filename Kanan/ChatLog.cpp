@@ -176,7 +176,7 @@ namespace kanan {
 		}
 		else if (op == 36502 || op == 36504)
 		{
-			message = "";
+			message = "party info";
 		}
 		else
 		{
@@ -275,7 +275,6 @@ namespace kanan {
 					break;
 			case 36504: // Party info
 				for (int i = 14; i < recvPacket.GetElementNum();) {
-					log("Party joined elements: %d, i: %d, id: %lld", recvPacket.GetElementNum(), i, recvPacket.GetElement(i)->ID);
 					if (recvPacket.GetElement(i)->type == T_LONG) {
 						m_partyMembers[recvPacket.GetElement(i)->ID] = recvPacket.GetElement(i + 1)->str;
 						i += 11;
