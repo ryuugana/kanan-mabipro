@@ -9,7 +9,7 @@ namespace kanan {
 	public:
 		MessageViewer();
 
-		std::string getName() override { return "Message Viewer"; }
+		std::string getName() override { return "AAAAAAAAAA"; }
 
 		void onUI() override;
 
