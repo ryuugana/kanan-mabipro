@@ -165,25 +165,25 @@ namespace kanan {
 	}
 
 	void ChatLog::onRecv(MabiMessage mabiMessage) {
-		std::string message;
+		std::string message = "";
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 		int op = recvPacket.GetOP();
 
 		if (op == 21100)
 		{
-			message = recvPacket.GetElement(2)->str;
+			message.append(recvPacket.GetElement(2)->str);
 		}
 		else if (op == 36502 || op == 36504)
 		{
-			message = "party info";
+			message.append("party info");
 		}
 		else
 		{
-			message = recvPacket.GetElement(1)->str;
+			message.append(recvPacket.GetElement(1)->str);
 		}
 
-		if ((message.length() == 0) || (message.length() == 1 && message.data()[0] == ' '))
+		if (message.empty() || (message.length() == 1 && message.data()[0] == ' '))
 		{
 			return;
 		}
