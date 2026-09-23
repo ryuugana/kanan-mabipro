@@ -234,7 +234,7 @@ namespace kanan {
 			for each(MabiMessage msg in mabiMessagesR)
 			{
 				Recv(msg.buffer, msg.size);
-				free(msg.buffer);
+				delete[] msg.buffer;
 			}
 			mabiMessagesR.clear();
 		}
@@ -247,7 +247,7 @@ namespace kanan {
 			for each(MabiMessage msg in mabiMessagesS)
 			{
 				Send(msg.buffer, msg.size);
-				free(msg.buffer);
+				delete[] msg.buffer;
 			}
 			mabiMessagesS.clear();
 		}
