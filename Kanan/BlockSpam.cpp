@@ -26,7 +26,7 @@ namespace kanan {
 				ImGui::TextWrapped("Blocks the following message:\n"
 					"\"In order to reach the next exploration level, you must complete an Exploration Cap Quest.\nLook for Mandatory(Red) Quests on the Exploration Quest Board.\"\n");
 				ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-				ImGui::Checkbox("Enable Block Exploration Cap Spam", &m_isBECEnabled);
+				ImGui::Checkbox("Block Exploration Cap Spam", &m_isBECEnabled);
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Over Encumbered"))
@@ -35,7 +35,7 @@ namespace kanan {
 					"\"You are over encumbered. Please clean out your Temporary Inventory.\"\n"
 					"Note that this will not stop the status, it will only block the message from appearing in the center of the screen.");
 				ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-				ImGui::Checkbox("Enable Block Over Encumbered Spam", &m_isBOEEnabled);
+				ImGui::Checkbox("Block Over Encumbered Spam", &m_isBOEEnabled);
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode(">skill"))
@@ -51,7 +51,7 @@ namespace kanan {
 					">server will tell you which node you are on\n"
 					">skill 0 or lower will disable the command");
 				ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-				ImGui::Checkbox("Enable Block >skill Spam", &m_isBSEnabled);
+				ImGui::Checkbox("Block >skill Spam", &m_isBSEnabled);
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Welcome Messages"))
@@ -59,7 +59,7 @@ namespace kanan {
 				ImGui::TextWrapped("Blocks the following related messages:\n"
 					"\"Welcome to MabiPro! Have fun and enjoy your stay!\"\n");
 				ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-				ImGui::Checkbox("Enable Block Welcome Messages", &m_isBWMEnabled);
+				ImGui::Checkbox("Block Welcome Messages", &m_isBWMEnabled);
 				ImGui::TreePop();
 			}
 			ImGui::TreePop();

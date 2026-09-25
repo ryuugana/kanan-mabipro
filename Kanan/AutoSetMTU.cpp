@@ -56,7 +56,7 @@ namespace kanan {
             ImGui::Text("To see what your interfaces are called, open a command prompt and type:");
             ImGui::Text("    netsh interface ipv4 show config");
             ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-            ImGui::Checkbox("Enable Auto Set MTU", &m_isEnabled);
+            ImGui::Checkbox("Auto Set MTU", &m_isEnabled);
             ImGui::InputText("Interface", m_interface.data(), m_interface.size());
             ImGui::SliderInt("Lowered MTU", &m_lowMTU, 0, 1500);
             ImGui::SliderInt("Normal MTU", &m_normalMTU, 0, 1500);

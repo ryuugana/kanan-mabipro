@@ -75,11 +75,11 @@ namespace kanan {
 			{
 				ImGui::TextWrapped("This mod moves scrolling messages from the top of the screen to the middle of the screen and chat as <System> messages.");
 				ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-				ImGui::Checkbox("Enable Auction Messages To Chat", &m_isAuctionEnabled);
-				ImGui::Checkbox("Enable Field Boss Messages To Chat", &m_isFieldBossEnabled);
+				ImGui::Checkbox("Auction Messages To Chat", &m_isAuctionEnabled);
+				ImGui::Checkbox("Field Boss Messages To Chat", &m_isFieldBossEnabled);
 
 				ImGui::BeginDisabled(!m_isFieldBossEnabled);
-				ImGui::Checkbox("Enable Field Boss Notification", &m_isFieldBNotifyEnabled);
+				ImGui::Checkbox("Field Boss Notification", &m_isFieldBNotifyEnabled);
 				ImGui::EndDisabled();
 				ImGui::TreePop();
 			}
