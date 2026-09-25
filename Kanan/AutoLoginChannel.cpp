@@ -70,7 +70,7 @@ namespace kanan {
 			int tmpSizw = sendPacket.BuildPacket(&p);
 
 			memcpy(mabiMessage.buffer, p, tmpSizw);
-			free(p);
+			delete[] p;
 		}
 	}
 }

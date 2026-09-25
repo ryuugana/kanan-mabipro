@@ -205,7 +205,7 @@ namespace kanan {
 					int tmpSizw = recvPacket.BuildPacket(&p);
 
 					memcpy(mabiMessage.buffer, p, tmpSizw);
-					free(p);
+					delete[] p;
 				}
 				else if ((m_isFieldBossEnabled && message.find("has appeared") != string::npos) ||
 					(m_isFieldBossEnabled && message.find("has defeated") != string::npos)) {
@@ -218,7 +218,7 @@ namespace kanan {
 					int tmpSizw = recvPacket.BuildPacket(&p);
 
 					memcpy(mabiMessage.buffer, p, tmpSizw);
-					free(p);
+					delete[] p;
 
 					if (message.find("has appeared") != string::npos && m_isFieldBNotifyEnabled)
 						notify();
