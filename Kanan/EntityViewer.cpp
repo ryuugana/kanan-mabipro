@@ -4,6 +4,7 @@
 
 #include "Kanan.hpp"
 #include "Creature.hpp"
+#include "Log.hpp"
 #include "Prop.hpp"
 
 #include <vector>
@@ -111,7 +112,15 @@ namespace kanan
 		if (creature->Type != 5)
 			return;
 
-		creature->Name = packet.GetElement(p++)->str;
+		if (packet.GetElement(p)->type == T_STRING)
+		{
+			creature->Name = packet.GetElement(p++)->str;
+		}
+		else
+		{
+			log("Unknown creature name: %d", creature->EntityId);
+			return;
+		}
 		p += 2;
 
 		creature->Race = packet.GetElement(p++)->int32;
@@ -149,7 +158,16 @@ namespace kanan
 		creature->Color2 = packet.GetElement(p++)->int32;
 		creature->Color3 = packet.GetElement(p++)->int32;
 		creature->CombatPower = packet.GetElement(p++)->float32;
-		creature->StandStyle = packet.GetElement(p++)->str;
+
+		if (packet.GetElement(p)->type == T_STRING)
+		{
+			creature->StandStyle = packet.GetElement(p++)->str;
+		}
+		else
+		{
+			log("Unknown creature stand style: %d", creature->Name);
+			return;
+		}
 
 		// [200400, NA267 (2018-01-11)] OddEye support
 		if (packet.GetElement(p)->type == T_BYTE)
@@ -218,7 +236,15 @@ namespace kanan
 		else
 			creature->OptionTitle = packet.GetElement(p++)->int32;
 
-		creature->MateName = packet.GetElement(p++)->str;
+		if (packet.GetElement(p)->type == T_STRING)
+		{
+			creature->MateName = packet.GetElement(p++)->str;
+		}
+		else
+		{
+			log("Unknown creature mate: %d", creature->Name);
+			return;
+		}
 		creature->Destiny = packet.GetElement(p++)->byte8;
 
 		// [250200, NA371 (2021-07-16)] ?
@@ -232,21 +258,35 @@ namespace kanan
 		for (int i = 0; i < itemCount; ++i)
 		{
 			auto itemOId = packet.GetElement(p++)->ID;
-
-			ItemInfo itemInfo = *(ItemInfo*)packet.GetElement(p++)->str;
+			ItemInfo itemInfo;
+			if (packet.GetElement(p)->type == T_BIN)
+			{
+				itemInfo = *(ItemInfo*)packet.GetElement(p++)->str;
+			}
+			else
+			{
+				log("Unknown creature item: %d", creature->Name);
+				return;
+			}
 
 			if (packet.GetElement(p)->type == T_STRING)
-				packet.GetElement(p++)->str; // Extra Item Info
+				p++; // Extra Item Info
 			creature->Items.try_emplace(itemOId, itemInfo);
 		}
 
 		p += 20;
 
-		unsigned int conditionCount = packet.GetElement(p++)->int32;
-		for (int i = 0; i < conditionCount; ++i)
+		if (packet.GetElement(p)->type == T_INT)
 		{
-			creature->Conditions.push_back(packet.GetElement(p++)->int32);
-			packet.GetElement(p++)->str;
+			unsigned int conditionCount = packet.GetElement(p++)->int32;
+			for (int i = 0; i < conditionCount; ++i)
+			{
+				if (packet.GetElement(p)->type == T_INT && packet.GetElement(p+1)->type == T_STRING)
+				{
+					creature->Conditions.push_back(packet.GetElement(p++)->int32);
+					p++;
+				}
+			}
 		}
 
 		AddEntity(creature);
