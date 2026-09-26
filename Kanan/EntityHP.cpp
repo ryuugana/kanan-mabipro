@@ -314,7 +314,7 @@ namespace kanan {
             return;
         }
 
-        if (ImGui::TreeNode("Entity HP")) {
+        if (ImGui::TreeNode(getName().c_str())) {
             ImGui::TextWrapped("Shows the true HP of characters above their name.");
             ImGui::Spacing();
             ImGui::Checkbox("Enabled##EntityHP", &m_isEnabled);

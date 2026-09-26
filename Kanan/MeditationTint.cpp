@@ -110,7 +110,7 @@ namespace kanan {
             return;
         }
 
-        if (ImGui::TreeNode("Meditation Tint")) {
+        if (ImGui::TreeNode(getName().c_str())) {
             ImGui::TextWrapped("Tints characters that are meditating with a custom color.");
             ImGui::Spacing();
             ImGui::Checkbox("Enabled##MeditationTint", &m_isEnabled);

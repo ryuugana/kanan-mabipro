@@ -31,4 +31,5 @@ namespace kanan {
     };
 
     void AddToRecvQ(MabiMessage);
+    void AddToSendQ(MabiMessage);
 }

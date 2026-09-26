@@ -8,12 +8,18 @@
 namespace kanan {
 	// Seconds between each tick
 	unsigned int g_tickTimerSeconds;
+	bool g_tickTimerReset = true;
 
 	// 5 Mintues between ticks
 	const unsigned int g_tickTimerMax = 300;
 
 	VOID CALLBACK TickTimerProc(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime)
 	{
+		if (g_tickTimerReset) {
+			if(g_tickTimerSeconds != 0)	g_tickTimerSeconds = 0;
+			return;
+		}
+
 		if (g_tickTimerSeconds == 0 || g_tickTimerMax > g_tickTimerMax)
 		{
 			g_tickTimerSeconds = g_tickTimerMax;
@@ -29,7 +35,9 @@ namespace kanan {
 		m_hasSend = false;
 		m_hasRecv = true;
 		m_isEnabled = false;
+		m_op.push_back(0x4E25); // Disconnect Request
 		m_op.push_back(0x520E); // Tick sync packet; 0x5BD5 for durability update
+		m_op.push_back(0x701F); // Character unlock
 
 		g_tickTimerSeconds = 0;
 		m_timerId = NULL;
@@ -47,7 +55,7 @@ namespace kanan {
 	}
 
 	void TickTimer::onUI() {
-		if (ImGui::TreeNode("Tick Timer")) {
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::TextWrapped("This mod shows the time until the next tick in seconds in a separate window.");
 			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
 			ImGui::TextWrapped("The window can be moved by dragging it to the desired location.");
@@ -84,10 +92,13 @@ namespace kanan {
 			m_timerId = SetTimer(NULL, m_timerId, 1000, TickTimerProc);
 		}
 
+		if(recvPacket.GetOP() == 0x4E25) g_tickTimerReset = true;
+
 		// Set max time for tick countdown if the packet is ours
 		if (recvPacket.GetReciverId() == g_kanan->characterId)
 		{
 			g_tickTimerSeconds = g_tickTimerMax;
+			if(g_tickTimerReset) g_tickTimerReset = false;
 		}
 	}
 }

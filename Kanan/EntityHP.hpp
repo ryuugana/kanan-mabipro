@@ -16,6 +16,8 @@ namespace kanan {
         EntityHP();
         virtual ~EntityHP();
 
+        std::string getName() override { return "Entity HP"; }
+
         void onFrame() override;
 
         void onUI() override;

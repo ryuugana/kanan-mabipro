@@ -1,6 +1,6 @@
 [
     {
-        "name": "Enable Money Letters",
+        "name": "Money Letters",
         "desc": "Gold will be shown in thousnads and millions (K and M).",
         "category": "Interface",
         "patches": [

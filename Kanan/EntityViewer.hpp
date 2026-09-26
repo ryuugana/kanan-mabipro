@@ -1,37 +1,43 @@
 #pragma once
 
-#include <forward_list>
+#include <chrono>
 
-#include "Mod.hpp"
-#include "Mabinogi.hpp"
+#include "IEntity.hpp"
+#include "EntityWindow.hpp"
+#include "MabiPacket.h"
+#include "MessageMod.hpp"
 
-class CEquipment;
 
 namespace kanan {
-    class KCharacter;
-    class KItem;
+	class EntityViewer : public MessageMod {
+	public:
+		EntityViewer();
 
-    class EntityViewer : public Mod {
-    public:
-        void onUI() override;
+		std::string getName() override { return "Entity Viewer"; }
 
-    private:
-        std::forward_list<KCharacter*> m_characters;
-        std::forward_list<KItem*> m_items;
+		void onUI() override;
 
-        void buildCharacterList();
-        void buildItemList();
+		bool onWindow() override;
 
-        void createCharacterTree();
-        void createItemTree();
+		void onConfigLoad(const Config& cfg) override;
+		void onConfigSave(Config& cfg) override;
 
-        void displayCharacter(KCharacter* character);
-        void displayEquipment(CCharacter::CEquipment* equipment);
-        void displayItem(KItem* item);
+		void onRecv(MabiMessage mabiMessage) override;
 
-        double durabilityToDouble(uint32_t dura, uint32_t maxDura);
-        double durabilityToDouble(uint32_t maxDura);
-        char* raceToString(uint32_t raceType);
-    };
+	private:
+		void drawWindow();
 
+        void AddCreatureInfo(CMabiPacket packet);
+		void AddProp(CMabiPacket packet);
+		void AddEntity(std::shared_ptr<IEntity> entity);
+
+		bool CheckDuplicate(const std::shared_ptr<IEntity>& newEntity);
+
+		bool            m_window;
+		bool            m_kananClosed;
+
+		EntityWindow eWindow;
+		std::vector<std::shared_ptr<IEntity>> entities;
+		std::mutex entitiesMutex;
+	};
 }

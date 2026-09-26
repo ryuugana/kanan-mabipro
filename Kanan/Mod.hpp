@@ -11,6 +11,8 @@
 namespace kanan {
     class Mod {
     public:
+        virtual std::string getName() { return ""; }
+
         virtual void onFrame() {}
 
         virtual void onUI() {}

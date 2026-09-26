@@ -358,7 +358,7 @@ namespace kanan {
             return;
         }
 
-        if (ImGui::TreeNode("UI Scale")) {
+        if (ImGui::TreeNode(getName().c_str())) {
             ImGui::TextWrapped("Scales the whole interface (windows, icons and text) while the game world stays at full resolution.");
             ImGui::Spacing();
             ImGui::Checkbox("Enabled##UIScale", &m_isEnabled);

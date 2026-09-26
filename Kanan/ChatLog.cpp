@@ -18,7 +18,13 @@ namespace kanan {
 		m_filter{},
 		m_scrollToBottom{ false },
 		m_autoScroll{ true },
+		m_isChatLog{ false },
 		m_isOpen{ false },
+		m_isTime{ false },
+		m_is24hour {false},
+		m_isAuctionEnabled {false},
+	    m_isFieldBossEnabled{ false },
+	    m_isFieldBNotifyEnabled{ false },
 		m_file{},
 		m_partyMembers{}
 	{
@@ -35,42 +41,83 @@ namespace kanan {
 	}
 
 	void ChatLog::onUI() {
-		if (ImGui::TreeNode("Chat Log")) {
-			ImGui::TextWrapped("This mod logs most chat messages when enabled. \n\n"
-			"Logged chat messages are sent to txt files in the \"Kanan Chat Log\" folder in your MabiPro folder for reference. \n\n"
-			"Logged chat messages can also be viewed using Show Chat Log, which can be used as an alternative chat window with time stamps.");
-			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
-			if(ImGui::Checkbox("Enable Chat Log", &m_isEnabled))
-				startLogging();
-
-
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::BeginDisabled(!m_isEnabled);
-			ImGui::Checkbox("Show Chat Log", &m_isOpen);
+			ImGui::TextWrapped("Uses 24-hour clock instead of 12-hour clock for all related chat mods below. \n");
+			ImGui::Checkbox("Use 24 hour clock", &m_is24hour);
 			ImGui::EndDisabled();
+
+			ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+
+			if (ImGui::TreeNode("Add Time to Chat"))
+			{
+				ImGui::TextWrapped("Adds current time to Mabinogi's in-game chat log.\n");
+				ImGui::Checkbox("Add Time to Chat", &m_isTime);
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("External Chat Log"))
+			{
+				ImGui::TextWrapped("Logs most chat messages to a text file when enabled. \n\n"
+					"Logged chat messages are sent to txt files in the \"Kanan Chat Log\" folder in your MabiPro folder. \n\n"
+					"Logged chat messages can also be viewed using Show Chat Log, which can be used as an alternative chat window.");
+				ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
+				if (ImGui::Checkbox("Enable Chat Log", &m_isChatLog))
+					startLogging();
+
+				ImGui::BeginDisabled(!m_isChatLog);
+				ImGui::Checkbox("Show Chat Log", &m_isOpen);
+				ImGui::EndDisabled();
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Scrolling Messages to Chat"))
+			{
+				ImGui::TextWrapped("This mod moves scrolling messages from the top of the screen to the middle of the screen and chat as <System> messages.");
+				ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+				ImGui::Checkbox("Auction Messages To Chat", &m_isAuctionEnabled);
+				ImGui::Checkbox("Field Boss Messages To Chat", &m_isFieldBossEnabled);
+
+				ImGui::BeginDisabled(!m_isFieldBossEnabled);
+				ImGui::Checkbox("Field Boss Notification", &m_isFieldBNotifyEnabled);
+				ImGui::EndDisabled();
+				ImGui::TreePop();
+			}
 			ImGui::TreePop();
+
+			m_isEnabled = m_isChatLog || m_isTime || m_isAuctionEnabled || m_isFieldBossEnabled;
 		}
 	}
 
 	bool ChatLog::onWindow() {
-		if (m_isOpen && m_startedLogging && m_isEnabled) {
+		if (m_isOpen && m_startedLogging && m_isChatLog) {
 			drawChatLog();
 		}
 
-		return m_isOpen && m_startedLogging && m_isEnabled;
+		return m_isOpen && m_startedLogging && m_isChatLog;
 	}
 
 	void ChatLog::onConfigLoad(const Config& cfg) {
-		m_isEnabled = cfg.get<bool>("ModChatLog.Enabled").value_or(false);
+		m_isChatLog = cfg.get<bool>("ModChatLog.Enabled").value_or(false);
 		m_isOpen = cfg.get<bool>("ChatLog.OpenByDefault").value_or(false);
-		//m_fileLogEnabled = cfg.get<bool>("ChatLog.FileLogEnabled").value_or(false);
+		m_isTime = cfg.get<bool>("ChatTime.Enabled").value_or(false);
+		m_isAuctionEnabled = cfg.get<bool>("AuctionMessageToChat.Enabled").value_or(false);
+		m_isFieldBossEnabled = cfg.get<bool>("FieldBossMessageToChat.Enabled").value_or(false);
+		m_isFieldBNotifyEnabled = cfg.get<bool>("FieldBossNotify.Enabled").value_or(false);
 		
-		if (m_isEnabled)
+		m_isEnabled = m_isTime || m_isChatLog || m_isAuctionEnabled || m_isFieldBossEnabled;
+
+		if (m_isChatLog)
 			startLogging();
 	}
 
 	void ChatLog::onConfigSave(Config& cfg) {
-		cfg.set<bool>("ModChatLog.Enabled", m_isEnabled);
+		cfg.set<bool>("ModChatLog.Enabled", m_isChatLog);
 		cfg.set<bool>("ChatLog.OpenByDefault", m_isOpen);
+		cfg.set<bool>("ChatTime.Enabled", m_isTime);
+		cfg.set<bool>("AuctionMessageToChat.Enabled", m_isAuctionEnabled);
+		cfg.set<bool>("FieldBossMessageToChat.Enabled", m_isFieldBossEnabled);
+		cfg.set<bool>("FieldBossNotify.Enabled", m_isFieldBNotifyEnabled);
 	}
 
 	std::string ChatLog::getTime() {
@@ -78,29 +125,122 @@ namespace kanan {
 		time_t now = time(0);
 		tm localTimeNow;
 		localtime_s(&localTimeNow, &now);
-		if(localTimeNow.tm_min < 10)
-			ss << localTimeNow.tm_hour << ":0" << localTimeNow.tm_min;
+		std::string hour;
+		std::string ampm;
+
+		if (m_is24hour)
+		{
+			hour = std::to_string(localTimeNow.tm_hour);
+		}
 		else
-			ss << localTimeNow.tm_hour << ":" << localTimeNow.tm_min;
+		{
+			ampm = (localTimeNow.tm_hour >= 12) ? "PM" : "AM";
+			int hour12 = localTimeNow.tm_hour % 12;
+			if (hour12 == 0) hour12 = 12; // Convert 0 (midnight) or 12 (noon) to 12
+			hour = std::to_string(hour12);
+		}
+
+		if(localTimeNow.tm_min < 10)
+			ss << hour << ":0" << localTimeNow.tm_min << " " << ampm;
+		else
+			ss << hour << ":" << localTimeNow.tm_min << " " << ampm;
 		return ss.str();
 	}
 
+	void notify() {
+		if (!FlashWindowEx) {
+			HINSTANCE hLib = GetModuleHandleA("user32");
+			if (hLib != NULL)
+				(DWORD&)FlashWindowEx = (DWORD)GetProcAddress(hLib, "FlashWindowEx");
+		}
+		if (FlashWindowEx) {
+			FLASHWINFO fInfo;
+			fInfo.cbSize = sizeof(fInfo);
+			fInfo.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
+			fInfo.hwnd = g_kanan->getWindow();
+			fInfo.uCount = 0;
+			fInfo.dwTimeout = 2500;
+			FlashWindowEx(&fInfo);
+		}
+	}
+
 	void ChatLog::onRecv(MabiMessage mabiMessage) {
+		std::string message = "";
 		CMabiPacket recvPacket;
 		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
+		int op = recvPacket.GetOP();
 
-		ostringstream ss{};
+		if (op == 21100)
+		{
+			message.append(recvPacket.GetElement(2)->str);
+		}
+		else if (op == 36502 || op == 36504)
+		{
+			message.append("party info");
+		}
+		else
+		{
+			message.append(recvPacket.GetElement(1)->str);
+		}
 
-		try {
-			string message = "";
-			switch (recvPacket.GetOP())
+		if (message.empty() || (message.length() == 1 && message.data()[0] == ' '))
+		{
+			return;
+		}
+		else if (op == 21101)
+		{
+			// Handle m_isAuctionEnabled, m_isFieldBossEnabled, and m_isFieldBNotifyEnabled
+			if (recvPacket.GetElement(0)->byte8 == 1 || recvPacket.GetElement(0)->byte8 == 8)
+			{
+				if (m_isAuctionEnabled && message.find("Channel 1") != string::npos) {
+					PacketData data;
+					data.type = 1;
+					data.byte8 = 7;
+					recvPacket.SetElement(&data, 0);
+					data.type = T_INT;
+					data.int32 = 0;
+					recvPacket.SetElement(&data, 2);
+
+					BYTE* p;
+					int tmpSizw = recvPacket.BuildPacket(&p);
+
+					memcpy(mabiMessage.buffer, p, tmpSizw);
+					delete[] p;
+				}
+				else if ((m_isFieldBossEnabled && message.find("has appeared") != string::npos) ||
+					(m_isFieldBossEnabled && message.find("has defeated") != string::npos)) {
+					PacketData data;
+					data.type = T_BYTE;
+					data.byte8 = 7;
+					recvPacket.SetElement(&data, 0);
+
+					BYTE* p;
+					int tmpSizw = recvPacket.BuildPacket(&p);
+
+					memcpy(mabiMessage.buffer, p, tmpSizw);
+					delete[] p;
+
+					if (message.find("has appeared") != string::npos && m_isFieldBNotifyEnabled)
+						notify();
+				}
+			}
+
+			if (recvPacket.GetElement(0)->byte8 != 7)
+			{
+				return;
+			}
+		}
+
+		if (m_isChatLog)
+		{
+			ostringstream ss{};
+			switch (op)
 			{
 			case 21100: // All + Personal Shop
 				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
-					return;
-				message = recvPacket.GetElement(2)->str;
-				if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
 					break;
+				if (recvPacket.GetReciverId() > 4700000000000000 || (recvPacket.GetReciverId() > 0x10010000000000 && recvPacket.GetReciverId() < 0x10020000000000))
+					return;
 				if (strcmp(recvPacket.GetElement(1)->str, "<PERSONALSHOP>") == 0) {
 					ss << getTime() << " | <PERSONALSHOP> " << ": " << message;
 				}
@@ -111,35 +251,35 @@ namespace kanan {
 					bool isEmote = false;
 					for each(auto emote in m_emotes) {
 						if (message.find(emote) != string::npos)
-							return;
+						{
+							isEmote = true;
+							break;
+						}
 					}
+
+					if (isEmote) break;
 
 					ss << getTime() << " | " << recvPacket.GetElement(1)->str << ": " << message;
 				}
 				break;
 			case 21101: // System
 				if (!string(recvPacket.GetElement(1)->str).find("<COMBAT>"))
-					return;
-				if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
 					break;
-				message = recvPacket.GetElement(1)->str;
-				if (recvPacket.GetElement(0)->byte8 == 7)
-					ss << getTime() << " | <SYSTEM> " << ": " << recvPacket.GetElement(1)->str;
+				if (strcmp(recvPacket.GetElement(1)->str, "Your skill latency reduction value has been detected to be too high. Please lower it..") == 0)
+					return;
+				ss << getTime() << " | <SYSTEM> " << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 21107: // Whisper
-				message = recvPacket.GetElement(1)->str;
 				ss << getTime() << " | <WHISPER> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
 			case 21109: // Beginner
-				message = recvPacket.GetElement(1)->str;
 				ss << getTime() << " | <GLOBAL> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
 				break;
-			case 36502:
-				 m_partyMembers[recvPacket.GetElement(2)->ID] = recvPacket.GetElement(3)->str;
-				 break;
-			case 36504:
+			case 36502: // Party info
+					m_partyMembers[recvPacket.GetElement(2)->ID] = recvPacket.GetElement(3)->str;
+					break;
+			case 36504: // Party info
 				for (int i = 14; i < recvPacket.GetElementNum();) {
-					log("Party joined elements: %d, i: %d, id: %lld", recvPacket.GetElementNum(), i, recvPacket.GetElement(i)->ID);
 					if (recvPacket.GetElement(i)->type == T_LONG) {
 						m_partyMembers[recvPacket.GetElement(i)->ID] = recvPacket.GetElement(i + 1)->str;
 						i += 11;
@@ -150,17 +290,15 @@ namespace kanan {
 				}
 				break;
 			case 36520: // Party
-				message = recvPacket.GetElement(1)->str;
 				if (m_partyMembers.find(recvPacket.GetElement(0)->ID) == m_partyMembers.end()) {
-					ss << getTime() << " | <PARTY> " << ": " << recvPacket.GetElement(1)->str;
+					ss << getTime() << " | <PARTY> " << ": " << message;
 				}
 				else {
-					ss << getTime() << " | <PARTY> " << m_partyMembers[recvPacket.GetElement(0)->ID] << ": " << recvPacket.GetElement(1)->str;
+					ss << getTime() << " | <PARTY> " << m_partyMembers[recvPacket.GetElement(0)->ID] << ": " << message;
 				}
 				break;
 			case 50031: // Guild
-				message = recvPacket.GetElement(1)->str;
-				ss << getTime() << " | <GUILD> " << recvPacket.GetElement(0)->str << ": " << recvPacket.GetElement(1)->str;
+				ss << getTime() << " | <GUILD> " << recvPacket.GetElement(0)->str << ": " << message;
 				break;
 			default:
 				break;
@@ -172,7 +310,42 @@ namespace kanan {
 				addChatLog(log.c_str());
 			}
 		}
-		catch (exception e) {
+
+		if (m_isTime)
+		{
+			std::string addTime;
+			int index = 1;
+
+			if (op == 21100)
+			{
+				addTime = recvPacket.GetElement(index)->str;
+				addTime.append(" [" + getTime() + ']');
+			}
+			else if (op == 36502 || op == 36504)
+			{
+				return;
+			}
+			else
+			{
+				addTime = '[' + getTime() + "] ";
+				addTime.append(recvPacket.GetElement(index)->str);
+			}
+
+			PacketData data;
+			data.type = T_STRING;
+			data.str = addTime.data();
+			data.len = addTime.length();
+			recvPacket.SetElement(&data, index);
+
+			BYTE* p;
+			int tmpSizw = recvPacket.BuildPacket(&p);
+
+			MabiMessage newMsg;
+			newMsg.buffer = p;
+			newMsg.size = tmpSizw;
+			AddToRecvQ(newMsg);
+
+			memset(mabiMessage.buffer, 0, mabiMessage.size);
 		}
 	}
 

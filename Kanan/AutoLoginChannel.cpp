@@ -24,7 +24,7 @@ namespace kanan {
 	}
 
 	void AutoLoginChannel::onUI() {
-		if (ImGui::TreeNode("Auto Login Channel")) {
+		if (ImGui::TreeNode(getName().c_str())) {
 			ImGui::TextWrapped("This mod will automatically log you into the chosen channel.\n"
 				"This will ignore the channel choice in game and force the channel below.");
 
@@ -70,7 +70,7 @@ namespace kanan {
 			int tmpSizw = sendPacket.BuildPacket(&p);
 
 			memcpy(mabiMessage.buffer, p, tmpSizw);
-			free(p);
+			delete[] p;
 		}
 	}
 }

@@ -26,6 +26,6 @@ namespace kanan {
 		BOOL PatchReadFromNetworkBuffer();
 		BOOL PatchWriteToNetworkBuffer();
 		BOOL PatchRun();
-		void FindMintFunctions();
+		void FindMessageFunctions();
 	};
 }

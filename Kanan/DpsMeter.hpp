@@ -10,6 +10,8 @@ namespace kanan {
 	public:
 		DpsMeter();
 
+		std::string getName() override { return "Dps Meter"; }
+
 		void onUI() override;
 
 		bool onWindow() override;
