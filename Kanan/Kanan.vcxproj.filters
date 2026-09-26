@@ -117,6 +117,18 @@
     <ClCompile Include="FreezeTimeOfDay.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="EntityHP.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
+    <ClCompile Include="CharacterHook.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
+    <ClCompile Include="MeditationTint.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
+    <ClCompile Include="UIScale.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="TTFFontSize.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -285,6 +297,24 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="FreezeTimeOfDay.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityHP.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="CharacterHook.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="MeditationTint.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="UIScale.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="UIScaleFilter.h">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="UIScaleXbr.h">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="TTFFontSize.hpp">

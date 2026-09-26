@@ -16,6 +16,9 @@
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
 #include "MaxFrameRate.hpp"
+#include "EntityHP.hpp"
+#include "MeditationTint.hpp"
+#include "UIScale.hpp"
 #include "FieldOfView.hpp"
 #include "StatusUI.hpp"
 
@@ -142,6 +145,9 @@ namespace kanan {
         addMod(make_unique<DisableNagle>());
         addMod(make_unique<FieldOfView>());
         addMod(make_unique<MaxFrameRate>());
+        addMod(make_unique<EntityHP>());
+        addMod(make_unique<MeditationTint>());
+        addMod(make_unique<UIScale>());
         //addMod(make_unique<StatusUI>());
 
         log("[Mods] Finished loading mods.");
