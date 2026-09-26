@@ -162,6 +162,7 @@
     <ClCompile Include="EntityHP.cpp" />
     <ClCompile Include="CharacterHook.cpp" />
     <ClCompile Include="MeditationTint.cpp" />
+    <ClCompile Include="CpuScheduling.cpp" />
     <ClCompile Include="UIScale.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
@@ -220,6 +221,7 @@
     <ClInclude Include="EntityHP.hpp" />
     <ClInclude Include="CharacterHook.hpp" />
     <ClInclude Include="MeditationTint.hpp" />
+    <ClInclude Include="CpuScheduling.hpp" />
     <ClInclude Include="UIScale.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
     <ClInclude Include="UIScaleXbr.h" />
