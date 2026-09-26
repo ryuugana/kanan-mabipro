@@ -305,6 +305,9 @@
     <ClInclude Include="UIScaleFilter.h">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
+    <ClInclude Include="UIScaleXbr.h">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
     <ClInclude Include="TTFFontSize.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>

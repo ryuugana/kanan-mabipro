@@ -36,12 +36,14 @@ namespace kanan {
             FILTER_SMOOTH,  // the client's own (bilinear) filtering: soft
             FILTER_SHARP,   // nearest texel: crisp, but uneven at fractional scales
             FILTER_CRISP,   // sharp bilinear: crisp with even strokes at any scale
+            FILTER_PIXEL_ART, // xBR: diagonals and curves redrawn smooth at the output resolution
         };
 
     private:
         bool m_isEnabled;
         float m_scale;
         int m_filter;
+        int m_curveSmoothing; // pixel art filter: 0 corners kept, diagonals only; 1 also slopes; 2 rounded
 
         float m_appliedScale;
         int m_realWidth;
@@ -54,6 +56,7 @@ namespace kanan {
         uintptr_t m_pleioneEnd;
 
         IDirect3DPixelShader9* m_filterShader;
+        IDirect3DPixelShader9* m_xbrShader;
 
         std::unique_ptr<FunctionHook> m_resizeHook;
         std::unique_ptr<FunctionHook> m_screenToClientHook;
@@ -76,7 +79,7 @@ namespace kanan {
 
         template <typename Draw>
         HRESULT drawInterface(IDirect3DDevice9* device, Draw draw);
-        bool setCrispFilter(IDirect3DDevice9* device);
+        bool setShaderFilter(IDirect3DDevice9* device, IDirect3DPixelShader9* shader, float roundCorners, float smoothSlopes);
 
         static void __fastcall hookedResize(uintptr_t interfaceMgr, uintptr_t edx, uint32_t width, uint32_t height);
         static BOOL WINAPI hookedScreenToClient(HWND wnd, LPPOINT point);

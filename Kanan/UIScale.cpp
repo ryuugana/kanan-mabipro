@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <intrin.h>
 
@@ -12,6 +13,7 @@
 #include "Log.hpp"
 #include "UIScale.hpp"
 #include "UIScaleFilter.h"
+#include "UIScaleXbr.h"
 
 #pragma comment(lib, "psapi.lib")
 
@@ -161,6 +163,7 @@ namespace kanan {
         : m_isEnabled{ false },
         m_scale{ 1.5f },
         m_filter{ FILTER_CRISP },
+        m_curveSmoothing{ 0 },
         m_appliedScale{ 1.0f },
         m_realWidth{ 0 },
         m_realHeight{ 0 },
@@ -169,7 +172,8 @@ namespace kanan {
         m_exlEnd{ 0 },
         m_pleioneBegin{ 0 },
         m_pleioneEnd{ 0 },
-        m_filterShader{ nullptr }
+        m_filterShader{ nullptr },
+        m_xbrShader{ nullptr }
     {
         log("[UIScale] Entering constructor...");
 
@@ -243,8 +247,10 @@ namespace kanan {
             }
         }
 
-        if (m_filterShader != nullptr) {
-            m_filterShader->Release();
+        for (auto shader : { m_filterShader, m_xbrShader }) {
+            if (shader != nullptr) {
+                shader->Release();
+            }
         }
 
         g_appliedScale = 1.0f;
@@ -336,6 +342,13 @@ namespace kanan {
             m_filterShader = nullptr;
         }
 
+        // Needs pixel shader 2.a (dependent reads, 222 instructions); without it the pixel art
+        // filter falls back to crisp.
+        if (FAILED(device->CreatePixelShader((const DWORD*)g_uiScaleXbr, &m_xbrShader))) {
+            log("[UIScale] Failed to create the pixel art filter shader");
+            m_xbrShader = nullptr;
+        }
+
         return m_setTransformHook->isValid() && m_drawPrimitiveHook->isValid() && m_drawIndexedPrimitiveHook->isValid() &&
             m_setViewportHook->isValid() && m_getViewportHook->isValid() && m_setScissorRectHook->isValid() && m_getScissorRectHook->isValid();
     }
@@ -350,9 +363,14 @@ namespace kanan {
             ImGui::Spacing();
             ImGui::Checkbox("Enabled##UIScale", &m_isEnabled);
             ImGui::SliderFloat("Scale##UIScale", &m_scale, 1.0f, 3.0f, "%.2fx");
-            ImGui::Combo("Filter##UIScale", &m_filter, "Smooth\0Sharp pixels\0Crisp\0");
-            ImGui::TextDisabled("Crisp keeps text and icons sharp with even strokes at any scale.\n"
-                "Sharp pixels is blockier at in-between scales like 1.5x. Smooth is the game's own blur.");
+            ImGui::Combo("Filter##UIScale", &m_filter, "Smooth\0Sharp pixels\0Crisp\0Pixel art (xBR)\0");
+
+            if (m_filter == FILTER_PIXEL_ART) {
+                ImGui::Combo("Curve smoothing##UIScale", &m_curveSmoothing, "Low (keeps corners)\0Medium\0High (rounded)\0");
+            }
+            ImGui::TextDisabled("Pixel art redraws curves and diagonals of text and icons smoothly at any scale.\n"
+                "Crisp keeps them sharp with even strokes. Sharp pixels is blockier at in-between\n"
+                "scales like 1.5x. Smooth is the game's own blur.");
             ImGui::TreePop();
         }
     }
@@ -361,8 +379,9 @@ namespace kanan {
         m_isEnabled = cfg.get<bool>("UIScale.Enabled").value_or(false);
         m_scale = cfg.get<float>("UIScale.Scale").value_or(1.5f);
         m_filter = cfg.get<int>("UIScale.Filter").value_or(FILTER_CRISP);
+        m_curveSmoothing = std::clamp(cfg.get<int>("UIScale.CurveSmoothing").value_or(0), 0, 2);
 
-        if (m_filter < FILTER_SMOOTH || m_filter > FILTER_CRISP) {
+        if (m_filter < FILTER_SMOOTH || m_filter > FILTER_PIXEL_ART) {
             m_filter = FILTER_CRISP;
         }
     }
@@ -371,6 +390,7 @@ namespace kanan {
         cfg.set<bool>("UIScale.Enabled", m_isEnabled);
         cfg.set<float>("UIScale.Scale", m_scale);
         cfg.set<int>("UIScale.Filter", m_filter);
+        cfg.set<int>("UIScale.CurveSmoothing", m_curveSmoothing);
     }
 
     // The client reports its size; lay the interface out for the virtual size instead. The size
@@ -568,10 +588,10 @@ namespace kanan {
 
     // Replaces stage 0 with the sharp bilinear shader when the client draws a plain textured,
     // colored quad (nearly all of the interface). Returns false to leave the draw to the client.
-    bool UIScale::setCrispFilter(IDirect3DDevice9* device) {
+    bool UIScale::setShaderFilter(IDirect3DDevice9* device, IDirect3DPixelShader9* shader, float roundCorners, float smoothSlopes) {
         IDirect3DPixelShader9* current{ nullptr };
 
-        if (m_filterShader == nullptr || FAILED(device->GetPixelShader(&current))) {
+        if (shader == nullptr || FAILED(device->GetPixelShader(&current))) {
             return false;
         }
 
@@ -615,13 +635,13 @@ namespace kanan {
 
         const float constants[4][4]{
             { (float)desc.Width, (float)desc.Height, 1.0f / desc.Width, 1.0f / desc.Height },
-            { g_appliedScale, 0.0f, 0.0f, 0.0f },
+            { g_appliedScale, roundCorners, smoothSlopes, 0.0f },
             { colorTexture, colorTexture, colorTexture, alphaTexture },
             { colorDiffuse, colorDiffuse, colorDiffuse, alphaDiffuse },
         };
 
         device->SetPixelShaderConstantF(0, &constants[0][0], 4);
-        device->SetPixelShader(m_filterShader);
+        device->SetPixelShader(shader);
 
         return true;
     }
@@ -634,7 +654,11 @@ namespace kanan {
             return draw();
         }
 
-        auto isCrisp = m_filter == FILTER_CRISP && setCrispFilter(device);
+        // The pixel art filter reads exact texels; crisp blends neighbors itself. Either falls
+        // back to the next simpler filter when the draw can't use a shader.
+        auto isPixelArt = m_filter == FILTER_PIXEL_ART &&
+            setShaderFilter(device, m_xbrShader, m_curveSmoothing >= 2 ? 1.0f : 0.0f, m_curveSmoothing >= 1 ? 1.0f : 0.0f);
+        auto isCrisp = !isPixelArt && m_filter >= FILTER_CRISP && setShaderFilter(device, m_filterShader, 0.0f, 0.0f);
         auto filter = isCrisp ? D3DTEXF_LINEAR : D3DTEXF_POINT;
         DWORD mag{}, min{};
 
@@ -648,7 +672,7 @@ namespace kanan {
         device->SetSamplerState(0, D3DSAMP_MAGFILTER, mag);
         device->SetSamplerState(0, D3DSAMP_MINFILTER, min);
 
-        if (isCrisp) {
+        if (isCrisp || isPixelArt) {
             device->SetPixelShader(nullptr);
         }
 

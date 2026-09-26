@@ -222,6 +222,7 @@
     <ClInclude Include="MeditationTint.hpp" />
     <ClInclude Include="UIScale.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
+    <ClInclude Include="UIScaleXbr.h" />
     <ClInclude Include="Game.hpp" />
     <ClInclude Include="Kanan.hpp" />
     <ClInclude Include="KCamera.hpp" />
