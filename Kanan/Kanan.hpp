@@ -35,6 +35,10 @@ namespace kanan {
             return m_wnd;
         }
 
+        auto getD3D9Hook() const {
+            return m_d3d9Hook.get();
+        }
+
         auto isUIOpen() {
             return m_isUIOpen;
         }
