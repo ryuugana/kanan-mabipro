@@ -141,9 +141,7 @@
     <ClCompile Include="DpsMeter.cpp" />
     <ClCompile Include="GetInfo.cpp" />
     <ClCompile Include="MaintLogin.cpp" />
-    <ClCompile Include="MaintLogin.hpp" />
     <ClCompile Include="MaxFrameRate.cpp" />
-    <ClCompile Include="TickTracker.hpp" />
     <ClCompile Include="Hotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
     <ClCompile Include="ChooseLoginNode.cpp" />
@@ -161,6 +159,10 @@
     <ClCompile Include="ScrollingMessageToChat.cpp" />
     <ClCompile Include="FieldOfView.cpp" />
     <ClCompile Include="FreezeTimeOfDay.cpp" />
+    <ClCompile Include="EntityHP.cpp" />
+    <ClCompile Include="CharacterHook.cpp" />
+    <ClCompile Include="MeditationTint.cpp" />
+    <ClCompile Include="UIScale.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
     <ClCompile Include="KananInit.cpp" />
@@ -215,6 +217,12 @@
     <ClInclude Include="FieldOfView.hpp" />
     <ClInclude Include="FontData.hpp" />
     <ClInclude Include="FreezeTimeOfDay.hpp" />
+    <ClInclude Include="EntityHP.hpp" />
+    <ClInclude Include="CharacterHook.hpp" />
+    <ClInclude Include="MeditationTint.hpp" />
+    <ClInclude Include="UIScale.hpp" />
+    <ClInclude Include="UIScaleFilter.h" />
+    <ClInclude Include="UIScaleXbr.h" />
     <ClInclude Include="Game.hpp" />
     <ClInclude Include="Kanan.hpp" />
     <ClInclude Include="KCamera.hpp" />
