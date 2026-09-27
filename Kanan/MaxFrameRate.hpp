@@ -9,10 +9,10 @@ namespace kanan {
 	class MaxFrameRate : public Mod {
 	public:
 		MaxFrameRate();
+		~MaxFrameRate();
 
-		std::string getName() override { return "Max Frame Rate"; }
-
-		void onFrame() override;
+		// Waits for the next frame last, just before the game shows it, so the frames stay evenly spaced.
+		void onFrameDrawn() override;
 
 		void onUI() override;
 
@@ -24,6 +24,12 @@ namespace kanan {
 		int m_maxBackgroundFPS;
 		bool m_enabled;
 
-		std::chrono::system_clock::time_point m_elapsedTime;
+		// When the next frame is due; frames are scheduled a frame time apart, so waits don't drift.
+		std::chrono::steady_clock::time_point m_nextFrame;
+		// Waits without using the CPU (null if Windows can't make one).
+		HANDLE m_timer;
+		bool m_isTimerPrecise;
+
+		void waitUntil(std::chrono::steady_clock::time_point time);
 	};
 }

@@ -8,12 +8,15 @@
 #include <Scan.hpp>
 #include <Config.hpp>
 #include <filesystem>
+#include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <Shlwapi.h>
 #include <String.hpp>
 #include <Utility.hpp>
 
 #include "FontData.hpp"
+#include "GoldFormat.hpp"
 #include "Log.hpp"
 #include "Kanan.hpp"
 #include "MabiMessageHook.hpp"
@@ -36,7 +39,6 @@ namespace kanan {
 
 	Hotkey  m_key;
 	Hotkey  m_housingKey;
-	Hotkey  m_astralKey;
 
     Kanan::Kanan(string path, HMODULE hmod) :
         characterId{ 0 },
@@ -46,7 +48,6 @@ namespace kanan {
         m_modConfigPath{ m_path + "/config.txt" },
         m_updateExecPath{ m_path + "/Update.exe" },
         m_updateZipPath{ m_path + "/KananUpdater.zip" },
-        m_astralPath{ m_path + "/astral.ini" },
         m_d3d9Hook{ nullptr },
         m_dinputHook{ nullptr },
         m_mesHook{ nullptr },
@@ -241,6 +242,13 @@ namespace kanan {
     }
 
     void Kanan::onFrame() {
+        // Kanan loads before the game creates its window, so the game can show frames while Kanan is
+        // still setting up its mods on the startup thread. Nothing runs until that's done and g_kanan
+        // points to this Kanan (mods use it as soon as their settings are loaded).
+        if (!m_areModsReady || g_kanan.get() != this) {
+            return;
+        }
+
         if (!m_isInitialized) {
             onInitialize();
         }
@@ -261,8 +269,15 @@ namespace kanan {
                 loadConfig();
             }
 
-            if (!m_isMp3Fixed) {
+            // Once a session: if the files can't be moved now, trying every frame won't help.
+            if (!m_isMp3Fixed && !m_isMp3Tried) {
+                m_isMp3Tried = true;
                 fixMabiProMp3();
+            }
+
+            if (m_isNewVersion.exchange(false) && m_isNotifyUpdate) {
+                m_isUpdate = true;
+                m_isUIOpen = true;
             }
 
             for (const auto& mod : m_mods.getMods()) {
@@ -282,9 +297,6 @@ namespace kanan {
 				housingBoard();
 			}
 
-			if (wasKeyPressed(m_astralKey.hotkey)) {
-				viewAstralWorld();
-			}
 
             if (m_isUIOpen || (m_interactiveWindows && m_modWindowEnabled)) {
                 // Block input if the user is interacting with the UI.
@@ -339,26 +351,6 @@ namespace kanan {
 
             ImGui::PopFont();
         }
-        else {
-            ImGui::OpenPopup("Loading...");
-            ImGui::SetNextWindowSize(ImVec2{ 450.0f, 200.0f });
-            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-            ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-
-            if (ImGui::BeginPopupModal("Loading...", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
-                ImGui::TextWrapped("Kanan is currently setting things up. Please wait a moment...");
-                ImGui::EndPopup();
-            }
-
-            auto& io = ImGui::GetIO();
-
-            if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
-                m_dinputHook->ignoreInput();
-            }
-            else {
-                m_dinputHook->acknowledgeInput();
-            }
-        }
 
         ImGui::EndFrame();
 
@@ -375,6 +367,12 @@ namespace kanan {
 
         ImGui::Render();
         ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+
+        if (m_areModsReady) {
+            for (const auto& mod : m_mods.getMods()) {
+                mod->onFrameDrawn();
+            }
+        }
     }
 
     bool Kanan::onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -407,9 +405,6 @@ namespace kanan {
 
         memset(szBuffer, 0, size);
 
-        // Delete previously created batch file
-        if (std::filesystem::exists(m_updateExecPath)) std::filesystem::remove(m_updateExecPath);
-
         if (URLOpenBlockingStream(NULL, L"https://raw.githubusercontent.com/ryuugana/kanan-mabipro/master/Kanan/Version.h", &lpSrc, 0, NULL) != S_OK)
         {
             return false;
@@ -417,6 +412,7 @@ namespace kanan {
         else
         {
             lpSrc->Read(szBuffer, size - 1, NULL);
+            lpSrc->Release();
         }
 
         string remoteVersion = "";
@@ -453,10 +449,10 @@ namespace kanan {
             updateHash = GetKananReleaseHash(fileName);
         }
 
-        log("Obtained hash: %s", updateHash);
+        log("Obtained hash: %s", updateHash.c_str());
 
 
-        log("Downloading Kanan updater zip to %s", m_updateZipPath);
+        log("Downloading Kanan updater zip to %s", m_updateZipPath.c_str());
 
         log("Comparing downloaded file hash to actual file hash: ");
 
@@ -464,7 +460,7 @@ namespace kanan {
         {
             if (!fileHash.empty())
             {
-                log("Failed with hash - %s", fileHash);
+                log("Failed with hash - %s", fileHash.c_str());
                 log("Retrying download and verifying hash : ");
                 Sleep(1000);
             }
@@ -506,558 +502,8 @@ namespace kanan {
         log("Failed to update Kanan.");
     }
 
-    void Kanan::applyDefaultMods(bool astralWorld)
+    void Kanan::applyDefaultMods()
     {
-        if (astralWorld)
-        {
-            std::ofstream astralConfig(m_astralPath);
-            astralConfig <<
-                ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
-                ";\n"
-                ";                          MABINOGI FANTASIA PATCH\n"
-                ";                            - created by spr33 -\n"
-                ";\n"
-                ";	Copyright (C) Annyeong 2019, spr33 2009, chris & syoka 2008\n"
-                ";	Special thanks to Blade3575 for creating Astral, for many of his additional\n"
-                ";	  patches to the base patcher were disassembled from his work.\n"
-                ";	Thanks to chris & syoka for starting memory patchers for Mabinogi,\n"
-                ";	  and Sokcuri for the alarm patch and mss32 hook.\n"
-                ";\n"
-                ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
-                "\n"
-                "[PATCH]\n"
-                "; Sleep time for menu hook (milliseconds)\n"
-                "; 20000 = 20 seconds\n"
-                "WaitMenuHook=20000\n"
-                "\n"
-                "; Sets Thread Priority\n"
-                ";  15 =  Realtime\n"
-                ";   2 =  High\n"
-                ";   1 =  Above Normal\n"
-                ";   0 =  Normal\n"
-                ";  -1 =  Below Normal\n"
-                ";  -2 =  Low\n"
-                "; -15 =  Idle\n"
-                "SetThreadPriority=2\n"
-                "\n"
-                "; Disable Data Folder usage\n"
-                "; By default MabiPro already has it turned on\n"
-                "DisableDataFolder=0\n"
-                "\n"
-                "; Reduce the level of CPU usage, optionally only while minimized (1~100).\n"
-                "CPUReduction=90\n"
-                "CPUReduction_OnlyMinimized=1\n"
-                "\n"
-                "; Block the popup ads on game exit.\n"
-                "BlockEndingAds=0\n"
-                "\n"
-                "; Clear fog of war on dungeon minimaps.\n"
-                "ClearDungeonFog=1\n"
-                "\n"
-                "; Sets the time of the sky\n"
-                "; 0 = Sets the time to normal\n"
-                "; 1 = Disable night time\n"
-                "; 2 = Sets the time to always be night\n"
-                "SetSkyTime=0\n"
-                "\n"
-                "; Enable coloring of ALT names based on character type.\n"
-                "EnableNameColoring=1\n"
-                "\n"
-                "; Enable opening the right-click menu on your own character.\n"
-                "EnableSelfRightClick=1\n"
-                "\n"
-                "; Enable opening of player shops from a distance.\n"
-                "EnterRemoteShop=0\n"
-                "\n"
-                "; Increase the size of the in-game clock text.  Can cause cut-off text.\n"
-                "LargeClockText=0\n"
-                "\n"
-                "; Modify the maximum zoom distance (1~50000).\n"
-                "ModifyZoomLimit=15000\n"
-                "\n"
-                "; Allow moving while talking to NPCs.\n"
-                "MoveWhileTalking=1\n"
-                "\n"
-                "; Remove the 30-second login delay after disconnecting from the server.\n"
-                "RemoveLoginDelay=1\n"
-                "\n"
-                "; Modify the quality of screenshots.\n"
-                "ScreenshotQuality=90\n"
-                "\n"
-                "; Show combat power numerically.\n"
-                "ShowCombatPower=1\n"
-                "ShowMaxHP=1\n"
-                "\n"
-                "; Shows the percentage towards your next exploration level in the character window.\n"
-                "ShowExplorationPercent=1\n"
-                "\n"
-                "; Show the shop purchase and selling price in item descriptions.\n"
-                "ShowItemPrice=1\n"
-                "\n"
-                "; Show item durability with 1000x precision.\n"
-                "; The formatting string works by replacing values as follows: \n"
-                "; {0} => Current dura        i.e. 14\n"
-                "; {1} => Current dura x1000       13560 \n"
-                "; {2} => Maximum dura             15\n"
-                "; {3} => Maximum dura x1000       15000\n"
-                "; For example: \"{1}/{3} ({0}/{2})\" => \"13560/15000 (14/15)\"\n"
-                "ShowTrueDurability=1\n"
-                "ShowTrueDurability_str=\"Durability {1}/{3} ({0}/{2})\"\n"
-                "\n"
-                "; Show item color codes.\n"
-                "; Must have ShowTrueDurability enabled to work.\n"
-                "ShowItemColor=1\n"
-                "\n"
-                "; Show food quality numerically.\n"
-                "ShowTrueFoodQuality=0\n"
-                "\n"
-                "; Allow conversation with unequipped spirit weapons.\n"
-                "TalkToUnequippedEgo=1\n"
-                "\n"
-                "; Enable CTRL-targeting props while in combat mode.\n"
-                "TargetProps=0\n"
-                "\n"
-                "; Use bitmap fonts instead of vector fonts to prevent window lag.\n"
-                "UseBitmapFonts=0\n"
-                "\n"
-                "; Enable Elf Lag Fix\n"
-                "ElfLagFix=0\n"
-                "\n"
-                "; Show Negative HP\n"
-                "ShowNegativeHP=1\n"
-                "\n"
-                "; Show Negative Stats\n"
-                "ShowNegativeStats=1\n"
-                "\n"
-                "; Show Clock Minutes\n"
-                "ShowClockMinutes=0\n"
-                "\n"
-                "; No Mount Timeout\n"
-                "NoMountTimeout=1\n"
-                "\n"
-                "; No Channel Penalty Msg\n"
-                "; Disables that annoying msg box when you change channels during/after combat\n"
-                "NoChannelPenaltyMsg=1\n"
-                "\n"
-                "; No Channel Move Denial\n"
-                "; (Allows you to move in the middle of talking to NPC, etc.)\n"
-                "NoChannelMoveDenial=1\n"
-                "\n"
-                "; Enable Cutscene Skip\n"
-                "EnableCutsceneSkip=1\n"
-                "\n"
-                "; Target Resting Enemies\n"
-                "TargetRestingEnemies=1\n"
-                "\n"
-                "; Display Names From Far away\n"
-                "DisplayNamesFar=1\n"
-                "\n"
-                "; Disable Sunlight Glare\n"
-                "DisableSunlightGlare=0\n"
-                "\n"
-                "; Disable Gray Fog\n"
-                "DisableGrayFog=0\n"
-                "\n"
-                "; Party Board To Housing\n"
-                "PartyBoardToHousing=0\n"
-                "\n"
-                "; Show Detailed FPS\n"
-                "ShowDetailedFPS=0\n"
-                "\n"
-                "; Show Simple FPS\n"
-                "ShowSimpleFPS=1\n"
-                "\n"
-                "; Set Item Split Quantity\n"
-                "ItemSplitQuantity=1\n"
-                "\n"
-                "; Default Ranged Swap\n"
-                "; 0 = Ranged Attack\n"
-                "; 1 = Magnum Shot\n"
-                "; 2 = Mari's Arrow Revolver\n"
-                "; 3 = Arrow Revolver\n"
-                "; 4 = Support Shot\n"
-                "; 5 = Mirage Missile\n"
-                "; 6 = Crash Shot\n"
-                "DefaultRangedSwap=0\n"
-                "\n"
-                "; Uncap Auto-Production\n"
-                "UncapAutoProduction=1\n"
-                "\n"
-                "; Modify Render Distance (5000~100000)\n"
-                "; Set to 0 to keep render distance as default\n"
-                "ModifyRenderDistance=20000\n"
-                "\n"
-                "; Stay as Alchemy Golem\n"
-                "; Prevents Character Snapback when out of range\n"
-                "StayAsAlchemyGolem=1\n"
-                "\n"
-                "; Disable Screen Shake\n"
-                "DisableScreenShake=1\n"
-                "\n"
-                "; Enable Naked Mode\n"
-                "; Headless, cloth-less mode\n"
-                "EnableNakedMode=0\n"
-                "\n"
-                "; Disable Cloud Render\n"
-                "DisableCloudRender=0\n"
-                "\n"
-                "; Show Poison Durability\n"
-                "ShowPoisonDurability=0\n"
-                "\n"
-                "; Show True HP\n"
-                "ShowTrueHP=1\n"
-                "\n"
-                "; Show Item ID\n"
-                "ShowItemID=1\n"
-                "\n"
-                "; Disable Flashy Dyes\n"
-                "DisableFlashyDyes=0\n"
-                "\n"
-                "; Enable NPC Equip View\n"
-                "EnableNPCEquipView=1\n"
-                "\n"
-                "; Enable Minimap Zoom\n"
-                "; Credits to Rydian\n"
-                "EnableMinimapZoom=1\n"
-                "\n"
-                "; Combat Mastery Swap\n"
-                "; Provide the Skill ID in the field\n"
-                "; 0 to turn off\n"
-                "CombatMasterySwap=0\n"
-                "\n"
-                "; Enable User Commands\n"
-                "UserCommands=0\n"
-                "\n"
-                "; Enable TrueType Font\n"
-                "; Incompatible with bitmap\n"
-                "EnableTTF=0\n"
-                "\n"
-                "; Modify Font Size\n"
-                "; Enter a number from 1 to 30 to change font size to that number\n"
-                "; Default font size in-game is 11\n"
-                "ModifyFontSize=0\n"
-                "\n"
-                "; Faster Interface Windows\n"
-                "; Disables animations when opening and closing windows such as the character or skill window\n"
-                "FasterInterfaceWindows=1\n"
-                "\n"
-                "; Show Objects in Hide\n"
-                "; Reveals things that go in hide such as elves\n"
-                "ShowObjectsInHide=0\n"
-                "\n"
-                "; Show Unknown Quest Objectives\n"
-                "; Shows quest objectives not yet revealed\n"
-                "ShowUnknownQuestObjectives=1\n"
-                "\n"
-                "; Show Unknown Skill Requirements\n"
-                "; Reveals the hidden skill requirements to train the skill\n"
-                "ShowUnknownSkillRequirements=1\n"
-                "\n"
-                "; Show Unknown Upgrades\n"
-                "; Reveals skill requirements that have yet to be unlocked\n"
-                "ShowUnknownUpgrades=1\n"
-                "\n"
-                "; Show Unknown Titles\n"
-                "; Reveals all the titles in the title list\n"
-                "ShowUnknownTitles=1\n"
-                "\n"
-                "; Enable Instant Conversation\n"
-                "; Immediately brings up the text conversation instead of trying to render it letter-by-letter\n"
-                "InstantConversation=1\n"
-                "\n"
-                "; No Window Close On Talk\n"
-                "; Prevents open windows from closing when talking to an NPC\n"
-                "NoWindowCloseOnTalk=1\n"
-                "\n"
-                "; Warn Drop On All Items\n"
-                "; Warns drop on all items as opposed to expensive items over 10,000 if enabled in game options\n"
-                "WarnDropOnAllItems=0\n"
-                "\n"
-                "; Remove Blacklist Button\n"
-                "; Removes the blacklist button when you right click someone\n"
-                "RemoveBlacklistButton=0\n"
-                "\n"
-                "; ━─ Noginogi Alarm; imported from Noginogi-Party─ ━\n"
-                "; * At the specified time, it informs you by the sentiment wave according to the specified message.\n"
-                "; * If you modified the INI during game execution, please read the setting again for the application.\n"
-                "; * The alarm function may be delayed from 1 minute to 2 ~ 3 minutes in game time.\n"
-                "; * The function should be activated by setting \"0\" to \"1\".\n"
-                "\n"
-                "; - Whether or not Noginogi alarm function is used; if on, you'll be unable to turn off\n"
-                "TimeAlarm =1\n"
-                "\n"
-                "; ──────────────────────────────────────────────────────────────────────────────────────────────────────\n"
-                "; ── First alarm ─\n"
-                "- Whether alarm is enabled (whether it is used individually or not).\n"
-                "Alarm1_Using=1\n"
-                "\n"
-                "; - Exit message ( \"\n\" will be a line break)\n"
-                "Alarm1_Text = \"TRANSFORMATION TIME!\"\n"
-                "\n"
-                "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                "Alarm1_Hour=5\n"
-                "\n"
-                "; - Minutes to set\n"
-                "Alarm1_Min = 50\n"
-                "\n"
-                " - Message type\n"
-                "... 1: Flowing message (white)\n"
-                "... 2: Flowing message (red)\n"
-                "... 3: Central (Central subtitles)\n"
-                "... 4: Center bottom (Sub subtitle)\n"
-                "... 5: left center (weapon swap)\n"
-                "... 6: Flowing message (green)\n"
-                "... 7: Central subtitle + SYSTEM message\n"
-                "... 8: Flowing message (green)\n"
-                "... 9: Center subtitle blinks x 5\n"
-                "Alarm1_Code=9\n"
-                "\n"
-                "── Second alarm\n"
-                "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                "Alarm2_Using=0\n"
-                "\n"
-                "; - Exit message ( \"\n\" will be a line break)\n"
-                "Alarm2_Text = \"<bold>I'm configured to alert every in-game hour!</bold>\"\n"
-                "\n"
-                "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                "Alarm2_Hour=24\n"
-                "\n"
-                "; - Minutes to set\n"
-                "Alarm2_Min = 0\n"
-                "\n"
-                " - Message type\n"
-                "... 1: Flowing message (white)\n"
-                "... 2: Flowing message (red)\n"
-                "... 3: Central (Central subtitles)\n"
-                "... 4: Center bottom (Sub subtitle)\n"
-                "... 5: left center (weapon swap)\n"
-                "... 6: Flowing message (green)\n"
-                "... 7: Central subtitle + SYSTEM message\n"
-                "... 8: Flowing message (green)\n"
-                "... 9: Center subtitle blinks x 5\n"
-                "Alarm2_Code=7\n"
-                "\n"
-                "──A third alarm ──\n"
-                "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                "Alarm3_Using=0\n"
-                "\n"
-                "; - Exit message ( \"\n\" will be a line break)\n"
-                "Alarm3_Text = \"This is the third alarm. \"\n"
-                "\n"
-                "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                "Alarm3_Hour=24\n"
-                "\n"
-                "; - Minutes to set\n"
-                "Alarm3_Min = 0\n"
-                "\n"
-                " - Message type\n"
-                "... 1: Flowing message (white)\n"
-                "... 2: Flowing message (red)\n"
-                "... 3: Central (Central subtitles)\n"
-                "... 4: Center bottom (Sub subtitle)\n"
-                "... 5: left center (weapon swap)\n"
-                "... 6: Flowing message (green)\n"
-                "... 7: Central subtitle + SYSTEM message\n"
-                "... 8: Flowing message (green)\n"
-                "... 9: Center subtitle blinks x 5\n"
-                "Alarm3_Code=2\n"
-                "\n"
-                "── Fourth alarm ─\n"
-                "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                "Alarm4_Using=0\n"
-                "\n"
-                "; - Exit message ( \"\n\" will be a line break)\n"
-                "Alarm4_Text = \" Fourth alarm. \"\n"
-                "\n"
-                "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                "Alarm4_Hour=24\n"
-                "\n"
-                "; - Minutes to set\n"
-                "Alarm4_Min = 0\n"
-                "\n"
-                " - Message type\n"
-                "... 1: Flowing message (white)\n"
-                "... 2: Flowing message (red)\n"
-                "... 3: Central (Central subtitles)\n"
-                "... 4: Center bottom (Sub subtitle)\n"
-                "... 5: left center (weapon swap)\n"
-                "... 6: Flowing message (green)\n"
-                "... 7: Central subtitle + SYSTEM message\n"
-                "... 8: Flowing message (green)\n"
-                "... 9: Center subtitle blinks x 5\n"
-                "Alarm4_Code=7\n"
-                "\n"
-                "──Fifth alarm ─\n"
-                "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                "Alarm5_Using=0\n"
-                "\n"
-                "; - Exit message ( \"\n\" will be a line break)\n"
-                "Alarm5_Text = \" Fifth alarm. \"\n"
-                "\n"
-                "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                "Alarm5_Hour=24\n"
-                "\n"
-                "; - Minutes to set\n"
-                "Alarm5_Min = 0\n"
-                "\n"
-                " - Message type\n"
-                "... 1: Flowing message (white)\n"
-                "... 2: Flowing message (red)\n"
-                "... 3: Central (Central subtitles)\n"
-                "... 4: Center bottom (Sub subtitle)\n"
-                "... 5: left center (weapon swap)\n"
-                "... 6: Flowing message (green)\n"
-                "... 7: Central subtitle + SYSTEM message\n"
-                "... 8: Flowing message (green)\n"
-                "... 9: Center subtitle blinks x 5\n"
-                "Alarm5_Code=7\n"
-                "\n"
-                "── Sixth alarm ──\n"
-                "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                "Alarm6_Using=0\n"
-                "\n"
-                "; - Exit message ( \"\n\" will be a line break)\n"
-                "Alarm6_Text = \"This is the sixth alarm. \"\n"
-                "\n"
-                "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                "Alarm6_Hour=24\n"
-                "\n"
-                "; - Minutes to set\n"
-                "Alarm6_Min = 0\n"
-                "\n"
-                " - Message type\n"
-                "... 1: Flowing message (white)\n"
-                "... 2: Flowing message (red)\n"
-                "... 3: Central (Central subtitles)\n"
-                "... 4: Center bottom (Sub subtitle)\n"
-                "... 5: left center (weapon swap)\n"
-                "... 6: Flowing message (green)\n"
-                "... 7: Central subtitle + SYSTEM message\n"
-                "... 8: Flowing message (green)\n"
-                "... 9: Center subtitle blinks x 5\n"
-                "Alarm6_Code=7\n"
-                "\n"
-                "The seventh alarm\n"
-                "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                "Alarm7_Using=0\n"
-                "\n"
-                "; - Exit message ( \"\n\" will be a line break)\n"
-                "Alarm7_Text = \"This is the seventh alarm. \"\n"
-                "\n"
-                "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                "Alarm7_Hour=24\n"
-                "\n"
-                "; - Minutes to set\n"
-                "Alarm7_Min = 0\n"
-                "\n"
-                " - Message type\n"
-                "... 1: Flowing message (white)\n"
-                "... 2: Flowing message (red)\n"
-                "... 3: Central (Central subtitles)\n"
-                "... 4: Center bottom (Sub subtitle)\n"
-                    "... 5: left center (weapon swap)\n"
-                    "... 6: Flowing message (green)\n"
-                    "... 7: Central subtitle + SYSTEM message\n"
-                    "... 8: Flowing message (green)\n"
-                    "... 9: Center subtitle blinks x 5\n"
-                    "Alarm7_Code=7\n"
-                    "\n"
-                    "──Eighth Alarm ──\n"
-                    "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                    "Alarm8_Using=0\n"
-                    "\n"
-                    "; - Exit message ( \"\n\" will be a line break)\n"
-                    "Alarm8_Text = \"This is the eighth alarm. \"\n"
-                    "\n"
-                    "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                    "Alarm8_Hour=24\n"
-                    "\n"
-                    "; - Minutes to set\n"
-                    "Alarm8_Min = 0\n"
-                    "\n"
-                    " - Message type\n"
-                    "... 1: Flowing message (white)\n"
-                    "... 2: Flowing message (red)\n"
-                    "... 3: Central (Central subtitles)\n"
-                    "... 4: Center bottom (Sub subtitle)\n"
-                    "... 5: left center (weapon swap)\n"
-                    "... 6: Flowing message (green)\n"
-                    "... 7: Central subtitle + SYSTEM message\n"
-                    "... 8: Flowing message (green)\n"
-                    "... 9: Center subtitle blinks x 5\n"
-                    "Alarm8_Code=7\n"
-                    "\n"
-                    "── Ninth alarm ─\n"
-                    "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                    "Alarm9_Using=0\n"
-                    "\n"
-                    "; - Exit message ( \"\n\" will be a line break)\n"
-                    "Alarm9_Text = \"The ninth alarm. \"\n"
-                    "\n"
-                    "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                    "Alarm9_Hour=24\n"
-                    "\n"
-                    "; - Minutes to set\n"
-                    "Alarm9_Min = 0\n"
-                    "\n"
-                    " - Message type\n"
-                    "... 1: Flowing message (white)\n"
-                    "... 2: Flowing message (red)\n"
-                    "... 3: Central (Central subtitles)\n"
-                    "... 4: Center bottom (Sub subtitle)\n"
-                    "... 5: left center (weapon swap)\n"
-                    "... 6: Flowing message (green)\n"
-                    "... 7: Central subtitle + SYSTEM message\n"
-                    "... 8: Flowing message (green)\n"
-                    "... 9: Center subtitle blinks x 5\n"
-                    "Alarm9_Code=7\n"
-                    "\n"
-                    "Tenth Alarm\n"
-                    "; - Whether alarm is enabled (whether it is used individually or not).\n"
-                    "Alarm10_Using=0\n"
-                    "\n"
-                    "; - Exit message ( \"\n\" will be a line break)\n"
-                    "Alarm10_Text = \" Tenth alarm \"\n"
-                    "\n"
-                    "; - Set time (AlarmHour is set to 24, which tells you every hour)\n"
-                    "Alarm10_Hour=24\n"
-                    "\n"
-                    "; - Minutes to set\n"
-                    "Alarm10_Min = 0\n"
-                    "\n"
-                    " - Message type\n"
-                    "... 1: Flowing message (white)\n"
-                    "... 2: Flowing message (red)\n"
-                    "... 3: Central (Central subtitles)\n"
-                    "... 4: Center bottom (Sub subtitle)\n"
-                    "... 5: left center (weapon swap)\n"
-                    "... 6: Flowing message (green)\n"
-                    "... 7: Central subtitle + SYSTEM message\n"
-                    "... 8: Flowing message (green)\n"
-                    "... 9: Center subtitle blinks x 5\n"
-                    "Alarm10_Code=7\n"
-                    "\n"
-                    ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
-                    ";\n"
-                    "; DEBUGGING OPTIONS\n"
-                    "; Or, \"if everything works, DO NOT TOUCH\"\n"
-                    ";\n"
-                    ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
-                    "\n"
-                    "; Enable additional debugging information in the log file.\n"
-                    "; Set this to 1 before posting any logs in a bug report!\n"
-                    "Debug=0\n"
-                    "\n"
-                    "; Disable the CRT patch.\n"
-                    "; Setting this to 1 will make it EXTREMELY likely for HackShield to detect you!\n"
-                    "DisableCRTPatch = 1\n"
-                    "\n"
-                    "; Disable the menu modification and CPU limiting threads.\n"
-                    "DisableExtraThreads = 0\n"
-                    "UseDataFolder=0\n";
-            astralConfig.close();
-        }
-
         Config cfg{ m_modConfigPath };
         cfg.set<bool>("AssistantCharacterLocation.Enabled", true);
         cfg.set<bool>("AuctionMessageToChat.Enabled", true);
@@ -1070,18 +516,36 @@ namespace kanan {
         cfg.set<bool>("DisableNagle.Enabled", true);
         cfg.set<bool>("DisableSkillLocks.Enabled", true);
         cfg.set<bool>("DisableSkillRankUpMessage.Enabled", true);
-        cfg.set<bool>("EnableMoneyLetters.Enabled", true);
         cfg.set<bool>("FastFlight.Enabled", true);
         cfg.set<bool>("FastNao.Enabled", true);
         cfg.set<bool>("FieldBossMessageToChat.Enabled", true);
         cfg.set<bool>("FieldBossNotify.Enabled", true);
-        cfg.set<bool>("FixAstralWorldFlashy.Enabled", true);
         cfg.set<bool>("FixGiantCamera.Enabled", true);
+        cfg.set<int>("GoldFormat.Style", GoldFormat::LETTERS);
         cfg.set<bool>("KeepPetWindowOpen.Enabled", true);
         cfg.set<bool>("NoPetIdle.Enabled", true);
         cfg.set<bool>("NoSMClear/FailMessage.Enabled", true);
         cfg.set<bool>("RemoveChatRestrictions.Enabled", true);
 		cfg.set<bool>("UncapAlchemyAutoProduction.Enabled", true);
+
+        // AstralWorld's recommended options, now part of Kanan.
+        cfg.set<bool>("NameColoring.Enabled", true);
+        cfg.set<bool>("ModifyZoomLimit.Enabled", true);
+        cfg.set<int>("ModifyZoomLimit.Limit", 15000);
+        cfg.set<bool>("ModifyRenderDistance.Enabled", true);
+        cfg.set<int>("ModifyRenderDistance.Distance", 20000);
+        cfg.set<bool>("ShowCombatPower.CombatPower", true);
+        cfg.set<bool>("ShowTrueDurability.Enabled", true);
+        cfg.set<bool>("ShowTrueDurability.ShowItemColor", true);
+        cfg.set<bool>("ShowTrueHP.Enabled", true);
+        cfg.set<bool>("ShowItemID.Enabled", true);
+        cfg.set<bool>("UncapAutoProduction.Enabled", true);
+        cfg.set<bool>("TimeAlarm.Enabled", true);
+        cfg.set<bool>("TimeAlarm.Alarm1.Enabled", true);
+        cfg.set("TimeAlarm.Alarm1.Text", "TRANSFORMATION TIME!");
+        cfg.set<int>("TimeAlarm.Alarm1.Hour", 5);
+        cfg.set<int>("TimeAlarm.Alarm1.Minute", 50);
+        cfg.set<int>("TimeAlarm.Alarm1.Style", 9);
 
 
         if (!cfg.save(m_modConfigPath)) {
@@ -1100,18 +564,40 @@ namespace kanan {
         Config cfg{ m_modConfigPath };
         m_isUIOpenByDefault = cfg.get<bool>("UI.OpenByDefault").value_or(true);
         m_isNotifyUpdate = cfg.get<bool>("UI.NotifyUpdate").value_or(true);
-        m_isUpdate = checkVersion() && m_isNotifyUpdate;
         m_isMp3Fixed = cfg.get<bool>("UI.Mp3Fixed").value_or(false);
         m_interactiveWindows = cfg.get<bool>("UI.InteractiveWindows").value_or(true);
         m_fontSize = cfg.get<int>("UI.FontSize").value_or(16);
         m_tmpFontSize = m_fontSize;
         m_key.hotkey = cfg.get<int>("UI.Keybind").value_or(VK_INSERT);
         m_housingKey.hotkey = cfg.get<int>("UI.HousingKey").value_or(0);
-        m_astralKey.hotkey = cfg.get<int>("UI.AstralKey").value_or(0);
         m_isUIOpen = m_isUIOpenByDefault || m_isUpdate;
 
 		if (m_key.hotkey == 0)
 			m_isUIOpen = true;
+
+        if (!m_isVersionChecked) {
+            m_isVersionChecked = true;
+
+            // Delete the batch file a previous update created.
+            std::error_code ec{};
+            std::filesystem::remove(m_updateExecPath, ec);
+
+            // Downloading the latest version number would hold up the game's frame, so it's done on
+            // its own thread; the next frame after it finds a newer one opens the update message.
+            if (m_isNotifyUpdate) {
+                std::thread{ [this] {
+                    auto com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+                    if (checkVersion()) {
+                        m_isNewVersion = true;
+                    }
+
+                    if (SUCCEEDED(com)) {
+                        CoUninitialize();
+                    }
+                } }.detach();
+            }
+        }
 
         for (auto& mod : m_mods.getMods()) {
             mod->onConfigLoad(cfg);
@@ -1145,7 +631,6 @@ namespace kanan {
         cfg.set<int>("UI.FontSize", m_fontSize);
 		cfg.set<int>("UI.Keybind", m_key.hotkey);
 		cfg.set<int>("UI.HousingKey", m_housingKey.hotkey);
-		cfg.set<int>("UI.AstralKey", m_astralKey.hotkey);
 
         for (auto& mod : m_mods.getMods()) {
             mod->onConfigSave(cfg);
@@ -1187,7 +672,11 @@ namespace kanan {
 
         mp3_status_fix status = no_mp3_found;
 
-        for (const auto& entry : std::filesystem::directory_iterator(m_path + "/mp3/ambient")) {
+        // No ambient folder means no mp3 in the wrong place.
+        std::error_code ec{};
+        std::filesystem::directory_iterator ambient{ m_path + "/mp3/ambient", ec };
+
+        for (const auto& entry : ec ? std::filesystem::directory_iterator{} : ambient) {
             if (!isAmbientMp3(entry.path().filename().generic_string())) {
                 status = mp3_move_success;
                 string newMp3Path = m_path + "/mp3/" + entry.path().filename().string();
@@ -1196,7 +685,7 @@ namespace kanan {
                         std::filesystem::rename(entry.path(), newMp3Path);
                     }
                     else {
-                        log("Existing mp3 at %s, skipping to next file.", newMp3Path);
+                        log("Existing mp3 at %s, skipping to next file.", newMp3Path.c_str());
                     }
                 }
                 catch (std::filesystem::filesystem_error& e) {
@@ -1228,15 +717,6 @@ namespace kanan {
 
         static auto housing = (char(__thiscall*)())scan("Pleione.dll", "6A 08 B8 D9 34 D4 63 E8 67 89 3F 00 8B 0D 38 DF").value_or(0);
         housing();
-    }
-
-    void Kanan::viewAstralWorld() {
-        HMENU systemHMenu = GetSystemMenu(m_wnd, FALSE);
-        //HMENU astralSubHMenu = GetSubMenu(systemHMenu, 8);
-        LPARAM cmd = TrackPopupMenuEx(systemHMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
-            0, 0, m_wnd, NULL);
-        if (cmd) 
-            SendMessage(m_wnd, WM_SYSCOMMAND, cmd, 0);
     }
 
     void Kanan::drawUI() {
@@ -1291,12 +771,8 @@ namespace kanan {
         ImGui::Spacing();
 		ImGui::Separator();
 		ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-        if (ImGui::Button("Housing Board", ImVec2(ImGui::GetContentRegionAvail().x  * 0.50f, 50))) {
+        if (ImGui::Button("Housing Board", ImVec2(ImGui::GetContentRegionAvail().x, 50))) {
             housingBoard();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("AstralWorld", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
-            viewAstralWorld();
         }
         ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
@@ -1308,7 +784,6 @@ namespace kanan {
                 ImGui::Separator();
                 m_key.Display("Open/Close/Save Kanan", ImVec2(ImGui::GetContentRegionAvail().x - 25, 25));
                 m_housingKey.Display("Open Housing Board", ImVec2(ImGui::GetContentRegionAvail().x - 25, 25));
-                m_astralKey.Display("Open AstralWorld", ImVec2(ImGui::GetContentRegionAvail().x - 25, 25));
                 ImGui::TreePop();
             }
             if (ImGui::TreeNode("Kanan Font Size")) {
@@ -1359,50 +834,102 @@ namespace kanan {
                 ImGui::SetTooltip("Only enables recommended settings, this does not disable existing settings.");
             }
         }
-        if (ImGui::CollapsingHeader("Patches")) {
-            for (auto& mod : m_mods.getMods()) {
-                mod->onPatchUI();
-            }
-
-            // Patch mods.
-            for (auto& mods : m_mods.getPatchMods()) {
-                auto& category = mods.first;
-
-                if (!category.empty() && !ImGui::TreeNode(category.c_str())) {
-                    continue;
-                }
-
-                for (auto& mod : mods.second) {
-                    mod->onPatchUI();
-                }
-
-                if (!category.empty()) {
-                    ImGui::TreePop();
-                }
-            }
-        }
-
-        if (ImGui::CollapsingHeader("Configurable")) {
-            std::vector<kanan::Mod*> sortedMods;
-            sortedMods.reserve(m_mods.m_messageMods.size() + m_mods.getMods().size());
-
-            for (const auto& mod : m_mods.m_messageMods) {
-                if (mod) sortedMods.push_back(mod.get());
-            }
-            for (const auto& mod : m_mods.getMods()) {
-                if (mod) sortedMods.push_back(mod.get());
-            }
-
-            std::sort(sortedMods.begin(), sortedMods.end(), [](auto* a, auto* b) {
-                return a->getName() < b->getName();
-                });
-
-            for (auto* mod : sortedMods) {
-                mod->onUI();
-            }
-        }
+        drawMods();
 
         ImGui::End();
+    }
+
+    // Every mod, by section, with a search box that finds mods by their name, description and section.
+    void Kanan::drawMods() {
+        ImGui::Spacing();
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputTextWithHint("##SearchMods", "Search mods (name or what they do)...", m_search, sizeof(m_search));
+
+        auto lowercase = [](string text) {
+            transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return (char)tolower(c); });
+            return text;
+        };
+
+        // Every word typed must appear somewhere in the mod's name, description or section.
+        vector<string> words{};
+        istringstream query{ lowercase(m_search) };
+
+        for (string word{}; query >> word; ) {
+            words.push_back(word);
+        }
+
+        auto isSearching = !words.empty();
+        auto wasSearchCleared = m_wasSearching && !isSearching;
+
+        m_wasSearching = isSearching;
+
+        auto isMatch = [&](const Mods::MenuEntry& entry) {
+            if (!isSearching) {
+                return true;
+            }
+
+            auto text = lowercase(entry.name + " " + entry.description + " " + entry.section);
+
+            return all_of(words.begin(), words.end(), [&](const string& word) { return text.find(word) != string::npos; });
+        };
+
+        auto& menu = m_mods.getMenu();
+        auto isAnyMatch = false;
+
+        for (auto& section : m_mods.getSections()) {
+            vector<const Mods::MenuEntry*> entries{};
+
+            for (auto& entry : menu) {
+                if (entry.section == section && isMatch(entry)) {
+                    entries.push_back(&entry);
+                }
+            }
+
+            if (entries.empty()) {
+                continue;
+            }
+
+            isAnyMatch = true;
+
+            // Searching opens the sections and mods it finds; clearing the search closes them again.
+            if (isSearching || wasSearchCleared) {
+                ImGui::SetNextItemOpen(isSearching);
+            }
+
+            if (!ImGui::CollapsingHeader(section.c_str())) {
+                continue;
+            }
+
+            ImGui::PushID(section.c_str());
+
+            auto wasToggle = true;
+
+            for (auto entry : entries) {
+                // A little room between the section's on/off patches and its mods with settings.
+                if (!entry->isToggle && wasToggle && entry != entries.front()) {
+                    ImGui::Spacing();
+                }
+
+                wasToggle = entry->isToggle;
+
+                if (entry->isToggle) {
+                    entry->mod->onPatchUI();
+                }
+                else {
+                    if (isSearching || wasSearchCleared) {
+                        ImGui::SetNextItemOpen(isSearching);
+                    }
+
+                    entry->mod->onUI();
+                }
+            }
+
+            ImGui::PopID();
+        }
+
+        if (isSearching && !isAnyMatch) {
+            ImGui::TextDisabled("No mods match \"%s\".", m_search);
+        }
     }
 
     void Kanan::drawAbout() {
@@ -1487,16 +1014,8 @@ namespace kanan {
         ImGui::Text("Would you like to apply recommended default mods?");
         ImGui::Dummy(ImVec2{ 30.0f, 30.0f });
 
-        if (ImGui::Button("Kanan", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
-            applyDefaultMods(false);
-            m_defaultMods = false;
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::Dummy(ImVec2{ 5.0f, 5.0f });
-
-        if (ImGui::Button("Kanan and AstralWorld", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
-            applyDefaultMods(true);
+        if (ImGui::Button("Yes", ImVec2(ImGui::GetContentRegionAvail().x , 50))) {
+            applyDefaultMods();
             m_defaultMods = false;
             ImGui::CloseCurrentPopup();
         }

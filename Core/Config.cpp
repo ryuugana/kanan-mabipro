@@ -48,7 +48,8 @@ namespace kanan {
         }
 
         for (auto& keyValue : m_keyValues) {
-            f << keyValue.first << "=" << keyValue.second << endl;
+            // '\n' so the file is written once when it closes, not once per line.
+            f << keyValue.first << "=" << keyValue.second << '\n';
         }
 
         return true;

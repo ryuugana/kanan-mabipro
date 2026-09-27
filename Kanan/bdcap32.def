@@ -1,3 +1,0 @@
-LIBRARY bdcap32
-EXPORTS
-	CreateBandiCapture=FakeCreateBandiCapture @1

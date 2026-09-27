@@ -1,65 +1,34 @@
 #include <Windows.h>
 
-#include <filesystem>
 #include <String.hpp>
 
 #include "Log.hpp"
 #include "Kanan.hpp"
+#include "DisplayScaling.hpp"
 
 using namespace std;
 using namespace kanan;
 
-TCHAR g_dllPath[MAX_PATH]{ 0 };
-HINSTANCE mHinstDLL = 0;
+// Kanan's files (config, log, patches) are in the game's folder.
+static string gameFolder() {
+    wchar_t gamePath[MAX_PATH]{};
 
-extern "C" UINT_PTR  mProc = 0;
+    GetModuleFileNameW(nullptr, gamePath, MAX_PATH);
 
-LPCSTR mImportName = "CreateBandiCapture";
+    auto path = narrow(gamePath);
+
+    return path.substr(0, path.find_last_of("\\/"));
+}
 
 //
 // This is the entrypoint for kanan. It's only responsible for setting up the global
 // log file and creating the global kanan object.
 //
 DWORD WINAPI kananInit(LPVOID params) {
-    string previousKananDll = "dsound.dll";
-    string batRemoveOldKanan = "remove_old_kanan.bat";
-
-    if (filesystem::exists(previousKananDll))
-    {
-        ofstream batch_file(batRemoveOldKanan);
-        batch_file <<
-            "echo \"Warning two instances of Kanan detected: " << previousKananDll << " and bdcap32.dll.\n"
-            "echo \"Removing old Kanan: " << previousKananDll << "\"\n"
-            "timeout /t 5 /nobreak\n"
-            "del " << previousKananDll << "\n"
-            "MabiProLauncher22.exe\n";
-        batch_file.close();
-
-        PROCESS_INFORMATION processInformation = { 0 };
-        STARTUPINFOA startupInfo = { 0 };
-        BOOL result = CreateProcessA(NULL,
-            const_cast<char*>(batRemoveOldKanan.c_str()),
-            NULL,
-            NULL,
-            FALSE,
-            CREATE_NO_WINDOW,
-            NULL,
-            NULL,
-            &startupInfo,
-            &processInformation);
-
-        if (result) exit(0);
-        log("Failed to remove old Kanan: %s", previousKananDll.c_str());
-        log("Please remove %s manually from your MabiPro folder.", previousKananDll.c_str());
-    }
-
-    // Convert g_dllPath to a path we can use.
-    auto path = narrow(g_dllPath);
-
-    path = path.substr(0, path.find_last_of("\\/"));
+    auto path = gameFolder();
 
     // First and most important thing is opening the log file.
-    startLog(path + "/kananLog.txt"); 
+    startLog(path + "/kananLog.txt");
 
     log("Welcome to Kanan for Mabinogi.");
     log("Creating Kanan object.");
@@ -71,43 +40,30 @@ DWORD WINAPI kananInit(LPVOID params) {
     return 0;
 }
 
-struct bdcap32_dll {
-	HMODULE dll;
-	FARPROC OrignalCreateBandiCapture;
-} bdcap32;
-
-__declspec(naked) void FakeCreateBandiCapture() { _asm { jmp[bdcap32.OrignalCreateBandiCapture] } }
+// Kanan is a Miles plugin: Kanan.asi in the game's system\mss folder, which the game's own sound
+// library (Mss32.dll) loads when the game starts its sound. That leaves every game file as it is.
+// Miles calls this in each plugin it loads; Kanan provides no sound services.
+extern "C" __declspec(dllexport) int __stdcall RIB_Main(void* provider, unsigned long upDown) {
+    return 1;
+}
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
-	char path[MAX_PATH];
-	switch (ul_reason_for_call)
-	{
-		case DLL_PROCESS_ATTACH:
-		{
-			bdcap32.dll = LoadLibrary(L"bdcap23.dll");
-			if (bdcap32.dll == false)
-			{
-				MessageBox(0, L"Kanan cannot load bdcap23.dll library", L"Proxy", MB_ICONERROR);
-				ExitProcess(0);
-			}
-			bdcap32.OrignalCreateBandiCapture = GetProcAddress(bdcap32.dll, "CreateBandiCapture");
+    if (ul_reason_for_call == DLL_PROCESS_ATTACH) {
+        // Stay loaded even if Miles frees the plugins it has no use for.
+        HMODULE self{};
 
-			// We don't need DllMain getting invoked for thread attach/detach reasons.
-			DisableThreadLibraryCalls(hModule);
+        GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, (LPCWSTR)&RIB_Main, &self);
 
-			// Get the filepath of this dll.
-			GetModuleFileName(hModule, g_dllPath, MAX_PATH);
+        // We don't need DllMain getting invoked for thread attach/detach reasons.
+        DisableThreadLibraryCalls(hModule);
 
-            // Grab for Kanan
-            mHinstDLL = hModule;
+        // Before the game creates its window, which keeps the display scaling it's created with.
+        // Miles loads its plugins before that.
+        DisplayScaling::applyAtStartup(gameFolder());
 
-			// Launch our init thread.
-			CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);
-			break;
-		}
-		default:
-			break;
-	}
+        // Launch our init thread.
+        CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);
+    }
 
-	return TRUE;
+    return TRUE;
 }

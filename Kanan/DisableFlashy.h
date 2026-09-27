@@ -5,7 +5,7 @@
 #include "PatchMod.hpp"
 
 namespace kanan {
-	// Disable flashy effects and fix AstralWorlds broken disable by showing the non-flashy varient
+	// Disable flashy effects on inventory and ground items by showing the non-flashy varient
 	class DisableFlashy : public PatchMod {
 	public:
 		DisableFlashy();

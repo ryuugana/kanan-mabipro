@@ -19,7 +19,7 @@ namespace kanan {
         virtual void onSend(MabiMessage mabiMessage) { return; };
 		virtual void onRecv(MabiMessage mabiMessage) { return; };
 
-        std::vector<unsigned long>     getOp()       { return m_op; };
+        const std::vector<unsigned long>& getOp() const { return m_op; };
         bool                           getHasSend()  { return m_hasSend; };
         bool                           getHasRecv()  { return m_hasRecv; };
         bool            m_isEnabled;

@@ -76,7 +76,7 @@ namespace kanan {
 			apply();
 		}
 		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Disables flashy effect for items in inventory\nASTRALWORLD ShowItemColor MUST BE DISABLED");
+			ImGui::SetTooltip("Disables flashy effect for items in inventory\nWith Show True Durability's item colors on, the color codes it shows are the plain colors");
 		}
 	}
 

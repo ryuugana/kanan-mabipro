@@ -81,6 +81,8 @@ namespace kanan {
 
         template <typename Draw>
         HRESULT drawInterface(IDirect3DDevice9* device, Draw draw);
+        template <typename Draw>
+        HRESULT drawUnscaled(IDirect3DDevice9* device, Draw draw);
         bool setShaderFilter(IDirect3DDevice9* device, IDirect3DPixelShader9* shader, float roundCorners, float smoothSlopes);
 
         static void __fastcall hookedResize(uintptr_t interfaceMgr, uintptr_t edx, uint32_t width, uint32_t height);

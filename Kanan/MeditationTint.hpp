@@ -46,6 +46,8 @@ namespace kanan {
         std::mutex m_mutex;
         // Keyed by the character's render entry, which owns the color.
         std::unordered_map<uintptr_t, CharacterColor> m_characters;
+        // How many of them are tinted.
+        size_t m_tintedCount{ 0 };
         // Hooked render entry vtables and the original color setter of each.
         std::unordered_map<uintptr_t, uintptr_t> m_originalSetColor;
         // Render entries whose condition icons show the Meditation condition.

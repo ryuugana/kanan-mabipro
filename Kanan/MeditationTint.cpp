@@ -576,6 +576,15 @@ namespace kanan {
     }
 
     void MeditationTint::onCharacterUpdate(uintptr_t character) {
+        // Off, with no tint or condition left to take back off: nothing to do for this character.
+        if (!m_isEnabled && !m_showCondition) {
+            scoped_lock<mutex> _{ m_mutex };
+
+            if (m_tintedCount == 0 && m_conditionShown.empty()) {
+                return;
+            }
+        }
+
         CharacterState state{};
 
         if (!readCharacterState(character, state)) {
@@ -596,12 +605,14 @@ namespace kanan {
 
         if (shouldTint && (!color.isTinted || color.tintColor != tint)) {
             setColor(state.renderEntry, tint);
+            m_tintedCount += color.isTinted ? 0 : 1;
             color.isTinted = true;
             color.tintColor = tint;
         }
         else if (!shouldTint && color.isTinted) {
             setColor(state.renderEntry, color.gameColor);
             color.isTinted = false;
+            --m_tintedCount;
         }
     }
 

@@ -178,6 +178,11 @@ void ImGui_ImplDX9_RenderDrawData(ImDrawData* draw_data)
             if (tex->Status != ImTextureStatus_OK)
                 ImGui_ImplDX9_UpdateTexture(tex);
 
+    // Kanan: nothing to draw (the menu and every overlay closed), so skip saving and restoring the
+    // whole device state, which the game would otherwise pay for on every frame.
+    if (draw_data->TotalVtxCount == 0)
+        return;
+
     // Create and grow buffers if needed
     if (!bd->pVB || bd->VertexBufferSize < draw_data->TotalVtxCount)
     {
