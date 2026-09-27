@@ -164,6 +164,7 @@
     <ClCompile Include="MeditationTint.cpp" />
     <ClCompile Include="CpuScheduling.cpp" />
     <ClCompile Include="OverlayDetection.cpp" />
+    <ClCompile Include="GoldFormat.cpp" />
     <ClCompile Include="UIScale.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
@@ -224,6 +225,7 @@
     <ClInclude Include="MeditationTint.hpp" />
     <ClInclude Include="CpuScheduling.hpp" />
     <ClInclude Include="OverlayDetection.hpp" />
+    <ClInclude Include="GoldFormat.hpp" />
     <ClInclude Include="UIScale.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
     <ClInclude Include="UIScaleXbr.h" />
