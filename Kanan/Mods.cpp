@@ -136,6 +136,21 @@ namespace kanan {
             }
         }
 
+        // Patches.json's patches only change the game's code, and some change what it does while it's
+        // still starting (like Derandomize Login Screen, which the login screen reads once when it's
+        // built), so their settings are applied as soon as they're loaded rather than on Kanan's first
+        // frame. The rest of the settings are loaded as usual later, which applies these again (the
+        // original bytes are only saved the first time).
+        {
+            Config cfg{ m_filepath + "/config.txt" };
+
+            for (auto& [category, mods] : m_patchMods) {
+                for (auto& mod : mods) {
+                    mod->onConfigLoad(cfg);
+                }
+            }
+        }
+
         // Sections: what the mod is about, for players looking for it (Patches.json gives each
         // patch's section as its category).
         const string ui = "Interface";
