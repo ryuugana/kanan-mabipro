@@ -2,7 +2,7 @@
 A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) with over 100 mods for G13 Mabinogi on MabiPro. It includes every AstralWorld patch, and it loads without replacing any of the game's files.
 
 ## Preview
-<!-- preview image -->
+<img width="526" height="692" alt="image" src="https://github.com/user-attachments/assets/d6c858e3-58fd-4f6c-bdbf-7baf25a985b2" />
 
 ## Download
 [Download the latest KananMabiPro.zip here](https://github.com/ryuugana/kanan-mabipro/releases/latest/download/KananMabiPro.zip).
