@@ -7,7 +7,7 @@
 #include "Mod.hpp"
 
 namespace kanan {
-    // Sets the JPEG quality of screenshots (ported from Fantasia's ScreenshotQuality).
+    // Sets the JPEG quality of screenshots (ported from AstralWorld's ScreenshotQuality).
     class ScreenshotQuality : public Mod {
     public:
         ScreenshotQuality();

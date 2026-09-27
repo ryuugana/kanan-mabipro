@@ -19,7 +19,7 @@ namespace kanan {
             "?GetSkillUsable@CSkillDiceThrowing@core@@UBE?AW4ESkillProcessType@2@AAUSSkillContext@2@_KPAW4ECursorType@@PAM@Z";
         constexpr uintptr_t rangeOffset = 0x5B;
         constexpr uint8_t rangeBytes[] = { 0xD9, 0x40, 0x44, 0x6A, 0x01, 0xD9, 0x5C, 0x24, 0x18 };
-        // The range Fantasia used.
+        // The range AstralWorld used.
         constexpr float throwRange = 30000.0f;
     }
 

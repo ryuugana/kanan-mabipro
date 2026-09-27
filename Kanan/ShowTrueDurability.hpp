@@ -9,7 +9,7 @@
 namespace kanan {
     // Shows item durability with 1000x precision using a text the player chooses, optionally
     // followed by the item's color codes, and shows full-durability items in a different color.
-    // Ported from Fantasia's Show True Durability (ShowTrueDurability, ShowTrueDurability_str and
+    // Ported from AstralWorld's Show True Durability (ShowTrueDurability, ShowTrueDurability_str and
     // ShowItemColor in mss32.ini).
     //
     // In the text, {0} is the durability the game shows, {1} the same x1000, {2} the maximum
@@ -32,7 +32,7 @@ namespace kanan {
         // The durability hooks and the durability text.
         std::vector<Patch> m_patches;
         // Makes consumables and other item types that have no durability line show one too, so
-        // their color codes are shown. Fantasia applied these whenever Show True Durability was on;
+        // their color codes are shown. AstralWorld applied these whenever Show True Durability was on;
         // here they are only applied together with Show Item Color, which is what they are for.
         std::vector<Patch> m_colorPatches;
 

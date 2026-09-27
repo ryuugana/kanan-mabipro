@@ -7,7 +7,7 @@
 #include "PatchMod.hpp"
 
 namespace kanan {
-    // Shows the combat power number above characters' names (ported from Fantasia's ShowCombatPower).
+    // Shows the combat power number above characters' names (ported from AstralWorld's ShowCombatPower).
     class ShowCombatPower : public PatchMod {
     public:
         ShowCombatPower();

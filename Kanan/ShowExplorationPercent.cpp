@@ -17,7 +17,7 @@ namespace kanan {
     //   +37  CALL IParameterBase2::GetExploLevel                   <- we call explorationPercent instead
     //        formatter << level
     //
-    // As in Fantasia, the localizer gives back unknown text as-is, so our text becomes the format:
+    // As in AstralWorld, the localizer gives back unknown text as-is, so our text becomes the format:
     // {0} is the percentage we insert first, {1} is the level the game inserts afterwards.
     //
     static wchar_t g_explorationText[]{ L"Expl Lv{1} {0}%" };

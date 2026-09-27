@@ -6,10 +6,10 @@
 
 namespace kanan {
     // Shows your real maximum HP instead of the value the interface caps it at.
-    // Ported from Fantasia's Show True HP.
+    // Ported from AstralWorld's Show True HP.
     //
     // core::IParameter::GetInterfaceLifeDamaged returns the smaller of GetLifeDamaged and
-    // GetLifeMax. Fantasia made its GetLifeMax call return the value GetLifeDamaged had just
+    // GetLifeMax. AstralWorld made its GetLifeMax call return the value GetLifeDamaged had just
     // loaded (two patches and a shared variable); this redirects that one call to a function that
     // reads the same field directly, which gives the same result with a single patch.
     class ShowTrueHP : public PatchMod {

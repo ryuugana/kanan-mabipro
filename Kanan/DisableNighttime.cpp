@@ -9,7 +9,7 @@ using namespace std;
 
 namespace kanan {
     // Replacement for pleione::CAtmosphere::SetSkyTime(float time), where time is the fraction of
-    // a day (0.0 = 0:00, 0.5 = 12:00). Same logic as Fantasia: store the time, but held between
+    // a day (0.0 = 0:00, 0.5 = 12:00). Same logic as AstralWorld: store the time, but held between
     // 4:00 and 18:00. The float bit patterns are compared as unsigned integers, which orders
     // positive floats correctly.
     static __declspec(naked) void hookSetSkyTime() {

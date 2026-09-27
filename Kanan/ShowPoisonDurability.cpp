@@ -78,7 +78,7 @@ namespace kanan {
         m_patches.emplace_back(hook);
 
         // The item description adds "</color>" right after the poison line. There are two copies of
-        // this code (Fantasia patched only the second one); patch both.
+        // this code (AstralWorld patched only the second one); patch both.
         //   test al, al / je +2B / mov ecx, [ebp+70h] / push "<color=6>" / call += /
         //   mov ecx, [ebp+70h] / lea eax, [ebp+54h] / push eax / call += / mov ecx, [ebp+70h] / push "</color>"
         const char* pattern = "84 C0 74 2B 8B 4D 70 68 ? ? ? ? 90 E8 ? ? ? ? 8B 4D 70 8D 45 54 50 90 E8 ? ? ? ? 8B 4D 70 68";

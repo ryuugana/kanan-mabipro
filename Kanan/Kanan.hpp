@@ -51,7 +51,6 @@ namespace kanan {
         std::string m_modConfigPath;
         std::string m_updateExecPath;
         std::string m_updateZipPath;
-        std::string m_astralPath;
         std::unique_ptr<D3D9Hook> m_d3d9Hook;
         std::unique_ptr<DInputHook> m_dinputHook;
         std::unique_ptr<WindowsMessageHook> m_wmHook;
@@ -99,7 +98,7 @@ namespace kanan {
         bool checkVersion();
         void updateKanan();
 
-        void applyDefaultMods(bool astralWorld);
+        void applyDefaultMods();
 
         void loadConfig();
         void saveConfig();
@@ -108,7 +107,6 @@ namespace kanan {
         void fixMabiProMp3();
 
         void housingBoard();
-        void viewAstralWorld();
 
         void drawUI();
         void drawAbout();

@@ -6,7 +6,7 @@
 
 namespace kanan {
     // Shows flashy dyes on worn equipment as their plain color.
-    // Ported from Fantasia's Disable Flashy Dyes (Pleione.dll). Kanan's own DisableFlashy covers
+    // Ported from AstralWorld's Disable Flashy Dyes (Pleione.dll). Kanan's own DisableFlashy covers
     // items in the inventory and on the ground; this one covers equipment on characters.
     class DisableFlashyDyes : public PatchMod {
     public:

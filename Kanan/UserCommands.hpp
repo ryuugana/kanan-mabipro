@@ -9,12 +9,12 @@
 
 namespace kanan {
     // Chat commands that start with a dot, answered in the chat window and never sent to the
-    // server. Ported from Fantasia's User Commands:
+    // server. Ported from AstralWorld's User Commands:
     //   .help / .h   lists the commands
     //   .ping / .p   answers "pong"
     //   .swap / .s   tells which skill the combat attack is swapped to (needs a provider, see
-    //                setCombatSwapQuery; Fantasia asked its Combat Mastery Swap patch)
-    //   .reload / .r Fantasia re-read mss32.ini; Kanan applies setting changes immediately, so
+    //                setCombatSwapQuery; AstralWorld asked its Combat Mastery Swap patch)
+    //   .reload / .r AstralWorld re-read mss32.ini; Kanan applies setting changes immediately, so
     //                this only explains where to change them.
     //
     // The game's chat input function (the one that handles "/" commands) is hooked at its start.

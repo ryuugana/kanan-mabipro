@@ -4,7 +4,7 @@
 using namespace std;
 
 namespace kanan {
-    // Name display distance used instead of the game's 3000 (same value as Fantasia).
+    // Name display distance used instead of the game's 3000 (same value as AstralWorld).
     static const float g_nameVisionRange{ 30000.0f };
 
     DisplayNamesFar::DisplayNamesFar()
@@ -33,7 +33,7 @@ namespace kanan {
         // Name fading: JP -> JMP
         // Props
         addPatch("Pleione.dll", "7A 2C D9 46 40 DC 2D ? ? ? ? DC 35 ? ? ? ? D9 5D FC", 0, { 0xEB });
-        // (Fantasia: "I forgot")
+        // (AstralWorld: "I forgot")
         addPatch("Pleione.dll", "7A 4D D9 86 F8 00 00 00", 0, { 0xEB });
         // Player name
         addPatch("Pleione.dll", "7A 73 D9 86 F8 00 00 00", 0, { 0xEB });

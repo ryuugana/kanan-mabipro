@@ -28,7 +28,7 @@ namespace kanan {
             uint32_t outline;
         };
 
-        // The colors Fantasia used.
+        // The colors AstralWorld used.
         constexpr NameColor humanColor{ 0xFF00CCFF, 0x0000CCFF };
         constexpr NameColor elfColor{ 0xFFFFC0CB, 0x00FFC0CB };
         constexpr NameColor giantColor{ 0xFF00CC00, 0x0000CC00 };

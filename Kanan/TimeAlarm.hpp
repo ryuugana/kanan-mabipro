@@ -9,14 +9,14 @@
 
 namespace kanan {
     // Shows a message on screen at set in-game times (up to 10 alarms), for example before
-    // Erinn midnight. Ported from Fantasia's Time Alarm (Noginogi alarm): TimeAlarm and
+    // Erinn midnight. Ported from AstralWorld's Time Alarm (Noginogi alarm): TimeAlarm and
     // Alarm1..10_Using/_Text/_Hour/_Min/_Code in mss32.ini.
     //
     // An alarm rings once while the game time is within the four game minutes up to its set time.
     // Hour 24 means every hour. The text may contain up to two number fields such as %02d:%02d,
-    // which are filled in with the game hour and minute three minutes ahead, like Fantasia did.
+    // which are filled in with the game hour and minute three minutes ahead, like AstralWorld did.
     //
-    // Fantasia took over the game's "Nao support recharged" message code to show the alarm; this
+    // AstralWorld took over the game's "Nao support recharged" message code to show the alarm; this
     // only runs its check at the same point in the game's update and shows the message itself
     // (core::stdapi_ShowCaption with the same arguments), leaving the Nao message untouched.
     class TimeAlarm : public Mod {

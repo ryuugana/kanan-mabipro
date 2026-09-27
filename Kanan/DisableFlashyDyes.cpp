@@ -11,12 +11,11 @@ namespace kanan {
     static uintptr_t g_flashyDyesReturn{ 0 };
 
     // Runs where the game copies an item's three dye colors (a pointer to them is at [ebp+18h]).
-    // A color whose top byte is 40h-7Fh is flashy; like Fantasia, the range test is
+    // A color whose top byte is 40h-7Fh is flashy; like AstralWorld, the range test is
     // 40000000h <= color <= 7F000000h. Flashy colors get their top byte replaced, keeping the RGB.
     //
-    // Fantasia put FFh in the top byte. Kanan's "Fix AstralWorld Flashy" patch rewrote Fantasia's
-    // code to use 10h instead (a color closer to the flashy one); the user runs with that fix on,
-    // so 10h is used here, which is also what Kanan's DisableFlashy uses for inventory items.
+    // AstralWorld put FFh in the top byte; 10h is used here instead, a color closer to the flashy one
+    // and the same as Kanan's DisableFlashy uses for inventory items.
     static __declspec(naked) void hookFlashyDyes() {
         __asm {
             mov     eax, dword ptr [ebp + 0x18]     // replaced: mov eax, [ebp+18h]

@@ -8,7 +8,7 @@
 
 namespace kanan {
     // Adds "Poison Durability: N/100" to the description of poisoned items.
-    // Ported from Fantasia's Show Poison Durability.
+    // Ported from AstralWorld's Show Poison Durability.
     class ShowPoisonDurability : public PatchMod {
     public:
         ShowPoisonDurability();

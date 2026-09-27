@@ -6,7 +6,7 @@
 
 namespace kanan {
     // Keeps the sky looking like daytime: the sky time is held between 4:00 and 18:00.
-    // Ported from Fantasia's Disable Nighttime (pleione::CAtmosphere::SetSkyTime, Renderer2.dll).
+    // Ported from AstralWorld's Disable Nighttime (pleione::CAtmosphere::SetSkyTime, Renderer2.dll).
     class DisableNighttime : public PatchMod {
     public:
         DisableNighttime();

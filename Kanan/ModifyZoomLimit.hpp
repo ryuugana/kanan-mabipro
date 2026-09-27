@@ -5,7 +5,7 @@
 #include "Mod.hpp"
 
 namespace kanan {
-    // Changes how far the camera can zoom out (ported from Fantasia's ModifyZoomLimit).
+    // Changes how far the camera can zoom out (ported from AstralWorld's ModifyZoomLimit).
     class ModifyZoomLimit : public Mod {
     public:
         ModifyZoomLimit();

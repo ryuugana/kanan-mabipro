@@ -33,7 +33,7 @@ namespace kanan {
     // Replaces "push 7D00h" where the game starts building a combat attack message
     // (CMessage at [ebp-30h], attacker id already pushed in edx:eax, target id at [ebp+8]).
     // If no skill is loaded, builds a skill prepare message for the chosen skill instead.
-    // Same logic as Fantasia, except Fantasia left 4 extra bytes on the stack here, which the
+    // Same logic as AstralWorld, except AstralWorld left 4 extra bytes on the stack here, which the
     // function's epilog would pop into the caller's saved registers; this version doesn't.
     static __declspec(naked) void hookCombatAttack() {
         __asm {
@@ -237,7 +237,7 @@ namespace kanan {
             return;
         }
 
-        // Like Fantasia: on only with a skill id, and the tracked state starts fresh.
+        // Like AstralWorld: on only with a skill id, and the tracked state starts fresh.
         auto on = m_isEnabled && m_skillID != 0;
 
         g_isSkillOn = 0;

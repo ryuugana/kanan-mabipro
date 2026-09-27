@@ -6,7 +6,7 @@
 
 namespace kanan {
     // Shows the progress towards the next exploration level in the character window
-    // (ported from Fantasia's ShowExplorationPercent).
+    // (ported from AstralWorld's ShowExplorationPercent).
     class ShowExplorationPercent : public PatchMod {
     public:
         ShowExplorationPercent();

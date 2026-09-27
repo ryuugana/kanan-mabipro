@@ -79,7 +79,7 @@ namespace kanan {
         }
     }
 
-    // Fantasia's alarm window: from four game minutes before the set time up to the set time, with
+    // AstralWorld's alarm window: from four game minutes before the set time up to the set time, with
     // the same comparisons (including their quirks around midnight).
     static bool isAlarmTime(int alarmHour, int alarmMinute, unsigned long hour, unsigned long minute) {
         auto min1 = (unsigned long)((alarmMinute - 4) % 60);
@@ -198,7 +198,7 @@ namespace kanan {
             return;
         }
 
-        // The Nao support check in the game's update, where Fantasia hooked in:
+        // The Nao support check in the game's update, where AstralWorld hooked in:
         //   mov ecx, [esi+120h] / push 14h / nop / call IServiceMgr::IsUsableContents /
         //   mov edi, 1388h / test al, al / jne
         auto address = scan("Pleione.dll", "8B 8E 20 01 00 00 6A 14 90 E8 ? ? ? ? BF 88 13 00 00 84 C0 75");
@@ -383,7 +383,7 @@ namespace kanan {
             alarm.style = cfg.get<int>(key + "Style").value_or(7);
             alarm.hasRung = false;
 
-            // Fantasia meant to use style 3 for anything outside 1-9.
+            // AstralWorld meant to use style 3 for anything outside 1-9.
             if (alarm.style < 1 || alarm.style > 9) {
                 alarm.style = 3;
             }

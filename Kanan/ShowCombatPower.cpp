@@ -20,7 +20,7 @@ namespace kanan {
     //                           default (same level):           no prefix }
     //                       name = prefix + GetDisplayName()
     //
-    // Like Fantasia, we let every character through, send "no rank" cases to combatPowerNoRank and
+    // Like AstralWorld, we let every character through, send "no rank" cases to combatPowerNoRank and
     // replace "prefix = <rank text>" with combatPowerText, which appends the numbers.
     //
 
@@ -33,7 +33,7 @@ namespace kanan {
     static uintptr_t g_returnAddress{ 0 };     // back into buildRankPrefix, after "prefix = <rank text>"
 
     static void __stdcall formatCombatPower(wchar_t* buffer, double combatPower, const wchar_t* prefix) {
-        // Same text as Fantasia. An empty prefix means the game shows no rank (same level, players, named NPCs).
+        // Same text as AstralWorld. An empty prefix means the game shows no rank (same level, players, named NPCs).
         bool noRank = prefix == nullptr || prefix[0] == L'\0';
 
         if (noRank) {
@@ -50,7 +50,7 @@ namespace kanan {
         __asm {
             mov     ecx, esi
             mov     eax, [ecx]
-            call    dword ptr [eax + 4Ch]       // characters parameters (same call Fantasia uses)
+            call    dword ptr [eax + 4Ch]       // characters parameters (same call AstralWorld uses)
             mov     ecx, eax
             call    g_getCombatPower
             sub     esp, 8

@@ -5,7 +5,7 @@
 #include "PatchMod.hpp"
 
 namespace kanan {
-    // Shows the item's ID in item descriptions (ported from Fantasia's ShowItemID).
+    // Shows the item's ID in item descriptions (ported from AstralWorld's ShowItemID).
     class ShowItemID : public PatchMod {
     public:
         ShowItemID();

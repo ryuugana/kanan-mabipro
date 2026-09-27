@@ -6,7 +6,7 @@
 
 namespace kanan {
     // Lets CTRL-targeting pick props (not just enemies) while in combat mode.
-    // Ported from Fantasia's Target Props: the combat-mode target filter "enemy" becomes
+    // Ported from AstralWorld's Target Props: the combat-mode target filter "enemy" becomes
     // "enemy|prop".
     class TargetProps : public PatchMod {
     public:

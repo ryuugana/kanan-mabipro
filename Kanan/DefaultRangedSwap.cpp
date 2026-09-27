@@ -8,7 +8,7 @@
 using namespace std;
 
 namespace kanan {
-    // Skill ids, in the same order as Fantasia's DefaultRangedSwap setting (0-6).
+    // Skill ids, in the same order as AstralWorld's DefaultRangedSwap setting (0-6).
     static const uint16_t g_rangedSkills[] = {
         0x5209, // 0: Ranged Attack (21001, the game's default)
         0x520A, // 1: Magnum Shot (21002)
@@ -85,7 +85,7 @@ namespace kanan {
             return;
         }
 
-        // Same result as Fantasia's hook, which only sets AX (every caller reads AX only):
+        // Same result as AstralWorld's hook, which only sets AX (every caller reads AX only):
         //   mov ax, 5212h
         //   jne done
         //   mov ax, <skill>
