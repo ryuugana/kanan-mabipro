@@ -163,7 +163,7 @@ namespace kanan {
         addPatchMod(ui, make_unique<NameColoring>(), "", "Colors character names by type (player, NPC, pet, enemy).");
         addPatchMod(ui, make_unique<LargeClockText>(), "", "Shows the in-game clock in large text.");
         addPatchMod(fun, make_unique<FarDiceThrow>(), "", "Throw dice much farther away.");
-        addPatchMod(ui, make_unique<ShowCombatPower>(), "", "Shows the combat power number next to character names.");
+        addPatchMod(ui, make_unique<ShowCombatPower>(), "", "Shows the combat power and max HP numbers next to character names.");
         addPatchMod(ui, make_unique<ShowExplorationPercent>(), "",
             "Shows your exploration level and percent in the character window.");
         addPatchMod(ui, make_unique<ShowItemID>(), "", "Shows each item's ID in its description.");

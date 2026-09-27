@@ -7,7 +7,8 @@
 #include "PatchMod.hpp"
 
 namespace kanan {
-    // Shows the combat power number above characters' names (ported from AstralWorld's ShowCombatPower).
+    // Shows the combat power and max HP numbers above characters' names (ported from AstralWorld's
+    // ShowCombatPower).
     class ShowCombatPower : public PatchMod {
     public:
         ShowCombatPower();
@@ -19,6 +20,8 @@ namespace kanan {
 
     private:
         bool m_showCombatPower;
+        bool m_showMaxHP;
+        bool m_isApplied;
         bool m_isReady;
         std::vector<Patch> m_patches;
 

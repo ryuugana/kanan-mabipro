@@ -55,7 +55,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Name Coloring: colors character names by type (player, NPC, pet, enemy)
 * Party Board To Housing: the party board and party buttons open the housing board instead
 * Show Clock Minutes: the in-game clock shows exact minutes instead of rounding down to 10
-* Show Combat Power: shows the combat power number next to character names
+* Show Combat Power: shows the combat power and max HP numbers next to character names
 * Show Detailed FPS: shows the detailed frame rate and rendering statistics
 * Show Exploration Percent: shows your exploration level and percent in the character window
 * Show Item ID: shows each item's ID in its description

@@ -30,17 +30,37 @@ namespace kanan {
     static uintptr_t g_cstringConstruct{ 0 };  // esl::CStringT<wchar_t>::CStringT(void)
     static uintptr_t g_cstringAssign{ 0 };     // esl::CStringT<wchar_t>::operator=(wchar_t const*)
     static uintptr_t g_getCombatPower{ 0 };    // core::IParameterBase2::GetCombatPower() const -> float
+    static uintptr_t g_getLifeMax{ 0 };        // core::IParameterBase2::GetLifeMax() -> float
     static uintptr_t g_returnAddress{ 0 };     // back into buildRankPrefix, after "prefix = <rank text>"
 
-    static void __stdcall formatCombatPower(wchar_t* buffer, double combatPower, const wchar_t* prefix) {
+    // What the text shows; read by formatCombatPower.
+    static bool g_isCombatPowerShown{ false };
+    static bool g_isMaxHPShown{ false };
+
+    static void __stdcall formatCombatPower(wchar_t* buffer, double maxHP, double combatPower, void* parameters,
+        const wchar_t* prefix)
+    {
         // Same text as AstralWorld. An empty prefix means the game shows no rank (same level, players, named NPCs).
         bool noRank = prefix == nullptr || prefix[0] == L'\0';
 
-        if (noRank) {
-            swprintf_s(buffer, 256, L"<mini>EVEN</mini> %.2f ", combatPower);
+        if (g_isCombatPowerShown && g_isMaxHPShown) {
+            if (noRank) {
+                swprintf_s(buffer, 256, L"<mini>EVEN</mini> %.2f\n<mini>MaxHP</mini> %.2f\n<mini>NAME</mini> ", combatPower, maxHP);
+            }
+            else {
+                swprintf_s(buffer, 256, L"%s%.2f\n<mini>MaxHP</mini> %.2f\n<mini>NAME</mini> ", prefix, combatPower, maxHP);
+            }
+        }
+        else if (g_isCombatPowerShown) {
+            if (noRank) {
+                swprintf_s(buffer, 256, L"<mini>EVEN</mini> %.2f ", combatPower);
+            }
+            else {
+                swprintf_s(buffer, 256, L"%s%.2f ", prefix, combatPower);
+            }
         }
         else {
-            swprintf_s(buffer, 256, L"%s%.2f ", prefix, combatPower);
+            swprintf_s(buffer, 256, L"<mini>MaxHP</mini> %.2f ", maxHP);
         }
     }
 
@@ -51,12 +71,17 @@ namespace kanan {
             mov     ecx, esi
             mov     eax, [ecx]
             call    dword ptr [eax + 4Ch]       // characters parameters (same call AstralWorld uses)
+            push    eax                         // parameters, kept for GetLifeMax
             mov     ecx, eax
             call    g_getCombatPower
+            mov     ecx, [esp]                  // parameters
             sub     esp, 8
             fstp    qword ptr [esp]             // combatPower
+            call    g_getLifeMax
+            sub     esp, 8
+            fstp    qword ptr [esp]             // maxHP
             push    offset g_nameBuffer
-            call    formatCombatPower           // (buffer, combatPower, prefix), cleans its arguments
+            call    formatCombatPower           // (buffer, maxHP, combatPower, parameters, prefix), cleans its arguments
 
             push    offset g_nameBuffer
             lea     ecx, [ebp - 10h]
@@ -92,6 +117,8 @@ namespace kanan {
     ShowCombatPower::ShowCombatPower()
         : PatchMod{ "Show Combat Power", "" },
         m_showCombatPower{ false },
+        m_showMaxHP{ false },
+        m_isApplied{ false },
         m_isReady{ false },
         m_patches{}
     {
@@ -101,8 +128,9 @@ namespace kanan {
         g_cstringConstruct = (uintptr_t)GetProcAddress(esl, "??0?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@XZ");
         g_cstringAssign = (uintptr_t)GetProcAddress(esl, "??4?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAEAAV01@PB_W@Z");
         g_getCombatPower = (uintptr_t)GetProcAddress(standard, "?GetCombatPower@IParameterBase2@core@@QBEMXZ");
+        g_getLifeMax = (uintptr_t)GetProcAddress(standard, "?GetLifeMax@IParameterBase2@core@@QAEMXZ");
 
-        if (g_cstringConstruct == 0 || g_cstringAssign == 0 || g_getCombatPower == 0) {
+        if (g_cstringConstruct == 0 || g_cstringAssign == 0 || g_getCombatPower == 0 || g_getLifeMax == 0) {
             log("[ShowCombatPower] Failed to find the game functions it needs.");
             return;
         }
@@ -190,20 +218,28 @@ namespace kanan {
             return;
         }
 
-        if (m_showCombatPower) {
-            log("[ShowCombatPower] Toggling on");
+        g_isCombatPowerShown = m_showCombatPower;
+        g_isMaxHPShown = m_showMaxHP;
 
-            for (auto& p : m_patches) {
+        // The patches are shared: on while either number is shown.
+        auto on = m_showCombatPower || m_showMaxHP;
+
+        if (on == m_isApplied) {
+            return;
+        }
+
+        log("[ShowCombatPower] Toggling %s", on ? "on" : "off");
+
+        for (auto& p : m_patches) {
+            if (on) {
                 patch(p);
             }
-        }
-        else {
-            log("[ShowCombatPower] Toggling off");
-
-            for (auto& p : m_patches) {
+            else {
                 undoPatch(p);
             }
         }
+
+        m_isApplied = on;
     }
 
     void ShowCombatPower::onPatchUI() {
@@ -218,17 +254,25 @@ namespace kanan {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Shows the combat power number next to character names.");
         }
+
+        if (ImGui::Checkbox("Show Max HP", &m_showMaxHP)) {
+            apply();
+        }
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Shows the maximum HP number next to character names.");
+        }
     }
 
     void ShowCombatPower::onConfigLoad(const Config& cfg) {
         m_showCombatPower = cfg.get<bool>("ShowCombatPower.CombatPower").value_or(false);
+        m_showMaxHP = cfg.get<bool>("ShowCombatPower.MaxHP").value_or(false);
 
-        if (m_showCombatPower) {
-            apply();
-        }
+        apply();
     }
 
     void ShowCombatPower::onConfigSave(Config& cfg) {
         cfg.set<bool>("ShowCombatPower.CombatPower", m_showCombatPower);
+        cfg.set<bool>("ShowCombatPower.MaxHP", m_showMaxHP);
     }
 }
