@@ -30,6 +30,14 @@ namespace kanan {
             return m_presentHook->isValid() && m_resetHook->isValid();
         }
 
+        const auto& getPresentHook() const {
+            return *m_presentHook;
+        }
+
+        const auto& getResetHook() const {
+            return *m_resetHook;
+        }
+
         D3D9Hook& operator=(const D3D9Hook& other) = delete;
         D3D9Hook& operator=(D3D9Hook&& other) = delete;
 

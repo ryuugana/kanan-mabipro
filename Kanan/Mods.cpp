@@ -14,6 +14,7 @@
 // Misc Mods
 #include "AutoSetMTU.hpp"
 #include "CpuScheduling.hpp"
+#include "OverlayDetection.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
 #include "MaxFrameRate.hpp"
@@ -146,6 +147,7 @@ namespace kanan {
         //addMod(make_unique<StatusUI>());
         addMod(make_unique<AutoSetMTU>());
         addMod(make_unique<CpuScheduling>());
+        addMod(make_unique<OverlayDetection>());
 
         log("[Mods] Finished loading mods.");
     }
