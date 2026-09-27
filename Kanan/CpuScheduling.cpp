@@ -6,6 +6,7 @@
 
 #include "Log.hpp"
 #include "CpuScheduling.hpp"
+#include <algorithm>
 
 using namespace std;
 
