@@ -241,6 +241,13 @@ namespace kanan {
     }
 
     void Kanan::onFrame() {
+        // Kanan loads before the game creates its window, so the game can show frames while Kanan is
+        // still setting up its mods on the startup thread. Nothing runs until that's done and g_kanan
+        // points to this Kanan (mods use it as soon as their settings are loaded).
+        if (!m_areModsReady || g_kanan.get() != this) {
+            return;
+        }
+
         if (!m_isInitialized) {
             onInitialize();
         }
@@ -342,26 +349,6 @@ namespace kanan {
             }
 
             ImGui::PopFont();
-        }
-        else {
-            ImGui::OpenPopup("Loading...");
-            ImGui::SetNextWindowSize(ImVec2{ 450.0f, 200.0f });
-            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-            ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-
-            if (ImGui::BeginPopupModal("Loading...", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
-                ImGui::TextWrapped("Kanan is currently setting things up. Please wait a moment...");
-                ImGui::EndPopup();
-            }
-
-            auto& io = ImGui::GetIO();
-
-            if (io.WantCaptureMouse || io.WantCaptureKeyboard || io.WantTextInput) {
-                m_dinputHook->ignoreInput();
-            }
-            else {
-                m_dinputHook->acknowledgeInput();
-            }
         }
 
         ImGui::EndFrame();
