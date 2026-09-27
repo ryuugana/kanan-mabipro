@@ -90,7 +90,7 @@ namespace kanan {
 			m_timerId = SetTimer(NULL, m_timerId, 1000, TickTimerProc);
 		}
 
-		if(recvPacket.GetOP() == 0x4E25) g_tickTimerReset = true;
+		if(GetOP(mabiMessage.buffer) == 0x4E25) g_tickTimerReset = true;
 
 		// Set max time for tick countdown if the packet is ours
 		// Only the header is needed, so the packet isn't parsed.
