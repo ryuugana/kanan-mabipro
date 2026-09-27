@@ -15,6 +15,7 @@
 #include "AutoSetMTU.hpp"
 #include "CpuScheduling.hpp"
 #include "OverlayDetection.hpp"
+#include "GoldFormat.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
 #include "MaxFrameRate.hpp"
@@ -194,6 +195,7 @@ namespace kanan {
         addMod(make_unique<TimeAlarm>());
         addMod(make_unique<CpuScheduling>());
         addMod(make_unique<OverlayDetection>());
+        addMod(make_unique<GoldFormat>());
 
         log("[Mods] Finished loading mods.");
     }
