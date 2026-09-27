@@ -525,28 +525,6 @@
         ]
     },
     {
-        "name": "Fix AstralWorld Flashy",
-        "desc": "Fixes the way AstralWorld disables flashy by using a color similar to the flashy",
-        "category": "Graphics",
-        "patches": [
-            {
-                "location": "mss32.dll",
-                "pattern": "2d 00 00 00 01",
-                "patch": "05 00 00 00 10"
-            },
-            {
-                "location": "mss32.dll",
-                "pattern": "81 ea 00 00 00 01",
-                "patch": "81 C1 00 00 00 10"
-            },
-            {
-                "location": "mss32.dll",
-                "pattern": "81 e9 00 00 00 01",
-                "patch": "81 C1 00 00 00 10"
-            }
-        ]
-    },
-    {
         "name": "Disable Lights",
         "desc": "Disables most light props from lighting\nHelps with FPS in areas like Emain\nMay require cc/relog to fully enable",
         "category": "Graphics",
@@ -630,6 +608,493 @@
                 "location": "Pleione.dll",
                 "pattern": "0F 84 59 01 00 00 68 4C 6F DE 63 8D",
                 "patch": "E9 5A 01 00 00 90"
+            }
+        ]
+    },
+    {
+        "name": "Block Ending Ads",
+        "desc": "Stops the advertisement popup from appearing when you close the game.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "6A 3C FF 75 E8 57 90 E8 ? ? ? ? 50 90 E8 ? ? ? ? 83 C4 14",
+                "offset": 14,
+                "patch": "90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Clear Dungeon Fog",
+        "desc": "Removes the fog of war from dungeon minimaps.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "8B 01 8A 4C 24 04 88 48 40 C2 04 00",
+                "offset": 2,
+                "patch": "32 C9 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Disable Cloud Render",
+        "desc": "Stops the sky texture (clouds) from being drawn.",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B 4E 30 33 DB 3B CB 0F 84 ? ? ? ? E8",
+                "offset": 7,
+                "patch": "90 E9"
+            }
+        ]
+    },
+    {
+        "name": "Disable Gray Fog",
+        "desc": "Removes the gray distance fog.",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8D 48 54 E8 ? ? ? ? 0F B6 40 02 89 45 14 DB 45 14 DC 35 ? ? ? ? D9 5D 14 D9 45 14",
+                "offset": 28,
+                "patch": "EB 90"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8D 48 60 E8 ? ? ? ? 0F B6 40 02 89 45 14 DB 45 14 DC 35 ? ? ? ? D9 5D 14 D9 45 14",
+                "offset": 28,
+                "patch": "EB 90"
+            }
+        ]
+    },
+    {
+        "name": "Disable Screen Shake",
+        "desc": "Stops the camera from shaking.",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "D9 04 30 D9 1E 83 C6 04",
+                "patch": "D9 EE 90"
+            }
+        ]
+    },
+    {
+        "name": "Disable Sunlight Glare",
+        "desc": "Removes the bright sunlight glare and glow overlay.",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "8B CE E8 ? ? ? ? 8B 4E 30 E8 ? ? ? ? 8B C8 E8",
+                "offset": 2,
+                "patch": "90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Elf Lag Fix",
+        "desc": "Fixes ranged skills misbehaving on high ping by turning off aiming while moving.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "56 8B F1 8B 06 57 FF 50 04 8B C8 E8 ? ? ? ? 84 C0 74",
+                "patch": "30 C0 C2 04 00"
+            }
+        ]
+    },
+    {
+        "name": "Enable Cutscene Skip",
+        "desc": "Lets you skip cutscenes.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "39 4D DC 75 05 39 45 E0 74",
+                "offset": 3,
+                "patch": "EB"
+            }
+        ]
+    },
+    {
+        "name": "Enable Minimap Zoom",
+        "desc": "Allows zooming the minimap on every map.\nCredits: Rydian",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "89 4E 74 80 78 3C 00 74",
+                "patch": "? 6E"
+            }
+        ]
+    },
+    {
+        "name": "Enable NPC Equip View",
+        "desc": "Allows viewing the equipment of NPCs.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "0F 85 EE 00 00 00 6A 2C",
+                "patch": "90 90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Enable Naked Mode",
+        "desc": "Draws characters without their clothes and heads.",
+        "category": "Fun",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "74 11 8B 4E 04 E8 ? ? ? ? 8B C8 5E",
+                "patch": "EB"
+            }
+        ]
+    },
+    {
+        "name": "Enable Self Right-Click",
+        "desc": "Allows opening the right-click menu on your own character.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "0F 85 1A 02 00 00 3B 55 0C 0F 85 11 02 00 00",
+                "patch": "90 E9"
+            }
+        ]
+    },
+    {
+        "name": "Enable TrueType Font",
+        "desc": "Uses the TrueType font text settings no matter the client's language.\nDoesn't work together with bitmap fonts.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "83 F8 01 75 43 8B 44 24 04 32 C9",
+                "patch": "90 90",
+                "offset": 3
+            }
+        ]
+    },
+    {
+        "name": "Enter Remote Shop",
+        "desc": "Allows opening player shops from any distance.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "D9 5D F8 D9 05 ? ? ? ? D8 5D F8 DF E0 F6 C4 01 75 15",
+                "patch": "90 90",
+                "offset": 17
+            }
+        ]
+    },
+    {
+        "name": "Faster Interface Windows",
+        "desc": "Removes the fade and open/close animations of windows like the character and skill windows.",
+        "category": "Speedup",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "80 BE 99 00 00 00 00 74 6F E8",
+                "patch": "EB",
+                "offset": 7
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B 8E 9C 00 00 00 6A 00 FF 75 18",
+                "patch": "6A 00 90",
+                "offset": 8
+            }
+        ]
+    },
+    {
+        "name": "Move While Talking",
+        "desc": "Lets you walk around while a conversation with an NPC is open.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "56 8B F1 8B 06 FF 50 14 84 C0 74 18 8B 46 04 8B 88 88 00 00 00",
+                "patch": "EB",
+                "offset": 10
+            }
+        ]
+    },
+    {
+        "name": "No Channel Move Denial",
+        "desc": "Removes the check that stops you from changing channels in some situations.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "3B F3 0F 84 16 02 00 00 8D 4D F0 90 E8",
+                "patch": "90 E9",
+                "offset": 2
+            }
+        ]
+    },
+    {
+        "name": "No Channel Penalty Message",
+        "desc": "Hides the pop-up warning when you change channels during or right after combat.",
+        "category": "Chat Filter",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "33 C9 51 51 6A 01 51 8B 0D ? ? ? ? 6A 01 57 50 8D 45 E0 50 C6 45 FC 06 E8 ? ? ? ?",
+                "patch": "90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "No Mount Timeout",
+        "desc": "Your mount is not sent away after a while.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B 45 DC 8B 4D D8 89 81 54 02 00 00 B0 01",
+                "patch": "90 90 90 90 90 90",
+                "offset": 6
+            }
+        ]
+    },
+    {
+        "name": "Party Board To Housing",
+        "desc": "The party board and party buttons open the housing board instead.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B 4D 10 E8 E1 20 21 00 E9 31 02 00 00",
+                "patch": "C0 E7 0A 00",
+                "offset": 4
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B CE E8 A7 E0 F6 FF EB 07",
+                "patch": "86 A7 E0 FF",
+                "offset": 3
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B CE E8 2F 10 F7 FF E9 4C 03 00 00",
+                "patch": "0E D7 E0 FF",
+                "offset": 3
+            }
+        ]
+    },
+    {
+        "name": "Remove Login Delay",
+        "desc": "Removes the 30-second wait before you can log in again after a disconnect.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B F1 89 75 DC 80 7D 08 00 0F 84 ? ? ? ? 83 7E 0C 00 0F 85",
+                "patch": "90 E9",
+                "offset": 9
+            }
+        ]
+    },
+    {
+        "name": "Show Clock Minutes",
+        "desc": "The in-game clock shows exact minutes instead of rounding down to 10.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "6A 0A 59 33 D2 F7 F1 8B 0D ? ? ? ? 29 55 4C",
+                "patch": "90 90",
+                "offset": 5
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "6A 0A 59 33 D2 F7 F1 8B 1D ? ? ? ? 68 ? ? ? ? 8D 4D 3C 29 55 4C",
+                "patch": "90 90",
+                "offset": 5
+            }
+        ]
+    },
+    {
+        "name": "Show Detailed FPS",
+        "desc": "Shows the detailed frame rate and rendering statistics display.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "84 C0 0F 84 B2 05 00 00 8B 45 C4 2B 05",
+                "patch": "90 90 90 90 90 90",
+                "offset": 2
+            }
+        ]
+    },
+    {
+        "name": "Show Item Price",
+        "desc": "Shows the shop buying and selling price in item descriptions.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "83 F8 02 0F 85 86 01 00 00 68",
+                "patch": "90 90 90 90 90 90",
+                "offset": 3
+            }
+        ]
+    },
+    {
+        "name": "Show Negative HP",
+        "desc": "Shows HP below zero instead of stopping at 0.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "33 C0 39 45 E4 7D 03 89 45 E4 39 45 F0",
+                "patch": "EB",
+                "offset": 5
+            }
+        ]
+    },
+    {
+        "name": "Show Negative Stats",
+        "desc": "Shows Strength, Dexterity, Intelligence, Will and Luck below zero instead of stopping at 0.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "74 05 DD D8 D9 45 FC D9 5D FC D9 45 FC C9 C3 55 8B EC 51 51 56 8B F1 E8 B6",
+                "patch": "90 90"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "74 05 DD D8 D9 45 FC D9 5D FC D9 45 FC C9 C3 55 8B EC 51 51 56 8B F1 E8 FC",
+                "patch": "90 90"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "74 05 DD D8 D9 45 FC D9 5D FC D9 45 FC C9 C3 55 8B EC 51 51 56 8B F1 E8 42",
+                "patch": "90 90"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "74 05 DD D8 D9 45 FC D9 5D FC D9 45 FC C9 C3 55 8B EC 51 51 56 8B F1 E8 67",
+                "patch": "90 90"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "74 05 DD D8 D9 45 FC D9 5D FC D9 45 FC C9 C3 55 8B EC 51 51 D9",
+                "patch": "90 90"
+            }
+        ]
+    },
+    {
+        "name": "Show Simple FPS",
+        "desc": "Shows a small frames-per-second counter on screen.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "0F 84 56 02 00 00 8B 45 E0",
+                "patch": "90 90 90 90 90 90"
+            }
+        ]
+    },
+    {
+        "name": "Stay As Alchemy Golem",
+        "desc": "Keeps you in control of your alchemy golem when it goes out of range, instead of switching back to your character.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "89 7D F0 85 FF 0F 84 ? ? ? ? 8B 4E 28 8B 01",
+                "offset": 5,
+                "patch": "? 81"
+            }
+        ]
+    },
+    {
+        "name": "Talk To Unequipped Ego",
+        "desc": "Lets you talk to your spirit weapon without equipping it first.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "E8 ? ? ? ? 84 C0 0F 85 ? ? ? ? 68 ? ? ? ? 8D 4D EC 90 E8 ? ? ? ? 8D 45 EC 50 8D 45 D0 50",
+                "offset": 7,
+                "patch": "90 E9"
+            }
+        ]
+    },
+    {
+        "name": "Target Resting Enemies",
+        "desc": "Lets you target mimics, watermelons, sulfur golems and flying books while they are still resting.",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Standard.dll",
+                "pattern": "FF 50 4C 8B C8 E8 ? ? ? ? 85 C0 75 56 8B 06",
+                "offset": 5,
+                "patch": "B8 01 00 00 00"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "FF 50 4C 8B C8 E8 ? ? ? ? 85 C0 75 16 85 FF",
+                "offset": 5,
+                "patch": "B8 01 00 00 00"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "FF 50 4C 8B C8 E8 ? ? ? ? 85 C0 75 52 8B 06",
+                "offset": 5,
+                "patch": "B8 01 00 00 00"
+            },
+            {
+                "location": "Standard.dll",
+                "pattern": "FF 50 4C 8B C8 E8 ? ? ? ? 85 C0 75 2B 8B 06",
+                "offset": 5,
+                "patch": "B8 01 00 00 00"
+            }
+        ]
+    },
+    {
+        "name": "Uncap Auto Production",
+        "desc": "Removes the limit on how many items the production window will make in one go (production skills such as weaving or refining; alchemy has its own patch).",
+        "category": "Quality of Life",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "66 39 86 DC 01 00 00 76 07 66 89 86 DC 01 00 00",
+                "offset": 7,
+                "patch": "EB"
+            }
+        ]
+    },
+    {
+        "name": "Use Bitmap Fonts",
+        "desc": "Draws interface text with bitmap fonts instead of vector fonts, which can stop lag when opening windows.\nDo not use together with TrueType fonts.",
+        "category": "Graphics",
+        "patches": [
+            {
+                "location": "Renderer2.dll",
+                "pattern": "80 BB 80 00 00 00 00 53 FF 75 08 8B CE 74 07",
+                "offset": 13,
+                "patch": "90 90"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "80 BE 90 00 00 00 00 8B CE 74 11",
+                "offset": 9,
+                "patch": "90 90"
+            },
+            {
+                "location": "Renderer2.dll",
+                "pattern": "80 BE 90 00 00 00 00 0F B7 C0 8B CE 74 0B",
+                "offset": 12,
+                "patch": "90 90"
             }
         ]
     }

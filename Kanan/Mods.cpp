@@ -25,6 +25,29 @@
 #include "StatusUI.hpp"
 
 // Patch Mods
+#include "CombatMasterySwap.hpp"
+#include "DefaultRangedSwap.hpp"
+#include "DisableFlashyDyes.hpp"
+#include "DisableNighttime.hpp"
+#include "DisplayNamesFar.hpp"
+#include "FarDiceThrow.hpp"
+#include "ItemSplitQuantity.hpp"
+#include "LargeClockText.hpp"
+#include "ModifyFontSize.hpp"
+#include "ModifyRenderDistance.hpp"
+#include "NameColoring.hpp"
+#include "ModifyZoomLimit.hpp"
+#include "ScreenshotQuality.hpp"
+#include "ShowCombatPower.hpp"
+#include "ShowExplorationPercent.hpp"
+#include "ShowItemID.hpp"
+#include "ShowPoisonDurability.hpp"
+#include "ShowTrueDurability.hpp"
+#include "ShowTrueFoodQuality.hpp"
+#include "ShowTrueHP.hpp"
+#include "TargetProps.hpp"
+#include "TimeAlarm.hpp"
+#include "UserCommands.hpp"
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
 
@@ -109,6 +132,21 @@ namespace kanan {
 
         addPatchMod("Quality of Life", make_unique<AutoMute>());
 		addPatchMod("Graphics", make_unique<DisableFlashy>());
+        addPatchMod("Quality of Life", make_unique<DefaultRangedSwap>());
+        addPatchMod("Graphics", make_unique<DisableFlashyDyes>());
+        addPatchMod("Graphics", make_unique<DisableNighttime>());
+        addPatchMod("Interface", make_unique<DisplayNamesFar>());
+        addPatchMod("Interface", make_unique<NameColoring>());
+        addPatchMod("Interface", make_unique<LargeClockText>());
+        addPatchMod("Fun", make_unique<FarDiceThrow>());
+        addPatchMod("Interface", make_unique<ShowCombatPower>());
+        addPatchMod("Interface", make_unique<ShowExplorationPercent>());
+        addPatchMod("Interface", make_unique<ShowItemID>());
+        addPatchMod("Interface", make_unique<ShowPoisonDurability>());
+        addPatchMod("Interface", make_unique<ShowTrueFoodQuality>());
+        addPatchMod("Interface", make_unique<ShowTrueHP>());
+        addPatchMod("Quality of Life", make_unique<TargetProps>());
+        addPatchMod("Quality of Life", make_unique<UserCommands>());
 
         for (auto& categories : m_patchMods) {
             auto& mods = categories.second;
@@ -146,6 +184,14 @@ namespace kanan {
         addMod(make_unique<UIScale>());
         //addMod(make_unique<StatusUI>());
         addMod(make_unique<AutoSetMTU>());
+        addMod(make_unique<CombatMasterySwap>());
+        addMod(make_unique<ItemSplitQuantity>());
+        addMod(make_unique<ModifyFontSize>());
+        addMod(make_unique<ModifyRenderDistance>());
+        addMod(make_unique<ModifyZoomLimit>());
+        addMod(make_unique<ScreenshotQuality>());
+        addMod(make_unique<ShowTrueDurability>());
+        addMod(make_unique<TimeAlarm>());
         addMod(make_unique<CpuScheduling>());
         addMod(make_unique<OverlayDetection>());
 
