@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
 #include <intrin.h>
 
@@ -651,6 +652,72 @@ namespace kanan {
         return true;
     }
 
+    // Whether a draw is the black frame the client draws over the screen's edges, which hides the
+    // white outermost pixels its post-processing leaves (the passes that sample neighboring pixels
+    // don't reach them): 4 lines of 8 colored, untextured vertices from 0,0 to the far edges of the
+    // viewport, in real pixels. Scaled like the interface, its right and bottom lines would move off
+    // the screen and show a white line there.
+    static bool isEdgeFrame(IDirect3DDevice9* device, D3DPRIMITIVETYPE type, UINT firstVertex, UINT vertices) {
+        DWORD fvf{};
+
+        if (type != D3DPT_LINELIST || vertices != 8 || FAILED(device->GetFVF(&fvf)) || fvf != (D3DFVF_XYZ | D3DFVF_DIFFUSE)) {
+            return false;
+        }
+
+        IDirect3DBaseTexture9* texture{ nullptr };
+
+        if (SUCCEEDED(device->GetTexture(0, &texture)) && texture != nullptr) {
+            texture->Release();
+            return false;
+        }
+
+        D3DVIEWPORT9 viewport{};
+        IDirect3DVertexBuffer9* buffer{ nullptr };
+        UINT offset{}, stride{};
+
+        if (FAILED(device->GetViewport(&viewport)) || FAILED(device->GetStreamSource(0, &buffer, &offset, &stride)) || buffer == nullptr) {
+            return false;
+        }
+
+        auto isFrame = false;
+        void* data{ nullptr };
+
+        if (stride >= 12 && SUCCEEDED(buffer->Lock(offset + firstVertex * stride, vertices * stride, &data, D3DLOCK_READONLY))) {
+            float minX{ FLT_MAX }, minY{ FLT_MAX }, maxX{ -FLT_MAX }, maxY{ -FLT_MAX };
+
+            for (UINT i = 0; i < vertices; ++i) {
+                auto position = (const float*)((const uint8_t*)data + i * stride);
+
+                minX = position[0] < minX ? position[0] : minX;
+                minY = position[1] < minY ? position[1] : minY;
+                maxX = position[0] > maxX ? position[0] : maxX;
+                maxY = position[1] > maxY ? position[1] : maxY;
+            }
+
+            buffer->Unlock();
+
+            isFrame = minX <= 0.5f && minY <= 0.5f && maxX >= viewport.Width - 1.5f && maxY >= viewport.Height - 1.5f;
+        }
+
+        buffer->Release();
+
+        return isFrame;
+    }
+
+    // Draws with the client's own, unscaled projection, then scales it again.
+    template <typename Draw>
+    HRESULT UIScale::drawUnscaled(IDirect3DDevice9* device, Draw draw) {
+        auto setTransform = (decltype(hookedSetTransform)*)m_setTransformHook->getOriginal();
+
+        setTransform(device, D3DTS_PROJECTION, &g_projection);
+
+        auto result = draw();
+
+        applyProjection(device);
+
+        return result;
+    }
+
     // Draws part of the client's interface with the chosen filter. The client's filters and
     // shader are restored afterwards so its own state cache (and the 3D world) are unaffected.
     template <typename Draw>
@@ -699,6 +766,10 @@ namespace kanan {
             return orig(device, type, start, count);
         }
 
+        if (g_isDrawingInterface && g_appliedScale != 1.0f && isEdgeFrame(device, type, start, count * 2)) {
+            return g_uiScale->drawUnscaled(device, [&] { return orig(device, type, start, count); });
+        }
+
         return g_uiScale->drawInterface(device, [&] { return orig(device, type, start, count); });
     }
 
@@ -709,6 +780,10 @@ namespace kanan {
 
         if (isOwnCall((uintptr_t)_ReturnAddress())) {
             return orig(device, type, base, minIndex, vertices, startIndex, count);
+        }
+
+        if (g_isDrawingInterface && g_appliedScale != 1.0f && isEdgeFrame(device, type, (UINT)(base + (INT)minIndex), vertices)) {
+            return g_uiScale->drawUnscaled(device, [&] { return orig(device, type, base, minIndex, vertices, startIndex, count); });
         }
 
         return g_uiScale->drawInterface(device, [&] { return orig(device, type, base, minIndex, vertices, startIndex, count); });
