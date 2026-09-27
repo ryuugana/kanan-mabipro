@@ -165,6 +165,9 @@
     <ClCompile Include="CpuScheduling.cpp" />
     <ClCompile Include="OverlayDetection.cpp" />
     <ClCompile Include="GoldFormat.cpp" />
+    <ClCompile Include="ScreenshotFix.cpp" />
+    <ClCompile Include="LosslessScreenshots.cpp" />
+    <ClCompile Include="ScreenshotWriter.cpp" />
     <ClCompile Include="UIScale.cpp" />
     <ClCompile Include="CombatMasterySwap.cpp" />
     <ClCompile Include="DefaultRangedSwap.cpp" />
@@ -249,6 +252,9 @@
     <ClInclude Include="CpuScheduling.hpp" />
     <ClInclude Include="OverlayDetection.hpp" />
     <ClInclude Include="GoldFormat.hpp" />
+    <ClInclude Include="ScreenshotFix.hpp" />
+    <ClInclude Include="LosslessScreenshots.hpp" />
+    <ClInclude Include="ScreenshotWriter.hpp" />
     <ClInclude Include="UIScale.hpp" />
     <ClInclude Include="CombatMasterySwap.hpp" />
     <ClInclude Include="DefaultRangedSwap.hpp" />

@@ -16,6 +16,8 @@
 #include "CpuScheduling.hpp"
 #include "OverlayDetection.hpp"
 #include "GoldFormat.hpp"
+#include "ScreenshotFix.hpp"
+#include "LosslessScreenshots.hpp"
 #include "DisableNagle.hpp"
 #include "BorderlessWindow.hpp"
 #include "MaxFrameRate.hpp"
@@ -196,6 +198,8 @@ namespace kanan {
         addMod(make_unique<CpuScheduling>());
         addMod(make_unique<OverlayDetection>());
         addMod(make_unique<GoldFormat>());
+        addMod(make_unique<ScreenshotFix>());
+        addMod(make_unique<LosslessScreenshots>());
 
         log("[Mods] Finished loading mods.");
     }

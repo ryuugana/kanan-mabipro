@@ -132,6 +132,15 @@
     <ClCompile Include="GoldFormat.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="ScreenshotFix.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
+    <ClCompile Include="LosslessScreenshots.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenshotWriter.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="UIScale.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -384,6 +393,15 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="GoldFormat.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenshotFix.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="LosslessScreenshots.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenshotWriter.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="UIScale.hpp">

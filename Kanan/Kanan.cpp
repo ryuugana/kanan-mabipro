@@ -374,6 +374,12 @@ namespace kanan {
 
         ImGui::Render();
         ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
+
+        if (m_areModsReady) {
+            for (const auto& mod : m_mods.getMods()) {
+                mod->onFrameDrawn();
+            }
+        }
     }
 
     bool Kanan::onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam) {
