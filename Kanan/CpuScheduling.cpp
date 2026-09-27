@@ -204,30 +204,40 @@ namespace kanan {
 
     void CpuScheduling::onUI() {
         if (ImGui::TreeNode("CPU Scheduling")) {
-            ImGui::TextWrapped("Fixes the client freezing for seconds at a time on CPUs with performance and "
-                "efficiency cores (Intel 12th gen and later), without having to set its affinity in Task "
-                "Manager every launch.");
+            ImGui::TextWrapped("Newer Intel CPUs (12th gen and later) have two kinds of cores: fast performance cores "
+                "and slower efficiency cores. On these CPUs, the client can freeze for seconds at a time when Windows "
+                "moves it between the two. This fixes that by choosing which cores the client runs on.");
+            ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+            ImGui::TextWrapped("Settings here take effect right away, while you play, and are applied automatically "
+                "every time you start the game for as long as they're set.");
+            ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+
+            if (m_isHybrid) {
+                ImGui::TextWrapped("Your CPU has both kinds of cores. If the client freezes for seconds at a time, "
+                    "setting Cores to Efficiency cores only is highly recommended. It's the fix known to work.");
+                ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+
+                if (ImGui::Combo("Cores", &m_cores, "All cores\0Performance cores only\0Efficiency cores only (recommended for freezes)\0")) {
+                    applyAffinity();
+                }
+
+                ImGui::TextWrapped("All cores lets Windows decide, as usual. Performance cores only keeps the client "
+                    "on the fast cores, and may also stop the freezes.");
+            }
+            else {
+                ImGui::TextWrapped("On CPUs with both kinds of cores, a Cores dropdown shows here to choose which "
+                    "cores the client runs on. Your CPU has only one kind of core, so it isn't affected by the "
+                    "freezes and no Cores dropdown is shown.");
+            }
+
             ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
             if (ImGui::Checkbox("Prevent power throttling", &m_preventThrottling)) {
                 applyThrottling();
             }
 
-            ImGui::TextWrapped("Stops Windows from slowing the client down to save power, which also moves it "
-                "to efficiency cores. Try this first.");
-            ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-
-            if (m_isHybrid) {
-                if (ImGui::Combo("Cores", &m_cores, "All cores\0Performance cores only\0Efficiency cores only\0")) {
-                    applyAffinity();
-                }
-
-                ImGui::TextWrapped("Keeps the client on one kind of core. Performance cores only keeps it on the "
-                    "fast cores; efficiency cores only is the same as the Task Manager workaround.");
-            }
-            else {
-                ImGui::TextWrapped("This CPU has one kind of core, so there are no cores to choose.");
-            }
+            ImGui::TextWrapped("Stops Windows from slowing the client down to save power, which on CPUs with both "
+                "kinds of cores also moves it onto the efficiency cores. Works with any Cores setting, on any CPU.");
 
             ImGui::TreePop();
         }
