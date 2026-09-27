@@ -40,9 +40,10 @@ namespace kanan {
 	Hotkey  m_key;
 	Hotkey  m_housingKey;
 
-    Kanan::Kanan(string path) :
+    Kanan::Kanan(string path, HMODULE hmod) :
         characterId{ 0 },
         m_path{ move(path) },
+        m_hmod{ hmod },
         m_uiConfigPath{ m_path + "/ui.ini" },
         m_modConfigPath{ m_path + "/config.txt" },
         m_updateExecPath{ m_path + "/Update.exe" },
@@ -510,7 +511,9 @@ namespace kanan {
         cfg.set<bool>("BlockSpam.Enabled", true);
         cfg.set<bool>("BlockPetPickupMessages.Enabled", true);
         cfg.set<bool>("BlockPetStatusMessages.Enabled", true);
+        cfg.set<bool>("ChatTime.Enabled", true);
         cfg.set<bool>("DelagSkill.Enabled", true);
+        cfg.set<bool>("DisableNagle.Enabled", true);
         cfg.set<bool>("DisableSkillLocks.Enabled", true);
         cfg.set<bool>("DisableSkillRankUpMessage.Enabled", true);
         cfg.set<bool>("FastFlight.Enabled", true);
@@ -729,6 +732,9 @@ namespace kanan {
         //
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("File")) {
+                if (ImGui::MenuItem("New Client")) {
+                    launch_client(m_path);
+                }
                 if (ImGui::MenuItem("Save Config")) {
                     saveConfig();
                 }

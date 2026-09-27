@@ -9,6 +9,8 @@
 using namespace std;
 using namespace kanan;
 
+HINSTANCE mHinstDLL = 0;
+
 // Kanan's files (config, log, patches) are in the game's folder.
 static string gameFolder() {
     wchar_t gamePath[MAX_PATH]{};
@@ -33,7 +35,7 @@ DWORD WINAPI kananInit(LPVOID params) {
     log("Welcome to Kanan for Mabinogi.");
     log("Creating Kanan object.");
 
-    g_kanan = make_unique<Kanan>(path);
+    g_kanan = make_unique<Kanan>(path, mHinstDLL);
 
     log("Leaving kananInit.");
 
@@ -56,6 +58,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
         // We don't need DllMain getting invoked for thread attach/detach reasons.
         DisableThreadLibraryCalls(hModule);
+
+        // Grab for Kanan
+        mHinstDLL = hModule;
 
         // Before the game creates its window, which keeps the display scaling it's created with.
         // Miles loads its plugins before that.

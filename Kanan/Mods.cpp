@@ -59,13 +59,14 @@
 
 // Message Mods
 #include "AutoLoginChannel.hpp"
+#include "AutoMount.hpp"
 #include "BlockSpam.hpp"
 #include "DpsMeter.hpp"
 #include "GetInfo.hpp"
 #include "MessageViewer.hpp"
-#include "ScrollingMessageToChat.hpp"
 #include "ChooseLoginNode.hpp"
 #include "ChatLog.hpp"
+#include "EntityViewer.hpp"
 #include "MaintLogin.hpp"
 #include "NaoCounter.hpp"
 #include "TickTracker.hpp"
@@ -196,29 +197,27 @@ namespace kanan {
             });
         }
 
-        addMessageMod(make_unique<AutoLoginChannel>(), convenience, "Auto Login Channel",
-            "Logs in to the channel you choose automatically.");
-        addMessageMod(make_unique<BlockSpam>(), chat, "Block Spam", "Hides spam messages from chat.");
-        addMessageMod(make_unique<DpsMeter>(), combat, "DPS Meter", "Shows your damage per second.");
-        addMessageMod(make_unique<GetInfo>(), "", "", "");
 #ifdef TEST
         // There is only one node left (the slowest one)
         addMessageMod(make_unique<ChooseLoginNode>(), debug, "Choose Node", "Chooses the login server node.");
-#endif
-        addMessageMod(make_unique<NaoCounter>(), convenience, "Nao Counter", "Counts Nao Soul Stone revives.");
-        addMessageMod(make_unique<TickTimer>(), combat, "Tick Timer", "Shows the timing of the game's regeneration ticks.");
-        addMessageMod(make_unique<ScrollingMessageToChat>(), chat, "Scrolling Messages To Chat",
-            "Copies the messages that scroll across the screen into chat (field bosses, auctions).");
-        // Keep ChatLog below ScrollingMessageToChat to log the messages
-        addMessageMod(make_unique<ChatLog>(), chat, "Chat Log", "Saves chat to a log file and shows it in a window.");
-
-#ifdef TEST
         addMessageMod(make_unique<MaintLogin>(), debug, "Maintenance Login", "Logs in during maintenance.");
         addMessageMod(make_unique<MessageViewer>(), debug, "Message Viewer", "Shows the network messages the game sends and receives.");
-#endif // TEST
+#endif
 
+        addMessageMod(make_unique<AutoLoginChannel>(), convenience, "Auto Login Channel",
+            "Logs in to the channel you choose automatically.");
+        addMessageMod(make_unique<AutoLoginChannel>(), convenience, "Auto Mount",
+            "Accepts mount requests automatically.");
+        addMessageMod(make_unique<BlockSpam>(), chat, "Block Spam", "Hides spam messages from chat.");
+        addMessageMod(make_unique<DpsMeter>(), combat, "DPS Meter", "Shows your damage per second.");
+        addMessageMod(make_unique<GetInfo>(), "", "", "");
+        addMessageMod(make_unique<NaoCounter>(), convenience, "Nao Counter", "Counts Nao Soul Stone revives.");
+        addMessageMod(make_unique<TickTimer>(), combat, "Tick Timer", "Shows the timing of the game's regeneration ticks.");
+        // Keep ChatLog below ScrollingMessageToChat to log the messages
+        addMessageMod(make_unique<ChatLog>(), chat, "Chat Mods", "Includes various chat mods including a chat logger and adding time to chat.");
         addMod(make_unique<DisableNagle>(), system, "Disable Nagle", "Sends network messages right away, for less lag.");
         addMod(make_unique<BorderlessWindow>(), graphics, "Borderless Window", "Runs the game in a borderless window or fullscreen window.");
+        addMod(make_unique<EntityViewer>(), graphics, "Entity Viewer", "Provides a window to view clothing, conditions, and other information from entities.");
         addMod(make_unique<FieldOfView>(), graphics, "Field Of View", "Changes the camera's field of view.");
         addMod(make_unique<DisplayScaling>(), graphics, "Display Scaling",
             "Makes the game sharp instead of blurry on high resolution screens (1440p, 4K, laptops) with Windows "

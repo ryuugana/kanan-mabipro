@@ -11,6 +11,8 @@ namespace kanan {
     public:
         DisableNagle();
 
+        std::string getName() override { return "Disable Nagle"; }
+
         void onUI() override;
 
         void onConfigLoad(const Config& cfg) override;

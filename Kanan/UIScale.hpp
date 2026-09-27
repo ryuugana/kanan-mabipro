@@ -21,6 +21,8 @@ namespace kanan {
         UIScale();
         virtual ~UIScale();
 
+        std::string getName() override { return "UI Scale"; }
+
         void onFrame() override;
         void onUI() override;
 

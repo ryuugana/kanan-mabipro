@@ -8,6 +8,8 @@ namespace kanan {
 	public:
 		NaoCounter();
 
+		std::string getName() override { return "Nao Counter"; }
+
 		void onUI() override;
 
 		bool onWindow() override;

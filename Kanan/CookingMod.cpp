@@ -72,7 +72,7 @@ namespace kanan {
     void CookingMod::onUI() {
         if (ImGui::CollapsingHeader("Cooking mod"))
         {
-            if (ImGui::Checkbox("Enable Cooking mod", &m_is_enabled)) {
+            if (ImGui::Checkbox("Cooking mod", &m_is_enabled)) {
                 CookingMod::applycook(m_is_enabled);
             }
             if (m_is_enabled) {

@@ -11,6 +11,8 @@
 namespace kanan {
     class Mod {
     public:
+        virtual std::string getName() { return ""; }
+
         virtual void onFrame() {}
         // After Kanan has drawn, just before the frame is shown.
         virtual void onFrameDrawn() {}

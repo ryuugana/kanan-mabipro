@@ -17,6 +17,8 @@ namespace kanan {
 	public:
 		ChatLog();
 
+		std::string getName() override { return "Chat Mods"; }
+
 		void onUI() override;
 
 		bool onWindow() override;
@@ -36,7 +38,13 @@ namespace kanan {
 
 		bool m_fileLogEnabled;
 		bool m_startedLogging;
+		bool m_isChatLog;
 		bool m_isOpen;
+		bool m_isTime;
+		bool m_is24hour;
+		bool m_isAuctionEnabled;
+		bool m_isFieldBossEnabled;
+		bool m_isFieldBNotifyEnabled;
 		bool m_scrollToBottom;
 		bool m_autoScroll;
 		int m_daysToKeepLogs;

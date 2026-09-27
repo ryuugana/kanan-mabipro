@@ -4,9 +4,11 @@
 
 
 namespace kanan {
-	class ScrollingMessageToChat : public MessageMod {
+	class AutoMount : public MessageMod {
 	public:
-		ScrollingMessageToChat();
+		AutoMount();
+
+		std::string getName() override { return "Auto Accept Mount Requests"; }
 
 		void onUI() override;
 
@@ -14,10 +16,5 @@ namespace kanan {
 		void onConfigSave(Config& cfg) override;
 
 		void onRecv(MabiMessage mabiMessage) override;
-
-	private:
-		bool m_isAuctionEnabled;
-		bool m_isFieldBossEnabled;
-		bool m_isFieldBNotifyEnabled;
 	};
 }
