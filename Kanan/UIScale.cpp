@@ -293,7 +293,12 @@ namespace kanan {
         }
 
         // The 2D projection is set through the device, which only exists once rendering has begun.
+        // Its hooks see every draw the game makes, so they're only put in once UI Scale is on.
         if (m_setTransformHook == nullptr) {
+            if (!m_isEnabled) {
+                return;
+            }
+
             auto d3d9 = g_kanan->getD3D9Hook();
 
             if (d3d9 == nullptr || d3d9->getDevice() == nullptr) {
@@ -664,13 +669,21 @@ namespace kanan {
 
         device->GetSamplerState(0, D3DSAMP_MAGFILTER, &mag);
         device->GetSamplerState(0, D3DSAMP_MINFILTER, &min);
-        device->SetSamplerState(0, D3DSAMP_MAGFILTER, filter);
-        device->SetSamplerState(0, D3DSAMP_MINFILTER, filter);
+
+        // Only changed (and put back) when the client isn't already using that filter.
+        auto isFilterSet = mag != (DWORD)filter || min != (DWORD)filter;
+
+        if (isFilterSet) {
+            device->SetSamplerState(0, D3DSAMP_MAGFILTER, filter);
+            device->SetSamplerState(0, D3DSAMP_MINFILTER, filter);
+        }
 
         auto result = draw();
 
-        device->SetSamplerState(0, D3DSAMP_MAGFILTER, mag);
-        device->SetSamplerState(0, D3DSAMP_MINFILTER, min);
+        if (isFilterSet) {
+            device->SetSamplerState(0, D3DSAMP_MAGFILTER, mag);
+            device->SetSamplerState(0, D3DSAMP_MINFILTER, min);
+        }
 
         if (isCrisp || isPixelArt) {
             device->SetPixelShader(nullptr);
@@ -745,7 +758,8 @@ namespace kanan {
             result = orig(device, viewport);
         }
 
-        if (SUCCEEDED(result) && g_isDrawingInterface) {
+        // Unscaled, the client's projection doesn't depend on the viewport.
+        if (SUCCEEDED(result) && g_isDrawingInterface && scale != 1.0f) {
             self->applyProjection(device);
         }
 

@@ -68,6 +68,9 @@ namespace kanan {
         bool m_isUpdate;
         bool m_isNotifyUpdate;
         bool m_isMp3Fixed;
+        bool m_isMp3Tried{};
+        bool m_isVersionChecked{};
+        std::atomic_bool m_isNewVersion{};
         bool m_interactiveWindows;
         bool m_defaultMods;
         int m_fontSize;

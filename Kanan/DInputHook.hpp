@@ -48,6 +48,9 @@ namespace kanan {
 
         std::vector<DIDEVICEOBJECTDATA> m_deviceObjectData;
 
+        // The devices already switched to non exclusive since Kanan started taking input.
+        std::vector<IDirectInputDevice*> m_reacquiredDevices;
+
         bool m_isIgnoringInput;
 
         bool hook();

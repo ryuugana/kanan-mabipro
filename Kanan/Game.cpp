@@ -110,7 +110,7 @@ namespace kanan {
 
     KCharacter* Game::getLocalCharacter() {
         auto world = getWorld();
-        log("World: %d", world);
+
         if (world == nullptr) {
             return nullptr;
         }

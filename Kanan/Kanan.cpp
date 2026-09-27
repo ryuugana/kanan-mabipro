@@ -261,8 +261,15 @@ namespace kanan {
                 loadConfig();
             }
 
-            if (!m_isMp3Fixed) {
+            // Once a session: if the files can't be moved now, trying every frame won't help.
+            if (!m_isMp3Fixed && !m_isMp3Tried) {
+                m_isMp3Tried = true;
                 fixMabiProMp3();
+            }
+
+            if (m_isNewVersion.exchange(false) && m_isNotifyUpdate) {
+                m_isUpdate = true;
+                m_isUIOpen = true;
             }
 
             for (const auto& mod : m_mods.getMods()) {
@@ -410,9 +417,6 @@ namespace kanan {
 
         memset(szBuffer, 0, size);
 
-        // Delete previously created batch file
-        if (std::filesystem::exists(m_updateExecPath)) std::filesystem::remove(m_updateExecPath);
-
         if (URLOpenBlockingStream(NULL, L"https://raw.githubusercontent.com/ryuugana/kanan-mabipro/master/Kanan/Version.h", &lpSrc, 0, NULL) != S_OK)
         {
             return false;
@@ -420,6 +424,7 @@ namespace kanan {
         else
         {
             lpSrc->Read(szBuffer, size - 1, NULL);
+            lpSrc->Release();
         }
 
         string remoteVersion = "";
@@ -456,10 +461,10 @@ namespace kanan {
             updateHash = GetKananReleaseHash(fileName);
         }
 
-        log("Obtained hash: %s", updateHash);
+        log("Obtained hash: %s", updateHash.c_str());
 
 
-        log("Downloading Kanan updater zip to %s", m_updateZipPath);
+        log("Downloading Kanan updater zip to %s", m_updateZipPath.c_str());
 
         log("Comparing downloaded file hash to actual file hash: ");
 
@@ -467,7 +472,7 @@ namespace kanan {
         {
             if (!fileHash.empty())
             {
-                log("Failed with hash - %s", fileHash);
+                log("Failed with hash - %s", fileHash.c_str());
                 log("Retrying download and verifying hash : ");
                 Sleep(1000);
             }
@@ -569,7 +574,6 @@ namespace kanan {
         Config cfg{ m_modConfigPath };
         m_isUIOpenByDefault = cfg.get<bool>("UI.OpenByDefault").value_or(true);
         m_isNotifyUpdate = cfg.get<bool>("UI.NotifyUpdate").value_or(true);
-        m_isUpdate = checkVersion() && m_isNotifyUpdate;
         m_isMp3Fixed = cfg.get<bool>("UI.Mp3Fixed").value_or(false);
         m_interactiveWindows = cfg.get<bool>("UI.InteractiveWindows").value_or(true);
         m_fontSize = cfg.get<int>("UI.FontSize").value_or(16);
@@ -580,6 +584,30 @@ namespace kanan {
 
 		if (m_key.hotkey == 0)
 			m_isUIOpen = true;
+
+        if (!m_isVersionChecked) {
+            m_isVersionChecked = true;
+
+            // Delete the batch file a previous update created.
+            std::error_code ec{};
+            std::filesystem::remove(m_updateExecPath, ec);
+
+            // Downloading the latest version number would hold up the game's frame, so it's done on
+            // its own thread; the next frame after it finds a newer one opens the update message.
+            if (m_isNotifyUpdate) {
+                std::thread{ [this] {
+                    auto com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+                    if (checkVersion()) {
+                        m_isNewVersion = true;
+                    }
+
+                    if (SUCCEEDED(com)) {
+                        CoUninitialize();
+                    }
+                } }.detach();
+            }
+        }
 
         for (auto& mod : m_mods.getMods()) {
             mod->onConfigLoad(cfg);
@@ -654,7 +682,11 @@ namespace kanan {
 
         mp3_status_fix status = no_mp3_found;
 
-        for (const auto& entry : std::filesystem::directory_iterator(m_path + "/mp3/ambient")) {
+        // No ambient folder means no mp3 in the wrong place.
+        std::error_code ec{};
+        std::filesystem::directory_iterator ambient{ m_path + "/mp3/ambient", ec };
+
+        for (const auto& entry : ec ? std::filesystem::directory_iterator{} : ambient) {
             if (!isAmbientMp3(entry.path().filename().generic_string())) {
                 status = mp3_move_success;
                 string newMp3Path = m_path + "/mp3/" + entry.path().filename().string();
@@ -663,7 +695,7 @@ namespace kanan {
                         std::filesystem::rename(entry.path(), newMp3Path);
                     }
                     else {
-                        log("Existing mp3 at %s, skipping to next file.", newMp3Path);
+                        log("Existing mp3 at %s, skipping to next file.", newMp3Path.c_str());
                     }
                 }
                 catch (std::filesystem::filesystem_error& e) {

@@ -14,14 +14,15 @@ namespace kanan {
 	}
 
 	void GetInfo::onRecv(MabiMessage mabiMessage) {
-		CMabiPacket recvPacket;
-		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
-		if (recvPacket.GetReciverId() < 0x10010000000000)
+		// Only the header is needed, so the packet isn't parsed.
+		auto reciverId = GetReciverID(mabiMessage.buffer);
+
+		if (reciverId < 0x10010000000000)
 		{
 			// Find out who we are on login
-			if (recvPacket.GetOP() == 0x909A)
+			if (GetOP(mabiMessage.buffer) == 0x909A)
 			{
-				g_kanan->characterId = recvPacket.GetReciverId();
+				g_kanan->characterId = reciverId;
 			}
 		}
 	}

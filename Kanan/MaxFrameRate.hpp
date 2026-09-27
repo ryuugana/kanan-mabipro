@@ -11,7 +11,8 @@ namespace kanan {
 		MaxFrameRate();
 		~MaxFrameRate();
 
-		void onFrame() override;
+		// Waits for the next frame last, just before the game shows it, so the frames stay evenly spaced.
+		void onFrameDrawn() override;
 
 		void onUI() override;
 

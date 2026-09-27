@@ -65,7 +65,7 @@ namespace kanan {
 		}
 	}
 
-	void MaxFrameRate::onFrame() {
+	void MaxFrameRate::onFrameDrawn() {
 		if (!m_enabled)
 		{
 			return;

@@ -1,5 +1,7 @@
 #define INITGUID
 
+#include <algorithm>
+
 #include <String.hpp>
 
 #include "DInputHook.hpp"
@@ -88,9 +90,17 @@ HRESULT DInputHook::getDeviceData(
     // If we are ignoring input then we call the original to remove buffered
     // input events from the devices queue without modifying the out parameters.
     if (dinput->m_isIgnoringInput) {
-        device->Unacquire();
-        device->SetCooperativeLevel(dinput->m_wnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
-        device->Acquire();
+        // Once per device each time Kanan starts taking input, rather than on every read.
+        auto& reacquired = dinput->m_reacquiredDevices;
+
+        if (find(reacquired.begin(), reacquired.end(), device) == reacquired.end()) {
+            device->Unacquire();
+            device->SetCooperativeLevel(dinput->m_wnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+
+            if (SUCCEEDED(device->Acquire())) {
+                reacquired.push_back(device);
+            }
+        }
 
         if (*numElements == -1 || data == nullptr) // detect buffer flush
         {
@@ -105,6 +115,8 @@ HRESULT DInputHook::getDeviceData(
 
         return DI_OK;
     }
+
+    dinput->m_reacquiredDevices.clear();
 
     auto result = originalGetDeviceData(device, size, data, numElements, flags);
 
