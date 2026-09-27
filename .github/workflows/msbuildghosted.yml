@@ -42,14 +42,20 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
 
+    # Laid out like the MabiPro folder: extracted there, Kanan.asi goes in system\mss (where the
+    # game's sound library loads it from) and Patches.json next to Client.exe.
+    - name: Package Kanan
+      shell: powershell
+      run: |
+        New-Item -ItemType Directory -Force package\system\mss | Out-Null
+        Copy-Item Release\Kanan.asi package\system\mss\
+        Copy-Item Release\Patches.json package\
+
     - name: Upload Kanan
       uses: actions/upload-artifact@v4
       with:
         name: KananMabiPro
-        path: |
-          Release\bdcap32.dll
-          Release\bdcap23.dll
-          Release\Patches.json
+        path: package/
 
     - name: Upload Updater
       uses: actions/upload-artifact@v4

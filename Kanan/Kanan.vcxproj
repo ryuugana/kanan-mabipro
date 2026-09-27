@@ -44,12 +44,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>bdcap32</TargetName>
+    <TargetName>Kanan</TargetName>
+    <TargetExt>.asi</TargetExt>
     <LinkIncremental>
     </LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
-    <TargetName>bdcap32</TargetName>
+    <TargetName>Kanan</TargetName>
+    <TargetExt>.asi</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -71,8 +73,7 @@
       <OptimizeReferences>
       </OptimizeReferences>
       <AdditionalLibraryDirectories>$(OutDir);$(SolutionDir)Dependencies\FreeType;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;dsound.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>bdcap32.def</ModuleDefinitionFile>
+      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -111,8 +112,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(OutDir);$(SolutionDir)Dependencies\FreeType;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;dsound.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>bdcap32.def</ModuleDefinitionFile>
+      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -164,7 +164,36 @@
     <ClCompile Include="MeditationTint.cpp" />
     <ClCompile Include="CpuScheduling.cpp" />
     <ClCompile Include="OverlayDetection.cpp" />
+    <ClCompile Include="DisplayScaling.cpp" />
+    <ClCompile Include="GoldFormat.cpp" />
+    <ClCompile Include="ScreenshotFix.cpp" />
+    <ClCompile Include="LosslessScreenshots.cpp" />
+    <ClCompile Include="ScreenshotWriter.cpp" />
     <ClCompile Include="UIScale.cpp" />
+    <ClCompile Include="FontStyle.cpp" />
+    <ClCompile Include="CombatMasterySwap.cpp" />
+    <ClCompile Include="DefaultRangedSwap.cpp" />
+    <ClCompile Include="DisableFlashyDyes.cpp" />
+    <ClCompile Include="DisableNighttime.cpp" />
+    <ClCompile Include="DisplayNamesFar.cpp" />
+    <ClCompile Include="FarDiceThrow.cpp" />
+    <ClCompile Include="ItemSplitQuantity.cpp" />
+    <ClCompile Include="LargeClockText.cpp" />
+    <ClCompile Include="ModifyFontSize.cpp" />
+    <ClCompile Include="ModifyRenderDistance.cpp" />
+    <ClCompile Include="NameColoring.cpp" />
+    <ClCompile Include="ModifyZoomLimit.cpp" />
+    <ClCompile Include="ScreenshotQuality.cpp" />
+    <ClCompile Include="ShowCombatPower.cpp" />
+    <ClCompile Include="ShowExplorationPercent.cpp" />
+    <ClCompile Include="ShowItemID.cpp" />
+    <ClCompile Include="ShowPoisonDurability.cpp" />
+    <ClCompile Include="ShowTrueDurability.cpp" />
+    <ClCompile Include="ShowTrueFoodQuality.cpp" />
+    <ClCompile Include="ShowTrueHP.cpp" />
+    <ClCompile Include="TargetProps.cpp" />
+    <ClCompile Include="TimeAlarm.cpp" />
+    <ClCompile Include="UserCommands.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
     <ClCompile Include="KananInit.cpp" />
@@ -224,7 +253,36 @@
     <ClInclude Include="MeditationTint.hpp" />
     <ClInclude Include="CpuScheduling.hpp" />
     <ClInclude Include="OverlayDetection.hpp" />
+    <ClInclude Include="DisplayScaling.hpp" />
+    <ClInclude Include="GoldFormat.hpp" />
+    <ClInclude Include="ScreenshotFix.hpp" />
+    <ClInclude Include="LosslessScreenshots.hpp" />
+    <ClInclude Include="ScreenshotWriter.hpp" />
     <ClInclude Include="UIScale.hpp" />
+    <ClInclude Include="FontStyle.hpp" />
+    <ClInclude Include="CombatMasterySwap.hpp" />
+    <ClInclude Include="DefaultRangedSwap.hpp" />
+    <ClInclude Include="DisableFlashyDyes.hpp" />
+    <ClInclude Include="DisableNighttime.hpp" />
+    <ClInclude Include="DisplayNamesFar.hpp" />
+    <ClInclude Include="FarDiceThrow.hpp" />
+    <ClInclude Include="ItemSplitQuantity.hpp" />
+    <ClInclude Include="LargeClockText.hpp" />
+    <ClInclude Include="ModifyFontSize.hpp" />
+    <ClInclude Include="ModifyRenderDistance.hpp" />
+    <ClInclude Include="NameColoring.hpp" />
+    <ClInclude Include="ModifyZoomLimit.hpp" />
+    <ClInclude Include="ScreenshotQuality.hpp" />
+    <ClInclude Include="ShowCombatPower.hpp" />
+    <ClInclude Include="ShowExplorationPercent.hpp" />
+    <ClInclude Include="ShowItemID.hpp" />
+    <ClInclude Include="ShowPoisonDurability.hpp" />
+    <ClInclude Include="ShowTrueDurability.hpp" />
+    <ClInclude Include="ShowTrueFoodQuality.hpp" />
+    <ClInclude Include="ShowTrueHP.hpp" />
+    <ClInclude Include="TargetProps.hpp" />
+    <ClInclude Include="TimeAlarm.hpp" />
+    <ClInclude Include="UserCommands.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
     <ClInclude Include="UIScaleXbr.h" />
     <ClInclude Include="Game.hpp" />
@@ -272,12 +330,6 @@
     <CopyFileToFolders Include="Patches.json">
       <FileType>Document</FileType>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="bdcap23.dll">
-      <FileType>Document</FileType>
-    </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bdcap32.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

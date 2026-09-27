@@ -77,15 +77,14 @@ namespace kanan {
 	}
 
 	void TickTimer::onRecv(MabiMessage mabiMessage) {
-		CMabiPacket recvPacket;
-		recvPacket.SetSource(mabiMessage.buffer, mabiMessage.size);
 		if (m_timerId == NULL)
 		{
 			m_timerId = SetTimer(NULL, m_timerId, 1000, TickTimerProc);
 		}
 
 		// Set max time for tick countdown if the packet is ours
-		if (recvPacket.GetReciverId() == g_kanan->characterId)
+		// Only the header is needed, so the packet isn't parsed.
+		if (GetReciverID(mabiMessage.buffer) == g_kanan->characterId)
 		{
 			g_tickTimerSeconds = g_tickTimerMax;
 		}

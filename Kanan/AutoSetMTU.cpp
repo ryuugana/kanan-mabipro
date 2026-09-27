@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <thread>
 
 #include <Windows.h>
 
@@ -94,29 +95,40 @@ namespace kanan {
 
         auto processHandle = processInfo.hProcess;
         DWORD exitCode{ 0 };
+        optional<DWORD> result{};
+
+        CloseHandle(processInfo.hThread);
 
         if (WaitForSingleObject(processHandle, 5000) != WAIT_OBJECT_0) {
             log("Failed to wait for %s %s", name.c_str(), params.c_str());
-            return {};
         }
-
-        if (GetExitCodeProcess(processHandle, &exitCode) == FALSE) {
+        else if (GetExitCodeProcess(processHandle, &exitCode) == FALSE) {
             log("Failed to get the exit code for %s %s", name.c_str(), params.c_str());
-            return {};
+        }
+        else {
+            result = exitCode;
         }
 
-        return exitCode;
+        CloseHandle(processHandle);
+
+        return result;
     }
 
     char AutoSetMTU::createConnection(int a1, int a2) {
         auto mtu = g_autoSetMTU;
 
-        // Lower the MTU if we are enabled.
-        if (mtu->m_isEnabled) {
-            auto lowMTU = to_string(mtu->m_lowMTU);
-            auto interface1 = string{ mtu->m_interface.data() };
+        auto isEnabled = mtu->m_isEnabled;
+        auto interface1 = string{ mtu->m_interface.data() };
+        auto connection = 0;
 
-            if (mtu->runProcess("netsh.exe", "interface ipv4 set subinterface \"" + interface1 + "\" mtu=" + lowMTU + " store=persistent")) {
+        // Lower the MTU if we are enabled. This has to finish before the connection is made, as
+        // that's when its packet size is settled.
+        if (isEnabled) {
+            scoped_lock _{ mtu->m_netshMutex };
+
+            connection = ++mtu->m_connection;
+
+            if (mtu->runProcess("netsh.exe", "interface ipv4 set subinterface \"" + interface1 + "\" mtu=" + to_string(mtu->m_lowMTU) + " store=persistent")) {
                 log("Lowered MTU successfully.");
             }
         }
@@ -125,14 +137,21 @@ namespace kanan {
         auto originalConnection = (decltype(createConnection)*)mtu->m_hook->getOriginal();
         auto result = originalConnection(a1, a2);
 
-        // Restore the MTU to normal now that the connection has been created.
-        if (mtu->m_isEnabled) {
-            auto normalMTU = to_string(mtu->m_normalMTU);
-            auto interface1 = string{ mtu->m_interface.data() };
+        // Restore the MTU to normal now that the connection has been created, on its own thread so
+        // the game doesn't wait for it.
+        if (isEnabled) {
+            thread{ [mtu, interface1, connection, normalMTU = to_string(mtu->m_normalMTU)] {
+                scoped_lock _{ mtu->m_netshMutex };
 
-            if (mtu->runProcess("netsh.exe", "interface ipv4 set subinterface \"" + interface1 + "\" mtu=" + normalMTU + " store=persistent")) {
-                log("Restored MTU successfully.");
-            }
+                // A newer connection lowered it again and restores it itself.
+                if (connection != mtu->m_connection) {
+                    return;
+                }
+
+                if (mtu->runProcess("netsh.exe", "interface ipv4 set subinterface \"" + interface1 + "\" mtu=" + normalMTU + " store=persistent")) {
+                    log("Restored MTU successfully.");
+                }
+            } }.detach();
         }
 
         return result;

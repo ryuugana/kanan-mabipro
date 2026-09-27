@@ -157,10 +157,18 @@ namespace kanan {
         case WM_WINDOWPOSCHANGED:
         case WM_SIZE:
         case WM_MOVE:
-            if (m_isChoiceFulfilled) {
-                m_changeStyle = true;
-                m_changePos = true;
-                m_isChoiceFulfilled = false;
+            // Only when the window has left the chosen style or place, not each time it's
+            // activated or brought to the front, and not while it's minimized.
+            if (m_isChoiceFulfilled && !IsIconic(wnd)) {
+                RECT rect{};
+                auto isInPlace = GetWindowLong(wnd, GWL_STYLE) == m_style && GetWindowRect(wnd, &rect) &&
+                    rect.left == m_x && rect.top == m_y && rect.right - rect.left == m_w && rect.bottom - rect.top == m_h;
+
+                if (!isInPlace) {
+                    m_changeStyle = true;
+                    m_changePos = true;
+                    m_isChoiceFulfilled = false;
+                }
             }
         default:
             return true;

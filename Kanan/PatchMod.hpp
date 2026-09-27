@@ -28,6 +28,10 @@ namespace kanan {
             return m_category;
         }
 
+        const auto& getTooltip() const {
+            return m_tooltip;
+        }
+
         void setCategory(std::string category) {
             m_category = move(category);
         }

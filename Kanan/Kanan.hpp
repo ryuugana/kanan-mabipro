@@ -51,7 +51,6 @@ namespace kanan {
         std::string m_modConfigPath;
         std::string m_updateExecPath;
         std::string m_updateZipPath;
-        std::string m_astralPath;
         std::unique_ptr<D3D9Hook> m_d3d9Hook;
         std::unique_ptr<DInputHook> m_dinputHook;
         std::unique_ptr<WindowsMessageHook> m_wmHook;
@@ -69,6 +68,9 @@ namespace kanan {
         bool m_isUpdate;
         bool m_isNotifyUpdate;
         bool m_isMp3Fixed;
+        bool m_isMp3Tried{};
+        bool m_isVersionChecked{};
+        std::atomic_bool m_isNewVersion{};
         bool m_interactiveWindows;
         bool m_defaultMods;
         int m_fontSize;
@@ -82,6 +84,13 @@ namespace kanan {
 
         bool m_isUIOpenByDefault{};
 
+        // The mod search box's text, and whether it had any last frame (to collapse what a search
+        // opened once it's cleared).
+        char m_search[128]{};
+        bool m_wasSearching{};
+
+        void drawMods();
+
         void initializeMods();
 
         // These are callbacks that get called from the hooks that get created.
@@ -92,7 +101,7 @@ namespace kanan {
         bool checkVersion();
         void updateKanan();
 
-        void applyDefaultMods(bool astralWorld);
+        void applyDefaultMods();
 
         void loadConfig();
         void saveConfig();
@@ -101,7 +110,6 @@ namespace kanan {
         void fixMabiProMp3();
 
         void housingBoard();
-        void viewAstralWorld();
 
         void drawUI();
         void drawAbout();
