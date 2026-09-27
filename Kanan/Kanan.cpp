@@ -8,7 +8,9 @@
 #include <Scan.hpp>
 #include <Config.hpp>
 #include <filesystem>
+#include <algorithm>
 #include <iostream>
+#include <sstream>
 #include <Shlwapi.h>
 #include <String.hpp>
 #include <Utility.hpp>
@@ -1359,40 +1361,102 @@ namespace kanan {
                 ImGui::SetTooltip("Only enables recommended settings, this does not disable existing settings.");
             }
         }
-        if (ImGui::CollapsingHeader("Patches")) {
-            for (auto& mod : m_mods.getMods()) {
-                mod->onPatchUI();
-            }
-
-            // Patch mods.
-            for (auto& mods : m_mods.getPatchMods()) {
-                auto& category = mods.first;
-
-                if (!category.empty() && !ImGui::TreeNode(category.c_str())) {
-                    continue;
-                }
-
-                for (auto& mod : mods.second) {
-                    mod->onPatchUI();
-                }
-
-                if (!category.empty()) {
-                    ImGui::TreePop();
-                }
-            }
-        }
-
-        if (ImGui::CollapsingHeader("Configurable")) {
-            for (const auto& mod : m_mods.m_messageMods) {
-                mod->onUI();
-            }
-
-            for (const auto& mod : m_mods.getMods()) {
-                mod->onUI();
-            }
-        }
+        drawMods();
 
         ImGui::End();
+    }
+
+    // Every mod, by section, with a search box that finds mods by their name, description and section.
+    void Kanan::drawMods() {
+        ImGui::Spacing();
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputTextWithHint("##SearchMods", "Search mods (name or what they do)...", m_search, sizeof(m_search));
+
+        auto lowercase = [](string text) {
+            transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return (char)tolower(c); });
+            return text;
+        };
+
+        // Every word typed must appear somewhere in the mod's name, description or section.
+        vector<string> words{};
+        istringstream query{ lowercase(m_search) };
+
+        for (string word{}; query >> word; ) {
+            words.push_back(word);
+        }
+
+        auto isSearching = !words.empty();
+        auto wasSearchCleared = m_wasSearching && !isSearching;
+
+        m_wasSearching = isSearching;
+
+        auto isMatch = [&](const Mods::MenuEntry& entry) {
+            if (!isSearching) {
+                return true;
+            }
+
+            auto text = lowercase(entry.name + " " + entry.description + " " + entry.section);
+
+            return all_of(words.begin(), words.end(), [&](const string& word) { return text.find(word) != string::npos; });
+        };
+
+        auto& menu = m_mods.getMenu();
+        auto isAnyMatch = false;
+
+        for (auto& section : m_mods.getSections()) {
+            vector<const Mods::MenuEntry*> entries{};
+
+            for (auto& entry : menu) {
+                if (entry.section == section && isMatch(entry)) {
+                    entries.push_back(&entry);
+                }
+            }
+
+            if (entries.empty()) {
+                continue;
+            }
+
+            isAnyMatch = true;
+
+            // Searching opens the sections and mods it finds; clearing the search closes them again.
+            if (isSearching || wasSearchCleared) {
+                ImGui::SetNextItemOpen(isSearching);
+            }
+
+            if (!ImGui::CollapsingHeader(section.c_str())) {
+                continue;
+            }
+
+            ImGui::PushID(section.c_str());
+
+            auto wasToggle = true;
+
+            for (auto entry : entries) {
+                // A little room between the section's on/off patches and its mods with settings.
+                if (!entry->isToggle && wasToggle && entry != entries.front()) {
+                    ImGui::Spacing();
+                }
+
+                wasToggle = entry->isToggle;
+
+                if (entry->isToggle) {
+                    entry->mod->onPatchUI();
+                }
+                else {
+                    if (isSearching || wasSearchCleared) {
+                        ImGui::SetNextItemOpen(isSearching);
+                    }
+
+                    entry->mod->onUI();
+                }
+            }
+
+            ImGui::PopID();
+        }
+
+        if (isSearching && !isAnyMatch) {
+            ImGui::TextDisabled("No mods match \"%s\".", m_search);
+        }
     }
 
     void Kanan::drawAbout() {

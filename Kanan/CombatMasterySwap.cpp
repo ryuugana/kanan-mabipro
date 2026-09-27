@@ -187,7 +187,7 @@ namespace kanan {
             return;
         }
 
-        if (ImGui::CollapsingHeader("Combat Mastery Swap")) {
+        if (ImGui::TreeNode("Combat Mastery Swap")) {
             ImGui::TextWrapped("When you attack with no skill loaded, loads the skill below instead "
                 "(for example 20002 for Smash). Once it is loaded, your next attack uses it.");
             ImGui::Spacing();
@@ -207,6 +207,8 @@ namespace kanan {
                 g_swapSkillID = m_skillID;
                 apply();
             }
+
+            ImGui::TreePop();
         }
     }
 

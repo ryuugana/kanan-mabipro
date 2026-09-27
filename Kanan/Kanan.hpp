@@ -82,6 +82,13 @@ namespace kanan {
 
         bool m_isUIOpenByDefault{};
 
+        // The mod search box's text, and whether it had any last frame (to collapse what a search
+        // opened once it's cleared).
+        char m_search[128]{};
+        bool m_wasSearching{};
+
+        void drawMods();
+
         void initializeMods();
 
         // These are callbacks that get called from the hooks that get created.

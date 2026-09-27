@@ -34,7 +34,7 @@
     {
         "name": "Remove Chat Restrictions",
         "desc": "Allows chat spam and repeat messages.",
-        "category": "Quality of Life",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -51,7 +51,7 @@
     {
         "name": "Disable Skill Locks",
         "desc": "Allows you to use other skills after using flameburst",
-        "category": "Quality of Life",
+        "category": "Combat & Skills",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -64,7 +64,7 @@
     {
         "name": "Disable Auto Camera",
         "desc": "Great for tower cylinder, might have unknown issues in others",
-        "category": "Quality of Life",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -88,7 +88,7 @@
     {
         "name": "Always Enable Attack with Pet",
         "desc": "Credits: Flipend0",
-        "category": "Interface",
+        "category": "Combat & Skills",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -117,7 +117,7 @@
     {
         "name": "Delag Skill",
         "desc": "Decrease skill lag",
-        "category": "Speedup",
+        "category": "Combat & Skills",
         "patches": [
             {
                 "location": "Standard.dll",
@@ -199,7 +199,7 @@
     {
         "name": "Fix Giant Camera",
         "desc": "Forces regular camera on giant characters.",
-        "category": "Quality of Life",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -211,7 +211,7 @@
     {
         "name": "Free Indoor Camera",
         "desc": "Allows you to freely rotate the camera while indoors.",
-        "category": "Quality of Life",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -223,7 +223,7 @@
     {
         "name": "Dungeon Map Resize",
         "desc": "",
-        "category": "Quality of Life",
+        "category": "Interface",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -240,7 +240,7 @@
     {
         "name": "Uncap Flying Height",
         "desc": "No restrictions on how high mounts can fly",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Standard.dll",
@@ -257,7 +257,7 @@
     {
         "name": "Uncap Alchemy Auto Production",
         "desc": "Remove limit on auto production for alchemy",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -275,7 +275,7 @@
     {
         "name": "Fast Flight",
         "desc": "Increases flight rotation and verticle speed",
-        "category": "Speedup",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Standard.dll",
@@ -292,7 +292,7 @@
     {
         "name": "No SM Clear/Fail Message",
         "desc": "Do not display Mission Complete or Mission Failed messages",
-        "category": "Interface",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -309,7 +309,7 @@
     {
         "name": "Fast Nao",
         "desc": "Nao appears immediately on revival",
-        "category": "Speedup",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -333,7 +333,7 @@
     {
         "name": "No Pet Idle",
         "desc": "When playing as pet, pet will not wonder while afk",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -345,7 +345,7 @@
     {
         "name": "Perfect Cooking Bar",
         "desc": "Bar will not shake when adding ingredients",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -357,7 +357,7 @@
     {
         "name": "Disable Pet Summon Messages",
         "desc": "",
-        "category": "Interface",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -374,7 +374,7 @@
     {
         "name": "Disable Skill Rank Up Message",
         "desc": "",
-        "category": "Interface",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -386,7 +386,7 @@
     {
         "name": "Disable Player Effects",
         "desc": "Disables most player effects\nHelps with FPS in Tara castle",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -415,7 +415,7 @@
     {
         "name": "Disable Character Alpha Transparancy",
         "desc": "Disables alpha transparancy on characters when zooming in.",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -437,7 +437,7 @@
     {
         "name": "Freeze Camera Angle",
         "desc": "Camera angle and position will be stuck while enabled.\nCan be useful for taking screenshots.",
-        "category": "Fun",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -461,7 +461,7 @@
     {
         "name": "No Render Sky",
         "desc": "",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -478,7 +478,7 @@
     {
         "name": "Texture Stop",
         "desc": "Reduce texture to minimum",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -515,7 +515,7 @@
     {
         "name": "Block Critical Hit Effects",
         "desc": "Blocks all Critical Hit effects from showing",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -527,7 +527,7 @@
     {
         "name": "Disable Lights",
         "desc": "Disables most light props from lighting\nHelps with FPS in areas like Emain\nMay require cc/relog to fully enable",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -544,7 +544,7 @@
     {
         "name": "Block Pet Pickup Messages",
         "desc": "",
-        "category": "Chat Filter",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Oasis.dll",
@@ -556,7 +556,7 @@
     {
         "name": "Block Pet Status Messages",
         "desc": "",
-        "category": "Chat Filter",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -578,7 +578,7 @@
     {
         "name": "Block Party Ads",
         "desc": "",
-        "category": "Chat Filter",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -590,7 +590,7 @@
     {
         "name": "Block System Spam",
         "desc": "Blocks many <SYSTEM> chats and some <COMBAT>, including EXP gained",
-        "category": "Chat Filter",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -602,7 +602,7 @@
     {
         "name": "Block Critical Text",
         "desc": "Blocks Critical Hit!!! from showing in chat",
-        "category": "Chat Filter",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -614,7 +614,7 @@
     {
         "name": "Block Ending Ads",
         "desc": "Stops the advertisement popup from appearing when you close the game.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -640,7 +640,7 @@
     {
         "name": "Disable Cloud Render",
         "desc": "Stops the sky texture (clouds) from being drawn.",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -653,7 +653,7 @@
     {
         "name": "Disable Gray Fog",
         "desc": "Removes the gray distance fog.",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -672,7 +672,7 @@
     {
         "name": "Disable Screen Shake",
         "desc": "Stops the camera from shaking.",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -684,7 +684,7 @@
     {
         "name": "Disable Sunlight Glare",
         "desc": "Removes the bright sunlight glare and glow overlay.",
-        "category": "Graphics",
+        "category": "Graphics & Camera",
         "patches": [
             {
                 "location": "Renderer2.dll",
@@ -697,7 +697,7 @@
     {
         "name": "Elf Lag Fix",
         "desc": "Fixes ranged skills misbehaving on high ping by turning off aiming while moving.",
-        "category": "Quality of Life",
+        "category": "Combat & Skills",
         "patches": [
             {
                 "location": "Standard.dll",
@@ -709,7 +709,7 @@
     {
         "name": "Enable Cutscene Skip",
         "desc": "Lets you skip cutscenes.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -770,7 +770,7 @@
     {
         "name": "Enter Remote Shop",
         "desc": "Allows opening player shops from any distance.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -783,7 +783,7 @@
     {
         "name": "Faster Interface Windows",
         "desc": "Removes the fade and open/close animations of windows like the character and skill windows.",
-        "category": "Speedup",
+        "category": "Interface",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -802,7 +802,7 @@
     {
         "name": "Move While Talking",
         "desc": "Lets you walk around while a conversation with an NPC is open.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -815,7 +815,7 @@
     {
         "name": "No Channel Move Denial",
         "desc": "Removes the check that stops you from changing channels in some situations.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -828,7 +828,7 @@
     {
         "name": "No Channel Penalty Message",
         "desc": "Hides the pop-up warning when you change channels during or right after combat.",
-        "category": "Chat Filter",
+        "category": "Chat & Messages",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -840,7 +840,7 @@
     {
         "name": "No Mount Timeout",
         "desc": "Your mount is not sent away after a while.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -878,7 +878,7 @@
     {
         "name": "Remove Login Delay",
         "desc": "Removes the 30-second wait before you can log in again after a disconnect.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -993,7 +993,7 @@
     {
         "name": "Stay As Alchemy Golem",
         "desc": "Keeps you in control of your alchemy golem when it goes out of range, instead of switching back to your character.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -1006,7 +1006,7 @@
     {
         "name": "Talk To Unequipped Ego",
         "desc": "Lets you talk to your spirit weapon without equipping it first.",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
@@ -1019,7 +1019,7 @@
     {
         "name": "Target Resting Enemies",
         "desc": "Lets you target mimics, watermelons, sulfur golems and flying books while they are still resting.",
-        "category": "Quality of Life",
+        "category": "Combat & Skills",
         "patches": [
             {
                 "location": "Standard.dll",
@@ -1050,7 +1050,7 @@
     {
         "name": "Uncap Auto Production",
         "desc": "Removes the limit on how many items the production window will make in one go (production skills such as weaving or refining; alchemy has its own patch).",
-        "category": "Quality of Life",
+        "category": "Convenience",
         "patches": [
             {
                 "location": "Pleione.dll",
