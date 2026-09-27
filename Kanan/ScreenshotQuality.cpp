@@ -8,7 +8,7 @@
 #include "ScreenshotQuality.hpp"
 
 namespace kanan {
-    static constexpr int GAME_QUALITY = 90;
+    static constexpr int16_t GAME_QUALITY = 90;
 
     ScreenshotQuality::ScreenshotQuality()
         : m_isEnabled{ false },
