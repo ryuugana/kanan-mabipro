@@ -144,6 +144,9 @@
     <ClCompile Include="UIScale.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="FontStyle.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="CombatMasterySwap.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -405,6 +408,9 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="UIScale.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="FontStyle.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="CombatMasterySwap.hpp">

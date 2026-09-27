@@ -169,6 +169,7 @@
     <ClCompile Include="LosslessScreenshots.cpp" />
     <ClCompile Include="ScreenshotWriter.cpp" />
     <ClCompile Include="UIScale.cpp" />
+    <ClCompile Include="FontStyle.cpp" />
     <ClCompile Include="CombatMasterySwap.cpp" />
     <ClCompile Include="DefaultRangedSwap.cpp" />
     <ClCompile Include="DisableFlashyDyes.cpp" />
@@ -256,6 +257,7 @@
     <ClInclude Include="LosslessScreenshots.hpp" />
     <ClInclude Include="ScreenshotWriter.hpp" />
     <ClInclude Include="UIScale.hpp" />
+    <ClInclude Include="FontStyle.hpp" />
     <ClInclude Include="CombatMasterySwap.hpp" />
     <ClInclude Include="DefaultRangedSwap.hpp" />
     <ClInclude Include="DisableFlashyDyes.hpp" />

@@ -53,6 +53,7 @@
 #include "UserCommands.hpp"
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
+#include "FontStyle.hpp"
 
 // Message Mods
 #include "AutoLoginChannel.hpp"
@@ -135,6 +136,7 @@ namespace kanan {
 
         addPatchMod("Quality of Life", make_unique<AutoMute>());
 		addPatchMod("Graphics", make_unique<DisableFlashy>());
+        addPatchMod("Interface", make_unique<FontStyle>());
         addPatchMod("Quality of Life", make_unique<DefaultRangedSwap>());
         addPatchMod("Graphics", make_unique<DisableFlashyDyes>());
         addPatchMod("Graphics", make_unique<DisableNighttime>());
