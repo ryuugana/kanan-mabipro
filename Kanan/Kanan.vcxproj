@@ -164,6 +164,9 @@
     <ClCompile Include="MeditationTint.cpp" />
     <ClCompile Include="CpuScheduling.cpp" />
     <ClCompile Include="OverlayDetection.cpp" />
+    <ClCompile Include="ScreenshotFix.cpp" />
+    <ClCompile Include="LosslessScreenshots.cpp" />
+    <ClCompile Include="ScreenshotWriter.cpp" />
     <ClCompile Include="UIScale.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
@@ -224,6 +227,9 @@
     <ClInclude Include="MeditationTint.hpp" />
     <ClInclude Include="CpuScheduling.hpp" />
     <ClInclude Include="OverlayDetection.hpp" />
+    <ClInclude Include="ScreenshotFix.hpp" />
+    <ClInclude Include="LosslessScreenshots.hpp" />
+    <ClInclude Include="ScreenshotWriter.hpp" />
     <ClInclude Include="UIScale.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
     <ClInclude Include="UIScaleXbr.h" />
