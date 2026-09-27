@@ -164,6 +164,7 @@
     <ClCompile Include="MeditationTint.cpp" />
     <ClCompile Include="CpuScheduling.cpp" />
     <ClCompile Include="OverlayDetection.cpp" />
+    <ClCompile Include="DisplayScaling.cpp" />
     <ClCompile Include="GoldFormat.cpp" />
     <ClCompile Include="ScreenshotFix.cpp" />
     <ClCompile Include="LosslessScreenshots.cpp" />
@@ -252,6 +253,7 @@
     <ClInclude Include="MeditationTint.hpp" />
     <ClInclude Include="CpuScheduling.hpp" />
     <ClInclude Include="OverlayDetection.hpp" />
+    <ClInclude Include="DisplayScaling.hpp" />
     <ClInclude Include="GoldFormat.hpp" />
     <ClInclude Include="ScreenshotFix.hpp" />
     <ClInclude Include="LosslessScreenshots.hpp" />

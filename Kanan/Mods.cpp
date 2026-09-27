@@ -16,6 +16,7 @@
 #include "AutoSetMTU.hpp"
 #include "CpuScheduling.hpp"
 #include "OverlayDetection.hpp"
+#include "DisplayScaling.hpp"
 #include "GoldFormat.hpp"
 #include "ScreenshotFix.hpp"
 #include "LosslessScreenshots.hpp"
@@ -204,6 +205,9 @@ namespace kanan {
         addMod(make_unique<DisableNagle>(), system, "Disable Nagle", "Sends network messages right away, for less lag.");
         addMod(make_unique<BorderlessWindow>(), graphics, "Borderless Window", "Runs the game in a borderless window or fullscreen window.");
         addMod(make_unique<FieldOfView>(), graphics, "Field Of View", "Changes the camera's field of view.");
+        addMod(make_unique<DisplayScaling>(), graphics, "Display Scaling",
+            "Makes the game sharp instead of blurry on high resolution screens (1440p, 4K, laptops) with Windows "
+            "display scaling (DPI) above 100%.");
         addMod(make_unique<MaxFrameRate>(), system, "Max Frame Rate", "Limits the frame rate (FPS cap), also in the background.");
         addMod(make_unique<EntityHP>(), ui, "Entity HP", "Shows HP numbers over monsters and characters.");
         addMod(make_unique<MeditationTint>(), ui, "Meditation Tint",
