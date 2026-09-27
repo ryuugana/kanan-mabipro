@@ -53,8 +53,12 @@ DWORD WINAPI kananInit(LPVOID params) {
         log("Please remove %s manually from your MabiPro folder.", previousKananDll.c_str());
     }
 
-    // Convert g_dllPath to a path we can use.
-    auto path = narrow(g_dllPath);
+    // Kanan's files (config, log, patches) are in the game's folder, wherever Kanan is loaded from.
+    wchar_t gamePath[MAX_PATH]{};
+
+    GetModuleFileNameW(nullptr, gamePath, MAX_PATH);
+
+    auto path = narrow(gamePath);
 
     path = path.substr(0, path.find_last_of("\\/"));
 
@@ -78,25 +82,48 @@ struct bdcap32_dll {
 
 __declspec(naked) void FakeCreateBandiCapture() { _asm { jmp[bdcap32.OrignalCreateBandiCapture] } }
 
+// Kanan can be loaded as a Miles plugin: an .asi file in the game's system\mss folder, which the game's
+// own sound library (Mss32.dll) loads when the game starts its sound. That leaves every game file as
+// it is. Miles calls this in each plugin it loads; Kanan provides no sound services.
+extern "C" __declspec(dllexport) int __stdcall RIB_Main(void* provider, unsigned long upDown) {
+	return 1;
+}
+
+// Whether Kanan was loaded as a Miles plugin, rather than in place of bdcap32.dll.
+static bool isMilesPlugin() {
+	auto extension = wcsrchr(g_dllPath, L'.');
+
+	return extension != nullptr && _wcsicmp(extension, L".asi") == 0;
+}
+
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
-	char path[MAX_PATH];
 	switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
 		{
-			bdcap32.dll = LoadLibrary(L"bdcap23.dll");
-			if (bdcap32.dll == false)
-			{
-				MessageBox(0, L"Kanan cannot load bdcap23.dll library", L"Proxy", MB_ICONERROR);
-				ExitProcess(0);
+			// Get the filepath of this dll.
+			GetModuleFileName(hModule, g_dllPath, MAX_PATH);
+
+			if (isMilesPlugin()) {
+				// Stay loaded even if Miles frees the plugins it has no use for.
+				HMODULE self{};
+
+				GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN, (LPCWSTR)&RIB_Main,
+					&self);
 			}
-			bdcap32.OrignalCreateBandiCapture = GetProcAddress(bdcap32.dll, "CreateBandiCapture");
+			else {
+				// In place of bdcap32.dll: the game's bdcap32.dll, renamed bdcap23.dll, does the work.
+				bdcap32.dll = LoadLibrary(L"bdcap23.dll");
+				if (bdcap32.dll == false)
+				{
+					MessageBox(0, L"Kanan cannot load bdcap23.dll library", L"Proxy", MB_ICONERROR);
+					ExitProcess(0);
+				}
+				bdcap32.OrignalCreateBandiCapture = GetProcAddress(bdcap32.dll, "CreateBandiCapture");
+			}
 
 			// We don't need DllMain getting invoked for thread attach/detach reasons.
 			DisableThreadLibraryCalls(hModule);
-
-			// Get the filepath of this dll.
-			GetModuleFileName(hModule, g_dllPath, MAX_PATH);
 
 			// Launch our init thread.
 			CreateThread(nullptr, 0, kananInit, nullptr, 0, nullptr);
