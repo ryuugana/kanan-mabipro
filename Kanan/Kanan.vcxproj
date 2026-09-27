@@ -44,12 +44,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <TargetName>bdcap32</TargetName>
+    <TargetName>Kanan</TargetName>
+    <TargetExt>.asi</TargetExt>
     <LinkIncremental>
     </LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
-    <TargetName>bdcap32</TargetName>
+    <TargetName>Kanan</TargetName>
+    <TargetExt>.asi</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -71,8 +73,7 @@
       <OptimizeReferences>
       </OptimizeReferences>
       <AdditionalLibraryDirectories>$(OutDir);$(SolutionDir)Dependencies\FreeType;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;dsound.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>bdcap32.def</ModuleDefinitionFile>
+      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -111,8 +112,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(OutDir);$(SolutionDir)Dependencies\FreeType;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;dsound.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>bdcap32.def</ModuleDefinitionFile>
+      <AdditionalDependencies>ws2_32.lib;shlwapi.lib;miniz.lib;MinHook.lib;ImGui.lib;FreeType.lib;Core.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -328,12 +328,6 @@
     <CopyFileToFolders Include="Patches.json">
       <FileType>Document</FileType>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="bdcap23.dll">
-      <FileType>Document</FileType>
-    </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="bdcap32.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
