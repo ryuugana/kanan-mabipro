@@ -17,11 +17,6 @@ A fork of [Kanan's New Mabinogi Mod](https://github.com/cursey/kanan-new) with o
 
 Kanan is loaded by the game's own sound library, which loads every plugin in `system\mss`. No game file is replaced, so the launcher's file check stays happy.
 
-### Upgrading from an older Kanan or from AstralWorld
-* Delete `bdcap23.dll` from your MabiPro folder. The launcher puts back its own `bdcap32.dll` by itself.
-* AstralWorld's patches are now part of Kanan, so you don't need AstralWorld any more.
-* Your settings (`config.txt`) carry over.
-
 ## Using Kanan
 * **Insert** opens and closes the menu. You can change the key in Kanan Settings.
 * Closing the menu saves your settings to `config.txt` in the MabiPro folder.
