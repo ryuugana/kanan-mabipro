@@ -139,8 +139,6 @@ namespace kanan {
                     narrow(format(1234567, (Style)m_style)).c_str(), narrow(format(1000500, (Style)m_style)).c_str());
             }
 
-            ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
-            ImGui::TextWrapped("Any format other than Game default replaces the Enable Money Letters patch.");
             ImGui::TreePop();
         }
     }
@@ -150,6 +148,12 @@ namespace kanan {
 
         if (m_style < GAME || m_style >= STYLE_COUNT) {
             m_style = GAME;
+        }
+
+        // Gold Format replaced the Enable Money Letters patch, which showed gold the same way as
+        // Letters. That patch only showed with the game's own format, so keep what the player saw.
+        if (m_style == GAME && cfg.get<bool>("EnableMoneyLetters.Enabled").value_or(false)) {
+            m_style = LETTERS;
         }
     }
 

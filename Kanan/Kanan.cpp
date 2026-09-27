@@ -16,6 +16,7 @@
 #include <Utility.hpp>
 
 #include "FontData.hpp"
+#include "GoldFormat.hpp"
 #include "Log.hpp"
 #include "Kanan.hpp"
 #include "MabiMessageHook.hpp"
@@ -520,12 +521,12 @@ namespace kanan {
         cfg.set<bool>("DelagSkill.Enabled", true);
         cfg.set<bool>("DisableSkillLocks.Enabled", true);
         cfg.set<bool>("DisableSkillRankUpMessage.Enabled", true);
-        cfg.set<bool>("EnableMoneyLetters.Enabled", true);
         cfg.set<bool>("FastFlight.Enabled", true);
         cfg.set<bool>("FastNao.Enabled", true);
         cfg.set<bool>("FieldBossMessageToChat.Enabled", true);
         cfg.set<bool>("FieldBossNotify.Enabled", true);
         cfg.set<bool>("FixGiantCamera.Enabled", true);
+        cfg.set<int>("GoldFormat.Style", GoldFormat::LETTERS);
         cfg.set<bool>("KeepPetWindowOpen.Enabled", true);
         cfg.set<bool>("NoPetIdle.Enabled", true);
         cfg.set<bool>("NoSMClear/FailMessage.Enabled", true);

@@ -1,37 +1,5 @@
 [
     {
-        "name": "Enable Money Letters",
-        "desc": "Gold will be shown in thousnads and millions (K and M).",
-        "category": "Interface",
-        "patches": [
-            {
-                "location": "ESL.dll",
-                "pattern": "BF 00 E1 F5 05 89 45 D8 F7 F7 33",
-                "patch": "BF 40 42 0F 00 89 45 D8 F7 F7 33"
-            },
-            {
-                "location": "ESL.dll",
-                "pattern": "10 27 00 00 F7 F7 85",
-                "patch": "E8 03 00 00 F7 F7 85"
-            },
-            {
-                "location": "ESL.dll",
-                "pattern": "EB 29 83 F8 03 0F 84",
-                "patch": "74 29 83 F8 03 0F 84"
-            },
-            {
-                "location": "ESL.dll",
-                "pattern": "B8 07 4E 00",
-                "patch": "B8 6B 00 00"
-            },
-            {
-                "location": "ESL.dll",
-                "pattern": "DD B8 04 51 00 00",
-                "patch": "DD B8 6D 00 00 00"
-            }
-        ]
-    },
-    {
         "name": "Remove Chat Restrictions",
         "desc": "Allows chat spam and repeat messages.",
         "category": "Chat & Messages",
