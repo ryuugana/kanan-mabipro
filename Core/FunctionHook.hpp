@@ -15,6 +15,10 @@ namespace kanan {
         // if you need to remove the hook.
         bool remove();
 
+        auto getTarget() const {
+            return m_target;
+        }
+
         auto getOriginal() const {
             return m_original;
         }
