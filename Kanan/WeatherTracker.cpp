@@ -31,12 +31,15 @@ namespace kanan {
     // core::CWeatherMgr::FindWeatherTable(const CStringT& name) -> SWeatherTable*
     using FindTableFn = const uint8_t*(__thiscall*)(void* mgr, const void* name);
     using GetGlobalTimeFn = uint64_t(__cdecl*)();
+    // core::ITerrain::GetRegionGroupID(region id): the region's group, 0 for an unknown region.
+    using GetRegionGroupIdFn = uint32_t(__thiscall*)(void* terrain, uint32_t region);
 
     static bool g_triedExports{ false };
     static uintptr_t* g_worldBlock{ nullptr };      // TSingleton<pleione::CWorld>::s_pInstanceBlock
     static void* g_weatherMgrVtable{ nullptr };     // core::CWeatherMgr's vtable
     static FindTableFn g_findTable{ nullptr };
     static GetGlobalTimeFn g_getGlobalTime{ nullptr };
+    static GetRegionGroupIdFn g_getRegionGroupId{ nullptr };
     static StringCtorFn g_stringCtor{ nullptr };
     static StringDtorFn g_stringDtor{ nullptr };
     static StringContentFn g_stringContent{ nullptr };
@@ -115,6 +118,7 @@ namespace kanan {
         g_findTable = (FindTableFn)GetProcAddress(standard,
             "?FindWeatherTable@CWeatherMgr@core@@QAEPBUSWeatherTable@2@ABV?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@@Z");
         g_getGlobalTime = (GetGlobalTimeFn)GetProcAddress(standard, "?stdapi_GetGlobalTime@core@@YA_KXZ");
+        g_getRegionGroupId = (GetRegionGroupIdFn)GetProcAddress(standard, "?GetRegionGroupID@ITerrain@core@@QBEKK@Z");
         g_stringCtor = (StringCtorFn)GetProcAddress(esl, "??0?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@PB_W@Z");
         g_stringDtor = (StringDtorFn)GetProcAddress(esl, "??1?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@XZ");
         g_stringContent = (StringContentFn)GetProcAddress(esl, "?GetSafeContent@?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QBEPB_WXZ");
@@ -219,6 +223,41 @@ namespace kanan {
         return count;
     }
 
+    // The region group a region belongs to, from the terrain the weather manager was started with
+    // (its implementation keeps the ITerrain* at +8). 0 when it isn't known.
+    static uint32_t regionGroupOf(uintptr_t mgr, uint32_t region) {
+        if (g_getRegionGroupId == nullptr) {
+            return 0;
+        }
+
+        __try {
+            auto impl = *(uintptr_t*)(mgr + 4);
+            auto terrain = impl ? *(void**)(impl + 8) : nullptr;
+
+            return terrain ? g_getRegionGroupId(terrain, region) : 0;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return 0;
+        }
+    }
+
+    // The region the player is in now, read the way the game's own current-region getter on
+    // pleione::CWorld does (it's what the game asks the weather for): [[[world + 0Ch] + 15Ch] + 6Ch].
+    // (The region in the character's parameters is where they logged in, and doesn't follow them.)
+    // 0 when it isn't available.
+    static uint32_t currentRegion() {
+        __try {
+            auto world = *g_worldBlock;
+            auto a = world ? *(uintptr_t*)(world + 0x0C) : 0;
+            auto b = a ? *(uintptr_t*)(a + 0x15C) : 0;
+
+            return b ? *(uint32_t*)(b + 0x6C) : 0;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return 0;
+        }
+    }
+
     // core::SWeatherTable: slot length (ms, +0), start (+8), vector<float> of slot weather (+10h).
     struct WeatherTable {
         uint64_t slot;
@@ -296,10 +335,22 @@ namespace kanan {
         return bytes ? string{ bytes, SizeofResource(module, resource) } : "";
     }
 
+    // The game folder, where the page and its live file go.
+    static wstring gameFolder() {
+        wchar_t exe[MAX_PATH]{};
+        GetModuleFileNameW(nullptr, exe, MAX_PATH);
+        wstring path{ exe };
+
+        return path.substr(0, path.find_last_of(L'\\') + 1);
+    }
+
     WeatherTracker::WeatherTracker()
         : m_learned{},
         m_nextCheck{ 0 },
-        m_status{}
+        m_status{},
+        m_liveRegion{ 0 },
+        m_liveWritten{ 0 },
+        m_hasPage{ -1 }
     {
         g_weatherTracker = this;
     }
@@ -325,6 +376,62 @@ namespace kanan {
 
         m_nextCheck = now + 5000;
         learnAssignments();
+
+        if (auto mgr = findWeatherManager()) {
+            updateLive(mgr);
+        }
+    }
+
+    // The weather table a region group uses: what the server sent, or the built-in list. "" when it
+    // has none (constant weather).
+    string WeatherTracker::tableFor(uint32_t group) const {
+        auto learned = m_learned.find(group);
+
+        if (learned != m_learned.end()) {
+            return learned->second == "-" ? "" : learned->second;
+        }
+
+        for (auto& g : KNOWN_GROUPS) {
+            if (g.group == group) {
+                return g.table;
+            }
+        }
+
+        return "";
+    }
+
+    // Keeps kananWeatherLive.js, next to the page, up to date with where the player is, so an open
+    // page can move its "You're here" badge. Written when the region changes, and once a minute so
+    // the page can tell the game is still running.
+    void WeatherTracker::updateLive(uintptr_t mgr) {
+        if (m_hasPage < 0) {
+            m_hasPage = GetFileAttributesW((gameFolder() + L"kananWeather.html").c_str()) != INVALID_FILE_ATTRIBUTES;
+        }
+
+        auto region = currentRegion();
+        auto now = GetTickCount();
+
+        if (m_hasPage == 0 || region == 0 || (region == m_liveRegion && now - m_liveWritten < 60000)) {
+            return;
+        }
+
+        auto group = regionGroupOf(mgr, region);
+        json live{ { "region", region }, { "group", group }, { "table", tableFor(group) }, { "time", unixMilliseconds() } };
+        auto text = "kananLive(" + live.dump() + ");\n";
+
+        FILE* f{};
+
+        if (_wfopen_s(&f, (gameFolder() + L"kananWeatherLive.js").c_str(), L"wb") == 0 && f != nullptr) {
+            fwrite(text.data(), 1, text.size(), f);
+            fclose(f);
+
+            if (region != m_liveRegion) {
+                log("[WeatherTracker] Live location: region %u, region group %u", region, group);
+            }
+
+            m_liveRegion = region;
+            m_liveWritten = now;
+        }
     }
 
     void WeatherTracker::learnAssignments() {
@@ -369,13 +476,16 @@ namespace kanan {
             groupTable[group] = table;
         }
 
-        // Where the player is: the region groups the server has sent weather for right now.
-        Assignment here[64]{};
-        auto hereCount = readAssignments(mgr, here, 64);
+        // Where the player is: their character's region, and the game's region group for it. (The
+        // weather manager keeps every group the server has sent weather for, not just this one.)
         set<uint32_t> hereGroups;
+        auto region = currentRegion();
+        auto group = region ? regionGroupOf(mgr, region) : 0;
 
-        for (int i = 0; i < hereCount; ++i) {
-            hereGroups.insert(here[i].group);
+        log("[WeatherTracker] You're in region %u, region group %u", region, group);
+
+        if (group != 0) {
+            hereGroups.insert(group);
         }
 
         auto now = g_getGlobalTime();
@@ -499,10 +609,7 @@ namespace kanan {
 
         page.replace(at, strlen(PAGE_PLACEHOLDER), data.dump());
 
-        wchar_t exe[MAX_PATH]{};
-        GetModuleFileNameW(nullptr, exe, MAX_PATH);
-        wstring path{ exe };
-        path = path.substr(0, path.find_last_of(L'\\') + 1) + L"kananWeather.html";
+        auto path = gameFolder() + L"kananWeather.html";
 
         FILE* f{};
 
@@ -513,6 +620,11 @@ namespace kanan {
 
         fwrite(page.data(), 1, page.size(), f);
         fclose(f);
+
+        // The page follows the player from now on: write where they are right away.
+        m_hasPage = 1;
+        m_liveRegion = 0;
+        updateLive(mgr);
 
         // Through Explorer, so the browser doesn't start with the game's administrator rights.
         auto quoted = L"\"" + path + L"\"";

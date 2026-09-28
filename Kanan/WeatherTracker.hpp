@@ -39,6 +39,14 @@ namespace kanan {
         uint32_t m_nextCheck;
         std::string m_status;
 
+        // The live location for an open page (kananWeatherLive.js): the region last written, when,
+        // and whether the page has been made (so players who never open it get no file).
+        uint32_t m_liveRegion;
+        uint32_t m_liveWritten;
+        int m_hasPage;
+
         void learnAssignments();
+        void updateLive(uintptr_t mgr);
+        std::string tableFor(uint32_t group) const;
     };
 }
