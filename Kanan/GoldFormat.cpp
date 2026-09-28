@@ -24,6 +24,13 @@ namespace kanan {
         "Short (46.5k)",
         "Letters (46k500)",
         "Letters with spaces (46k 500)",
+        "Periods (46.500)",
+    };
+
+    // The order the styles are listed in the menu.
+    static const GoldFormat::Style g_menuOrder[GoldFormat::STYLE_COUNT] = {
+        GoldFormat::GAME, GoldFormat::COMMAS, GoldFormat::PERIODS, GoldFormat::SHORT,
+        GoldFormat::LETTERS, GoldFormat::SPACED_LETTERS,
     };
 
     GoldFormat::GoldFormat()
@@ -53,11 +60,13 @@ namespace kanan {
         auto ones = amount % 1000;
 
         switch (style) {
-        case COMMAS: {
+        case COMMAS:
+        case PERIODS: {
             auto digits = to_wstring(amount);
+            auto separator = style == PERIODS ? L"." : L",";
 
             for (auto i = (int)digits.size() - 3; i > 0; i -= 3) {
-                digits.insert(i, L",");
+                digits.insert(i, separator);
             }
 
             return digits;
@@ -132,7 +141,15 @@ namespace kanan {
                 "the bank.");
             ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
-            ImGui::Combo("Format", &m_style, g_styleNames, STYLE_COUNT);
+            if (ImGui::BeginCombo("Format", g_styleNames[m_style])) {
+                for (auto style : g_menuOrder) {
+                    if (ImGui::Selectable(g_styleNames[style], m_style == style)) {
+                        m_style = style;
+                    }
+                }
+
+                ImGui::EndCombo();
+            }
 
             if (m_style > GAME && m_style < STYLE_COUNT) {
                 ImGui::TextWrapped("Examples: %s, %s, %s", narrow(format(46500, (Style)m_style)).c_str(),

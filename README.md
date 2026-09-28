@@ -48,7 +48,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Faster Interface Windows: removes the fade and open/close animations of windows like the character and skill windows
 * Font Size: changes the size of TrueType interface text
 * Font Style: interface text in TrueType or bitmap fonts
-* Gold Format: shows gold with commas (46,500), short (46.5k) or money letters (46k500)
+* Gold Format: shows gold with commas (46,500), periods (46.500), short (46.5k) or money letters (46k500)
 * Keep Pet Window Open: keeps the pet window open after summoning a pet
 * Large Clock Text: shows the in-game clock in large text
 * Meditation Tint: tints characters that are meditating, and can show a Meditation condition icon

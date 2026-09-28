@@ -250,7 +250,7 @@ namespace kanan {
             "Raises the game's main thread priority so it runs first when other programs are busy.");
         addMod(make_unique<OverlayDetection>(), system, "Overlay Detection",
             "Finds overlays like MSI Afterburner/RTSS that can hide Kanan's menu.");
-        addMod(make_unique<GoldFormat>(), ui, "Gold Format", "Shows gold with commas (46,500), short (46.5k) or money letters, in thousands (k) and millions (m) (46k500).");
+        addMod(make_unique<GoldFormat>(), ui, "Gold Format", "Shows gold with commas (46,500), periods (46.500), short (46.5k) or money letters, in thousands (k) and millions (m) (46k500).");
         addMod(make_unique<ScreenshotFix>(), screenshots, "Screenshot Fix",
             "Fixes screenshots not being saved with Windows display scaling (DPI).");
         addMod(make_unique<LosslessScreenshots>(), screenshots, "Lossless Screenshots", "Also saves each screenshot as a PNG.");
