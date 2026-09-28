@@ -95,7 +95,9 @@ h2 { font-size: 16px; margin: 0 0 10px; }
 .tl-run.dim { opacity: .12; }
 .hatch, .tl-run.unsure, .strip i.unsure { background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, .45) 0 2px, transparent 2px 5px); }
 .swatch.hatch { background-color: var(--muted); }
-.maydiffer { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 99px; border: 1px dashed var(--muted); color: var(--muted); font-size: 11px; font-weight: 600; cursor: help; }
+.maydiffer { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 99px; border: 1px dashed var(--muted); color: var(--text); font-size: 11px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.maydiffer:hover { border-color: var(--accent); color: var(--accent); }
+.legend a { color: var(--accent); }
 .tl-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 99px; padding: 4px 11px 4px 8px; font: inherit; font-size: 12.5px; cursor: pointer; }
@@ -142,7 +144,7 @@ svg.wx { display: block; }
     <span><i class="swatch w1"></i>Cloudy</span>
     <span><i class="swatch w2"></i>Rain</span>
     <span><i class="swatch w3"></i>Thunderstorm</span>
-    <span title="Decided by your game session: may differ after restarting the game, and for other players."><i class="swatch hatch"></i>May differ (one 20-minute slot every ~8.7 days)</span>
+    <span><i class="swatch hatch"></i><span><b>May differ</b> (one 20-minute slot every ~8.7 days): see <a href="#maydiffer-info" data-info>About the "may differ" slots</a> at the bottom of the page</span></span>
   </div>
 
   <div id="app"></div>
@@ -151,7 +153,7 @@ svg.wx { display: block; }
     <p>Weather changes every 20 minutes, at the times shown, fading in over the first minute. It comes straight from your game, so it's what your game will show.</p>
     <p><b>Refresh:</b> type <b>.weather</b> in game (or use Weather Tracker in the Kanan menu) for a fresh page. Do it after restarting the game, since the slots marked "may differ" change with each game session; after a daylight saving change, since the page's times follow the game's clock as it was when the page was made; and when the forecast runs out after 14 days.</p>
     <p>Places not listed (such as Physis, Ceo Island and Port Cobh) have no weather cycle.</p>
-    <details>
+    <details id="maydiffer-info">
       <summary><b>About the "may differ" slots</b></summary>
       <p>The game works out a year of weather, one 20-minute slot at a time, by rolling its random number generator with each region's weather table. The generator has a bug: every 625 rolls it reads one number from past the end of its list, and that number is really a spot in the game's memory. So about every 8.7 days, one 20-minute slot is decided by where the game happened to load in memory, not by the weather tables.</p>
       <p>Your game decides those slots when it starts and keeps them until you close it, and this page shows exactly what your game will show. But they can be different after you restart the game, for other players, and on the game servers. They fall at the same moment in every region, and often turn out the same way everywhere, all clear or all rain, because they come from the same few numbers.</p>
@@ -219,8 +221,20 @@ function runsOf(table) {
   return runs;
 }
 
-const UNSURE_NOTE = "Decided by your game session: may differ after restarting the game, and for other players.";
-const MAY_DIFFER = '<span class="maydiffer" title="' + UNSURE_NOTE + '">may differ</span>';
+const UNSURE_NOTE = "Decided by your game session: may differ after restarting the game, and for other players. See About the \"may differ\" slots at the bottom of the page.";
+// The same for the timeline's tooltip, which can show formatting.
+const UNSURE_NOTE_HTML = 'Decided by your game session: may differ after restarting the game, and for other players.<br>See <b>About the "may differ" slots</b> at the bottom of the page.';
+const MAY_DIFFER = '<a class="maydiffer" href="#maydiffer-info" data-info title="' + UNSURE_NOTE.replace(/"/g, "&quot;") + '">may differ</a>';
+
+// Links to the explanation open it and scroll to it.
+document.addEventListener("click", e => {
+  const link = e.target.closest && e.target.closest("[data-info]");
+  if (!link) return;
+  e.preventDefault();
+  const info = $("maydiffer-info");
+  info.open = true;
+  info.scrollIntoView({ behavior: "smooth", block: "center" });
+});
 
 let places = [];
 let zoom = 6;          // pixels per 20-minute slot on the timeline
@@ -453,7 +467,7 @@ document.addEventListener("mousemove", e => {
   if (!run) { tip.style.display = "none"; return; }
   const s = +run.dataset.s, en = +run.dataset.e;
   tip.innerHTML = `<b>${NAMES[+run.dataset.t]}</b> · ${run.dataset.n}<br>${localTime(toUnix(s), true)} – ${localTime(toUnix(en))} (${duration(en - s)})` +
-    (run.dataset.u === "1" ? `<br><i>${UNSURE_NOTE}</i>` : "");
+    (run.dataset.u === "1" ? `<br><i>${UNSURE_NOTE_HTML}</i>` : "");
   tip.style.display = "block";
   const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
   tip.style.left = x + "px";
