@@ -29,6 +29,42 @@ namespace kanan {
     static UserCommands* g_userCommands{ nullptr };
     static function<int()> g_combatSwapQuery{};
 
+    // core::stdapi_GetGlobalTime: the server's clock in milliseconds, as the client keeps it.
+    using GetGlobalTimeFn = uint64_t(__cdecl*)();
+    static GetGlobalTimeFn g_getGlobalTime{ nullptr };
+
+    // An Erinn day is 36 real minutes (core::stdapi_GlobalTimeToGameDay divides by this).
+    static const uint64_t ERINN_DAY_MS = 36 * 60 * 1000;
+
+    // Price's stops, by Erinn day % 14 (GetTargetPosition in the server's npc/common.mint).
+    static const wchar_t* const PRICE_STOPS[14] = {
+        L"Tir Chonaill",
+        L"Dugald Aisle",
+        L"Dunbarton",
+        L"Gairech",
+        L"Bangor",
+        L"Sen Mag",
+        L"Emain Macha",
+        L"Ceo Island",
+        L"Emain Macha (another spot)",
+        L"Sen Mag",
+        L"Gairech",
+        L"Bangor (another spot)",
+        L"Dunbarton (another spot)",
+        L"Dugald Aisle",
+    };
+
+    // "2h 5m", "36m" or "1m": rounded up to the minute.
+    static wstring formatDuration(uint64_t ms) {
+        auto minutes = (ms + 59999) / 60000;
+
+        if (minutes < 60) {
+            return to_wstring(minutes) + L"m";
+        }
+
+        return to_wstring(minutes / 60) + L"h " + to_wstring(minutes % 60) + L"m";
+    }
+
     // The start of the game's chat input function: push 0Ch / mov eax, <handler>.
     static uintptr_t g_chatHandler{ 0 };
     static uintptr_t g_chatReturn{ 0 };
@@ -92,6 +128,13 @@ namespace kanan {
         g_stringDtor = (StringDtorFn)GetProcAddress(esl, "??1?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@XZ");
         g_stringContent = (StringContentFn)GetProcAddress(esl, "?GetSafeContent@?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QBEPB_WXZ");
         g_interfaceMgr = (void**)GetProcAddress(pleione, "?s_pInstanceBlock@?$TSingleton@VCInterfaceMgr@pleione@@@esl@@0PAEA");
+
+        // Only needed by .price and .priceschedule, which say so when it's missing.
+        auto standard = GetModuleHandleA("Standard.dll");
+
+        if (standard != nullptr) {
+            g_getGlobalTime = (GetGlobalTimeFn)GetProcAddress(standard, "?stdapi_GetGlobalTime@core@@YA_KXZ");
+        }
 
         // CInterfaceMgr's chat line function:
         //   push 0Ch / mov eax, <handler> / call <prolog> / mov edi, ecx / xor ebx, ebx /
@@ -185,8 +228,43 @@ namespace kanan {
                 L"Available commands:\n"
                 L".help .h - shows the available commands\n"
                 L".ping .p - answers 'pong'\n"
-                L".swap .s - tells which skill the combat attack is swapped to"
+                L".swap .s - tells which skill the combat attack is swapped to\n"
+                L".price - where Price is and how long until he moves\n"
+                L".priceschedule - how long until Price arrives at each of his next stops"
             );
+        }
+        else if (command == L"price" || command == L"priceschedule") {
+            if (g_getGlobalTime == nullptr) {
+                printToChat(L"Price's location is not available for this version of the game.");
+                return true;
+            }
+
+            auto now = g_getGlobalTime();
+            auto day = now / ERINN_DAY_MS;
+            auto intoDay = now % ERINN_DAY_MS;
+            auto untilNextDay = ERINN_DAY_MS - intoDay;
+            auto stop = [&](uint64_t days) { return PRICE_STOPS[(day + days) % 14]; };
+
+            if (command == L"price") {
+                // He checks where to be every 30-40 seconds, so he may still be on his way.
+                if (intoDay < 40 * 1000) {
+                    printToChat(L"Price is moving to " + wstring{ stop(0) } + L" now (he arrives within a minute). " +
+                        L"He moves to " + stop(1) + L" in " + formatDuration(untilNextDay) + L".");
+                }
+                else {
+                    printToChat(L"Price is in " + wstring{ stop(0) } + L". He moves to " + stop(1) + L" in " +
+                        formatDuration(untilNextDay) + L".");
+                }
+            }
+            else {
+                wstring schedule = L"Price is in " + wstring{ stop(0) } + L" for another " + formatDuration(untilNextDay) + L". Next:";
+
+                for (uint64_t days = 1; days < 14; ++days) {
+                    schedule += L"\n" + wstring{ stop(days) } + L" in " + formatDuration(untilNextDay + (days - 1) * ERINN_DAY_MS);
+                }
+
+                printToChat(schedule);
+            }
         }
         else if (command == L"ping" || command == L"p") {
             printToChat(L"pong");
@@ -237,7 +315,8 @@ namespace kanan {
         }
 
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Type these in chat (they are not sent to other players):\n.help - list of commands\n.ping - answers pong\n.swap - which skill the combat attack is swapped to");
+            ImGui::SetTooltip("Type these in chat (they are not sent to other players):\n.help - list of commands\n.ping - answers pong\n.swap - which skill the combat attack is swapped to\n"
+                ".price - where Price is and how long until he moves\n.priceschedule - how long until Price arrives at each of his next stops");
         }
     }
 

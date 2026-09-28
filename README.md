@@ -119,7 +119,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Block Pet Status Messages: hides your pet's status messages
 * Block Spam: hides spam messages from chat
 * Block System Spam: hides many system and some combat chat lines, including EXP gained
-* Chat Commands: adds chat commands such as .help and .ping
+* Chat Commands: adds chat commands such as .help, and .price and .priceschedule to find the traveling merchant Price
 * Chat Log: saves chat to a log file and shows it in a window
 * Disable Pet Summon Messages: hides the messages when a pet is summoned
 * Disable Skill Rank Up Message: hides the skill rank up message

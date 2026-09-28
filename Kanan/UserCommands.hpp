@@ -16,6 +16,12 @@ namespace kanan {
     //                setCombatSwapQuery; AstralWorld asked its Combat Mastery Swap patch)
     //   .reload / .r AstralWorld re-read mss32.ini; Kanan applies setting changes immediately, so
     //                this only explains where to change them.
+    //   .price       where the traveling merchant Price is and how long until he moves
+    //   .priceschedule  how long until Price arrives at each of his next stops
+    //
+    // Price's location is worked out the way the server's script does it (GetTargetPosition in
+    // npc/common.mint): he stays at stop (Erinn day % 14) of a fixed rotation, and moves when a new
+    // Erinn day starts (every 36 minutes), on his next pulse (30-40 seconds later at most).
     //
     // The game's chat input function (the one that handles "/" commands) is hooked at its start.
     // A message is only taken as a command when it is a dot followed by a word (".help", ".s");
