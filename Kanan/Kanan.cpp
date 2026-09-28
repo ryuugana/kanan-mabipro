@@ -546,6 +546,12 @@ namespace kanan {
         cfg.set<int>("TimeAlarm.Alarm1.Hour", 5);
         cfg.set<int>("TimeAlarm.Alarm1.Minute", 50);
         cfg.set<int>("TimeAlarm.Alarm1.Style", 9);
+        cfg.set<bool>("InstantConversation.Enabled", true);
+        cfg.set<bool>("NoWindowCloseOnTalk.Enabled", true);
+        cfg.set<bool>("ShowUnknownQuestObjectives.Enabled", true);
+        cfg.set<bool>("ShowUnknownSkillRequirements.Enabled", true);
+        cfg.set<bool>("ShowUnknownTitles.Enabled", true);
+        cfg.set<bool>("ShowUnknownUpgrades.Enabled", true);
 
 
         if (!cfg.save(m_modConfigPath)) {

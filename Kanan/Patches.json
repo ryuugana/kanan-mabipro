@@ -742,7 +742,7 @@
         "patches": [
             {
                 "location": "Pleione.dll",
-                "pattern": "D9 5D F8 D9 05 ? ? ? ? D8 5D F8 DF E0 F6 C4 01 75 15",
+                "pattern": "D9 5D ? D9 05 ? ? ? ? D8 5D ? DF E0 F6 C4 01 75 34",
                 "patch": "90 90",
                 "offset": 17
             }
@@ -1025,6 +1025,124 @@
                 "pattern": "66 39 86 DC 01 00 00 76 07 66 89 86 DC 01 00 00",
                 "offset": 7,
                 "patch": "EB"
+            }
+        ]
+    },
+    {
+        "name": "Instant Conversation",
+        "desc": "NPC conversations show their text at once instead of letter by letter.",
+        "category": "Convenience",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "DF E0 F6 C4 44 7A 3F",
+                "patch": "? ? ? ? ? 90 90"
+            }
+        ]
+    },
+    {
+        "name": "No Window Close On Talk",
+        "desc": "Open windows, like your inventory, stay open when you talk to an NPC.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "3B F0 0F 95 C0 84 C0 0F 84 E9 00 00 00",
+                "patch": "? ? ? ? ? ? ? E9 EA 00 00 00 90"
+            }
+        ]
+    },
+    {
+        "name": "Remove Blacklist Button",
+        "desc": "Removes the Blacklist button from other players' right-click menu.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "68 F0 50 E5 63",
+                "patch": "E9 D6 07 00 00"
+            }
+        ]
+    },
+    {
+        "name": "Show Objects In Hide",
+        "desc": "Shows characters and things that are hidden, like elves using Hide.",
+        "category": "Combat & Skills",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "57 ? ? ? ? ? ? 84 C0 0F 84 ? 00 00 00 8B 45 00 8B CD FF 90 ? ? 00 00 84 C0 74 08 6A 02",
+                "patch": "? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? 70 ? ? ?"
+            }
+        ]
+    },
+    {
+        "name": "Show Unknown Quest Objectives",
+        "desc": "Shows quest objectives that have not been revealed yet.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "6A 24 8D 4D ? ? ? ? ? ? ? 8B 3D ? ? ? ? 68 ? ? ? ? 8D 4D ? FF D7 80 7E 0D 00 75 12",
+                "patch": "? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? EB ?"
+            }
+        ]
+    },
+    {
+        "name": "Show Unknown Skill Requirements",
+        "desc": "Shows the hidden requirements for training skills.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "8D 8B 38 01 00 00 ? ? ? ? ? ? 84 C0 0F 84 D8 02 00 00 0F B7 45 ? 8B 4D ? 0F B7 44 41 ?",
+                "patch": "? ? ? ? ? ? ? ? ? ? ? ? ? ? 90 90 90 90 90 90 ? ? ? ? ? ? ? ? ? ? ? ?"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "8B 4D ? ? ? ? ? ? ? 84 C0 74 7B FF 75 ? 8B 4D ?",
+                "patch": "? ? ? ? ? ? ? ? ? ? ? 90 90 ? ? ? ? ? ?"
+            }
+        ]
+    },
+    {
+        "name": "Show Unknown Titles",
+        "desc": "Shows every title in the title list, including ones you do not know yet.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "85 C0 0F 8C 80 01 00 00 83 F8 01 7E 56 83 F8 02",
+                "patch": "? ? ? ? ? ? ? ? ? ? ? EB ? ? ? ?"
+            }
+        ]
+    },
+    {
+        "name": "Show Unknown Upgrades",
+        "desc": "Shows the requirements of skill ranks you have not unlocked yet.",
+        "category": "Interface",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "89 45 ? ? ? ? ? ? ? 0F B6 C0 3B 45 ? 8D 4D 00 7D 7F ? ? ? ? ? ? 8B 1D ? ? ? ? BF ? ? ? ? 57",
+                "patch": "? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? EB ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?"
+            },
+            {
+                "location": "Pleione.dll",
+                "pattern": "88 45 ? ? ? ? ? ? ? 8D 4D 00 3A 45 ? 73 6F",
+                "patch": "? ? ? ? ? ? ? ? ? ? ? ? ? ? ? EB ?"
+            }
+        ]
+    },
+    {
+        "name": "Warn Drop On All Items",
+        "desc": "With the game's drop warning on, asks before dropping any item, not only ones worth over 10,000 gold.",
+        "category": "Convenience",
+        "patches": [
+            {
+                "location": "Pleione.dll",
+                "pattern": "3D 10 27 00 00 72 04",
+                "patch": "83 F8 00 90 90 ? ?"
             }
         ]
     }

@@ -1,3 +1,4 @@
+#include <climits>
 #include <cstdio>
 #include <cwchar>
 
@@ -16,7 +17,15 @@ namespace kanan {
     static uintptr_t g_isPoisonedReturn{ 0 };
     static wchar_t g_poisonText[256]{ L"</color>" };
 
+    static unsigned long g_poisonTextDurability{ ULONG_MAX };
+
     static void __cdecl formatPoisonText(unsigned long durability) {
+        // IsPoisoned runs for every poison check in the game, so only format when the value changes.
+        if (durability == g_poisonTextDurability) {
+            return;
+        }
+
+        g_poisonTextDurability = durability;
         swprintf_s(g_poisonText, L"\n\nPoison Durability: %lu/100</color>", durability);
     }
 

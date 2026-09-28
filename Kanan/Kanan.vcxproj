@@ -171,6 +171,7 @@
     <ClCompile Include="CharacterHook.cpp" />
     <ClCompile Include="MeditationTint.cpp" />
     <ClCompile Include="CpuScheduling.cpp" />
+    <ClCompile Include="ThreadPriority.cpp" />
     <ClCompile Include="OverlayDetection.cpp" />
     <ClCompile Include="DisplayScaling.cpp" />
     <ClCompile Include="GoldFormat.cpp" />
@@ -263,6 +264,7 @@
     <ClInclude Include="CharacterHook.hpp" />
     <ClInclude Include="MeditationTint.hpp" />
     <ClInclude Include="CpuScheduling.hpp" />
+    <ClInclude Include="ThreadPriority.hpp" />
     <ClInclude Include="OverlayDetection.hpp" />
     <ClInclude Include="DisplayScaling.hpp" />
     <ClInclude Include="GoldFormat.hpp" />
