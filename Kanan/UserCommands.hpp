@@ -18,6 +18,7 @@ namespace kanan {
     //                this only explains where to change them.
     //   .price       where the traveling merchant Price is and how long until he moves
     //   .priceschedule  how long until Price arrives at each of his next stops
+    //   .weather     opens the Weather Tracker's forecast page (WeatherTracker)
     //
     // Price's location is worked out the way the server's script does it (GetTargetPosition in
     // npc/common.mint): he stays at stop (Erinn day % 14) of a fixed rotation, and moves when a new

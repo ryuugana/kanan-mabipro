@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Erinn Weather</title>
+<style>
+:root {
+  --bg: #f4f5f8;
+  --panel: #ffffff;
+  --panel-2: #eef0f5;
+  --text: #1c2030;
+  --muted: #5d6478;
+  --line: #dde1ea;
+  --accent: #3b6ee8;
+  --clear: #f2b63c;
+  --cloudy: #9aa4b5;
+  --rain: #3f8ee0;
+  --storm: #8c5ae8;
+  --here: #19a974;
+  --shadow: 0 1px 2px rgba(20, 30, 60, .06), 0 4px 16px rgba(20, 30, 60, .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11131a;
+    --panel: #1a1d27;
+    --panel-2: #222633;
+    --text: #e6e8ef;
+    --muted: #9aa1b4;
+    --line: #2c3141;
+    --accent: #7ea2ff;
+    --clear: #f3c14f;
+    --cloudy: #7d879a;
+    --rain: #4f9df0;
+    --storm: #a57af5;
+    --here: #34c98f;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+h1 { font-size: 26px; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 16px; margin: 0 0 10px; }
+.sub { color: var(--muted); font-size: 13px; }
+.clock { text-align: right; }
+.clock .time { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.w0 { background: var(--clear); } .w1 { background: var(--cloudy); } .w2 { background: var(--rain); } .w3 { background: var(--storm); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 18px; }
+.upcoming { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.event { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: var(--panel-2); }
+.event .icon { flex: none; }
+.event .what { font-weight: 600; }
+.event .when { color: var(--muted); font-size: 12.5px; }
+.event .count { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.toggle button { background: transparent; color: var(--muted); border: 0; padding: 5px 11px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.toggle button.on { background: var(--accent); color: #fff; }
+.row-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 14px; position: relative; }
+.card.here { border-color: var(--here); box-shadow: 0 0 0 1px var(--here), var(--shadow); }
+.card .name { font-weight: 700; font-size: 15px; }
+.card.here .name { padding-right: 88px; }
+.card .also { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.card .badge { position: absolute; top: 12px; right: 12px; background: var(--here); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.card .now { display: flex; align-items: center; gap: 10px; margin: 10px 0 8px; }
+.card .now .label { font-size: 17px; font-weight: 600; }
+.card .now .for { color: var(--muted); font-size: 12.5px; }
+.card .next { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 13px; }
+.card .next .k { color: var(--muted); }
+.card .next .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.strip { display: flex; height: 10px; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+.strip i { flex: 1; }
+.strip-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 3px; }
+.timeline-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+/* As wide as the whole timeline, so the sticky name column stays pinned however far it scrolls. */
+.timeline { position: relative; width: max-content; min-width: 100%; }
+.tl-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--line); }
+.tl-row:last-child { border-bottom: 0; }
+.tl-name { position: sticky; left: 0; z-index: 2; flex: none; width: 190px; padding: 7px 10px; background: var(--panel); border-right: 1px solid var(--line); font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+.tl-row.here .tl-name { color: var(--here); }
+.tl-track { position: relative; flex: none; min-height: 32px; }
+.tl-run { position: absolute; top: calc(50% - 11px); height: 22px; border-radius: 3px; }
+.tl-run:hover { outline: 2px solid var(--text); z-index: 1; }
+.tl-run.dim { opacity: .12; }
+.hatch, .tl-run.unsure, .strip i.unsure { background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, .45) 0 2px, transparent 2px 5px); }
+.swatch.hatch { background-color: var(--muted); }
+.maydiffer { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 99px; border: 1px dashed var(--muted); color: var(--muted); font-size: 11px; font-weight: 600; cursor: help; }
+.tl-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 99px; padding: 4px 11px 4px 8px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.chip .swatch { opacity: .35; }
+.chip.on { color: var(--text); border-color: var(--muted); background: var(--panel-2); }
+.chip.on .swatch { opacity: 1; }
+.chip.all { padding-left: 11px; }
+.tl-axis { display: flex; height: 40px; border-bottom: 1px solid var(--line); }
+.tl-axis .tl-name { font-weight: 400; color: var(--muted); background: var(--panel); padding-top: 20px; }
+.tl-ticks { position: relative; flex: none; }
+.tl-tick { position: absolute; top: 18px; bottom: 0; border-left: 1px solid var(--line); padding: 3px 0 0 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.tl-tick.day { top: 0; border-left-color: var(--muted); color: var(--text); font-weight: 600; padding-top: 2px; }
+.tl-now { position: absolute; top: 0; bottom: 0; width: 2px; background: #e5484d; z-index: 1; pointer-events: none; }
+.tl-now::before { content: "now"; position: absolute; top: 2px; left: 4px; font-size: 10px; font-weight: 700; color: #e5484d; }
+.tip { position: fixed; z-index: 10; pointer-events: none; background: var(--text); color: var(--bg); font-size: 12.5px; padding: 6px 9px; border-radius: 7px; white-space: nowrap; display: none; }
+.note { color: var(--muted); font-size: 12.5px; }
+.note p { margin: 4px 0; }
+.note details { margin-top: 8px; }
+.note summary { cursor: pointer; color: var(--text); }
+.note details p { margin: 6px 0 0; }
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+svg.wx { display: block; }
+@media (max-width: 600px) {
+  .tl-name { width: 110px; }
+  .clock { text-align: left; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Erinn Weather</h1>
+      <div class="sub" id="source"></div>
+    </div>
+    <div class="clock">
+      <div class="time" id="clock"></div>
+      <div class="sub" id="date"></div>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="swatch w0"></i>Clear</span>
+    <span><i class="swatch w1"></i>Cloudy</span>
+    <span><i class="swatch w2"></i>Rain</span>
+    <span><i class="swatch w3"></i>Thunderstorm</span>
+    <span title="Decided by your game session: may differ after restarting the game, and for other players."><i class="swatch hatch"></i>May differ (one 20-minute slot every ~8.7 days)</span>
+  </div>
+
+  <div id="app"></div>
+
+  <div class="note panel">
+    <p>Weather changes every 20 minutes, at the times shown, fading in over the first minute. It comes straight from your game, so it's what your game will show.</p>
+    <p><b>Refresh:</b> type <b>.weather</b> in game (or use Weather Tracker in the Kanan menu) for a fresh page. Do it after restarting the game, since the slots marked "may differ" change with each game session; after a daylight saving change, since the page's times follow the game's clock as it was when the page was made; and when the forecast runs out after 14 days.</p>
+    <p>Places not listed (such as Physis, Ceo Island and Port Cobh) have no weather cycle.</p>
+    <details>
+      <summary><b>About the "may differ" slots</b></summary>
+      <p>The game works out a year of weather, one 20-minute slot at a time, by rolling its random number generator with each region's weather table. The generator has a bug: every 625 rolls it reads one number from past the end of its list, and that number is really a spot in the game's memory. So about every 8.7 days, one 20-minute slot is decided by where the game happened to load in memory, not by the weather tables.</p>
+      <p>Your game decides those slots when it starts and keeps them until you close it, and this page shows exactly what your game will show. But they can be different after you restart the game, for other players, and on the game servers. They fall at the same moment in every region, and often turn out the same way everywhere, all clear or all rain, because they come from the same few numbers.</p>
+      <p>The servers use their own weather for the few things that check it, like event items that only count in the rain. So during these slots, something that needs rain can fail even though it's raining on your screen, or work when it isn't.</p>
+      <p>Everything else, over 99.8% of the forecast, is the same for everyone.</p>
+    </details>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+"use strict";
+const DATA = /*KANAN_WEATHER_DATA*/null;
+
+const NAMES = ["Clear", "Cloudy", "Rain", "Thunderstorm"];
+const COLORS = ["var(--clear)", "var(--cloudy)", "var(--rain)", "var(--storm)"];
+const $ = (id) => document.getElementById(id);
+
+function icon(type, size) {
+  const s = size || 28;
+  const sun = '<circle cx="12" cy="12" r="4.5" fill="var(--clear)"/>' +
+    [0, 45, 90, 135, 180, 225, 270, 315].map(a => `<rect x="11.2" y="1.5" width="1.6" height="3.6" rx=".8" fill="var(--clear)" transform="rotate(${a} 12 12)"/>`).join("");
+  const cloud = (fill, y) => `<path d="M7 ${17 + y}h10.5a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.5A3.3 3.3 0 0 0 7 ${17 + y}z" fill="${fill}"/>`;
+  const drops = '<path d="M8 19.5l-1 2.5M12 19.5l-1 2.5M16 19.5l-1 2.5" stroke="var(--rain)" stroke-width="1.6" stroke-linecap="round"/>';
+  const bolt = '<path d="M12.5 15l-2.5 4h2.4l-1.4 4 4.5-5.4h-2.5l1.5-2.6z" fill="#ffcf3f"/>';
+  const body = [sun, cloud("var(--cloudy)", 0), cloud("var(--cloudy)", -2) + drops, cloud("var(--storm)", -2) + bolt][type];
+  return `<svg class="wx" width="${s}" height="${s}" viewBox="0 0 24 24" aria-label="${NAMES[type]}">${body}</svg>`;
+}
+
+function duration(ms) {
+  if (ms < 60000) return "under a minute";
+  let m = Math.round(ms / 60000);
+  const d = Math.floor(m / 1440); m -= d * 1440;
+  const h = Math.floor(m / 60); m -= h * 60;
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function localTime(unixMs, withDay) {
+  const d = new Date(unixMs);
+  const t = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (!withDay) return t;
+  const today = new Date();
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  if (d.toDateString() === today.toDateString()) return `today ${t}`;
+  if (d.toDateString() === tomorrow.toDateString()) return `tomorrow ${t}`;
+  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) + " " + t;
+}
+
+// Turns a table's slot string into runs of the same weather: {type, start, end, unsure} in game
+// time (ms). Unsure slots (decided by the game session, see UNSURE_NOTE) are runs of their own.
+function runsOf(table) {
+  const runs = [];
+  const w = table.weather;
+  const unsure = new Set(table.unsure || []);
+  let i = 0;
+  while (i < w.length) {
+    const u = unsure.has(i);
+    let j = i + 1;
+    while (j < w.length && w[j] === w[i] && unsure.has(j) === u) j++;
+    runs.push({ type: +w[i], start: table.base + (table.first + i) * table.slot, end: table.base + (table.first + j) * table.slot, unsure: u });
+    i = j;
+  }
+  return runs;
+}
+
+const UNSURE_NOTE = "Decided by your game session: may differ after restarting the game, and for other players.";
+const MAY_DIFFER = '<span class="maydiffer" title="' + UNSURE_NOTE + '">may differ</span>';
+
+let places = [];
+let zoom = 6;          // pixels per 20-minute slot on the timeline
+let filter = "all";    // upcoming events: "all" (every change) or one weather type ("0".."3")
+let shown = loadShown(); // weather types shown at full color on the timeline
+
+// The timeline's weather choice, remembered in this browser when it allows it.
+function loadShown() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("kananWeather.shown"));
+    if (Array.isArray(saved) && saved.length) return new Set(saved);
+  } catch (e) { }
+  return new Set([0, 1, 2, 3]);
+}
+
+function saveShown() {
+  try { localStorage.setItem("kananWeather.shown", JSON.stringify([...shown])); } catch (e) { }
+}
+
+function applyShown() {
+  document.querySelectorAll("#shown .chip").forEach(c => {
+    c.classList.toggle("on", c.dataset.s === "all" ? shown.size === 4 : shown.has(+c.dataset.s));
+  });
+  document.querySelectorAll(".tl-run").forEach(r => r.classList.toggle("dim", !shown.has(+r.dataset.t)));
+}
+
+function gameNow() { return Date.now() + DATA.offset; }
+function toUnix(gameMs) { return gameMs - DATA.offset; }
+
+function build() {
+  if (!DATA) {
+    $("app").innerHTML = '<div class="panel empty">Open this page from the game: type <b>.weather</b> in chat, or use Weather Tracker in the Kanan menu.</div>';
+    return;
+  }
+  places = DATA.places.map(p => {
+    const table = DATA.tables[p.table];
+    return { ...p, table, runs: runsOf(table) };
+  });
+  const generated = new Date(DATA.generated);
+  $("source").textContent = `From your game, ${generated.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · forecast to ${localTime(toUnix(lastEnd()), true)} · type .weather in game to refresh`;
+
+  $("app").innerHTML = `
+    <section class="panel">
+      <div class="row-head">
+        <h2>Coming up</h2>
+        <div class="toggle" id="filter">
+          <button data-f="all">All changes</button><button data-f="0">Clear</button><button data-f="1">Cloudy</button><button data-f="2">Rain</button><button data-f="3">Thunderstorm</button>
+        </div>
+      </div>
+      <div class="upcoming" id="upcoming"></div>
+    </section>
+    <div class="cards" id="cards"></div>
+    <section class="panel">
+      <div class="row-head">
+        <h2>Timeline</h2>
+        <div class="tl-controls">
+          <div class="chips" id="shown">
+            <button class="chip all" data-s="all">All</button>
+            <button class="chip" data-s="0"><i class="swatch w0"></i>Clear</button>
+            <button class="chip" data-s="1"><i class="swatch w1"></i>Cloudy</button>
+            <button class="chip" data-s="2"><i class="swatch w2"></i>Rain</button>
+            <button class="chip" data-s="3"><i class="swatch w3"></i>Thunderstorm</button>
+          </div>
+          <div class="toggle" id="zoom">
+            <button data-z="3">14 days</button><button data-z="6">Week</button><button data-z="14">Day</button>
+          </div>
+        </div>
+      </div>
+      <div class="timeline-scroll" id="scroll"><div class="timeline" id="timeline"></div></div>
+    </section>`;
+
+  $("filter").addEventListener("click", e => { if (e.target.dataset.f) { filter = e.target.dataset.f; render(); } });
+  $("zoom").addEventListener("click", e => { if (e.target.dataset.z) { zoom = +e.target.dataset.z; drawTimeline(true); } });
+  $("shown").addEventListener("click", e => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    if (chip.dataset.s === "all") {
+      shown = new Set([0, 1, 2, 3]);
+    } else {
+      const type = +chip.dataset.s;
+      // From "everything", the first pick shows just that weather; after that, chips add or remove.
+      if (shown.size === 4) shown = new Set([type]);
+      else if (shown.has(type)) shown.delete(type);
+      else shown.add(type);
+      if (shown.size === 0) shown = new Set([0, 1, 2, 3]);
+    }
+    saveShown();
+    applyShown();
+  });
+  render();
+  drawTimeline(true);
+  setInterval(render, 15000);
+  setInterval(tick, 1000);
+  tick();
+}
+
+function lastEnd() {
+  return Math.min(...places.map(p => p.runs[p.runs.length - 1].end));
+}
+
+function tick() {
+  const now = new Date();
+  $("clock").textContent = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+  $("date").textContent = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  placeNowLine();
+}
+
+function currentRun(p, now) { return p.runs.find(r => r.start <= now && now < r.end); }
+function nextRun(p, now, types) { return p.runs.find(r => r.start > now && types.includes(r.type)); }
+
+function render() {
+  if (!DATA) return;
+  const now = gameNow();
+
+  document.querySelectorAll("#filter button").forEach(b => b.classList.toggle("on", b.dataset.f === filter));
+  document.querySelectorAll("#zoom button").forEach(b => b.classList.toggle("on", +b.dataset.z === zoom));
+
+  // Coming up: the next weather in every place, soonest first. "All changes" lists what each place
+  // changes to next; a weather type lists every coming run of it.
+  const events = [];
+  for (const p of places) {
+    for (const r of p.runs) {
+      if (r.end <= now) continue;
+      if (filter === "all" ? r.start > now : r.type === +filter) events.push({ p, r });
+    }
+  }
+  events.sort((a, b) => a.r.start - b.r.start);
+  $("upcoming").innerHTML = events.slice(0, 12).map(({ p, r }) => {
+    const active = r.start <= now;
+    const when = active ? `until ${localTime(toUnix(r.end))}` : `${localTime(toUnix(r.start), true)} · lasts ${duration(r.end - r.start)}`;
+    const count = active ? `now · ${duration(r.end - now)} left` : `in ${duration(r.start - now)}`;
+    return `<div class="event"><span class="icon">${icon(r.type, 30)}</span><div><div class="what">${NAMES[r.type]} · ${p.names.join(", ")}</div><div class="when">${when}${r.unsure ? MAY_DIFFER : ""}</div></div><div class="count">${count}</div></div>`;
+  }).join("") || '<div class="note">Nothing in the forecast window.</div>';
+
+  // One card per place: what it is now, and when each kind of weather comes next.
+  $("cards").innerHTML = places.map(p => {
+    const cur = currentRun(p, now);
+    const change = cur ? cur.end - now : 0;
+    const strip = stripFor(p, now);
+    const next = [0, 1, 2, 3].map(type => {
+      const run = nextRun(p, now, [type]);
+      const text = cur && cur.type === type ? `now, ${duration(cur.end - now)} left${cur.unsure ? MAY_DIFFER : ""}` :
+        run ? `in ${duration(run.start - now)}${run.unsure ? MAY_DIFFER : ""}` : "not in the forecast";
+      return `<span class="k">${NAMES[type]}</span><span class="v">${text}</span>`;
+    }).join("");
+    return `<div class="card${p.here ? " here" : ""}">
+      ${p.here ? '<span class="badge">You\'re here</span>' : ""}
+      <div class="name">${p.names.join(", ")}</div>
+      ${p.also && p.also.length ? `<div class="also">Also ${p.also.join(", ")}</div>` : ""}
+      <div class="now">${icon(cur ? cur.type : 0, 40)}<div><div class="label">${cur ? NAMES[cur.type] : "—"}</div><div class="for">changes in ${duration(change)}</div></div></div>
+      <div class="next">${next}</div>
+      <div class="strip">${strip}</div>
+      <div class="strip-scale"><span>now</span><span>+12h</span><span>+24h</span></div>
+    </div>`;
+  }).join("");
+}
+
+// The next 24 hours as 72 colored slots.
+function stripFor(p, now) {
+  const t = p.table;
+  const i0 = Math.floor((now - t.base) / t.slot) - t.first;
+  const unsure = new Set(t.unsure || []);
+  let out = "";
+  for (let i = i0; i < i0 + 72 && i < t.weather.length; i++) {
+    out += `<i${unsure.has(i) ? ' class="unsure"' : ""} style="background-color:${COLORS[+t.weather[i]]}"></i>`;
+  }
+  return out;
+}
+
+function firstStart() { return Math.max(...places.map(p => p.table.base + p.table.first * p.table.slot)); }
+function slotMs() { return places[0].table.slot; }
+function nowX() { return (gameNow() - firstStart()) / slotMs() * zoom; }
+
+function drawTimeline(scrollToNow) {
+  if (!places.length) return;
+  const start = firstStart();
+  const end = lastEnd();
+  const slot = slotMs();
+  const width = Math.round((end - start) / slot * zoom);
+
+  // Hour and day ticks, in local time.
+  const hourStep = zoom >= 14 ? 1 : zoom >= 6 ? 3 : 6;
+  let ticks = "";
+  const first = new Date(toUnix(start));
+  first.setMinutes(0, 0, 0);
+  for (let t = first.getTime(); t < toUnix(end); t += 3600000) {
+    const d = new Date(t);
+    const x = (t + DATA.offset - start) / slot * zoom;
+    if (x < 0) continue;
+    // Days on the top line, hours below them.
+    if (d.getHours() === 0) {
+      ticks += `<div class="tl-tick day" style="left:${x}px">${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</div>`;
+    }
+    else if (d.getHours() % hourStep === 0) {
+      ticks += `<div class="tl-tick" style="left:${x}px">${d.toLocaleTimeString([], { hour: "numeric" })}</div>`;
+    }
+  }
+
+  let rows = `<div class="tl-axis"><div class="tl-name">Local time</div><div class="tl-ticks" style="width:${width}px">${ticks}</div></div>`;
+  for (const p of places) {
+    let runs = "";
+    for (const r of p.runs) {
+      const a = Math.max(r.start, start), b = Math.min(r.end, end);
+      if (b <= a) continue;
+      const x = (a - start) / slot * zoom, w = (b - a) / slot * zoom;
+      runs += `<div class="tl-run${r.unsure ? " unsure" : ""}" style="left:${x}px;width:${Math.max(w - 1, 1)}px;background-color:${COLORS[r.type]}" data-t="${r.type}" data-s="${r.start}" data-e="${r.end}" data-u="${r.unsure ? 1 : 0}" data-n="${p.names.join(", ")}"></div>`;
+    }
+    // Lines break between place names, never inside one.
+    const names = p.names.map(n => n.replace(/ /g, " ")).join(", ");
+    rows += `<div class="tl-row${p.here ? " here" : ""}"><div class="tl-name">${names}</div><div class="tl-track" style="width:${width}px">${runs}</div></div>`;
+  }
+  $("timeline").innerHTML = rows + '<div class="tl-now"></div>';
+  placeNowLine();
+  applyShown();
+  if (scrollToNow) $("scroll").scrollLeft = Math.max(0, nowX() - 60);
+  render();
+}
+
+// The now line sits over the tracks, which start after the sticky name column.
+function placeNowLine() {
+  const nowLine = document.querySelector(".tl-now");
+  const name = document.querySelector(".tl-name");
+  if (nowLine && name) nowLine.style.left = (name.offsetWidth + nowX()) + "px";
+}
+
+// Tooltip for the timeline.
+document.addEventListener("mousemove", e => {
+  const tip = $("tip");
+  const run = e.target.closest && e.target.closest(".tl-run");
+  if (!run) { tip.style.display = "none"; return; }
+  const s = +run.dataset.s, en = +run.dataset.e;
+  tip.innerHTML = `<b>${NAMES[+run.dataset.t]}</b> · ${run.dataset.n}<br>${localTime(toUnix(s), true)} – ${localTime(toUnix(en))} (${duration(en - s)})` +
+    (run.dataset.u === "1" ? `<br><i>${UNSURE_NOTE}</i>` : "");
+  tip.style.display = "block";
+  const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+  tip.style.left = x + "px";
+  tip.style.top = (e.clientY + 16) + "px";
+});
+
+build();
+</script>
+</body>
+</html>

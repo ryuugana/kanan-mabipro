@@ -119,7 +119,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Block Pet Status Messages: hides your pet's status messages
 * Block Spam: hides spam messages from chat
 * Block System Spam: hides many system and some combat chat lines, including EXP gained
-* Chat Commands: adds chat commands such as .help, and .price and .priceschedule to find the traveling merchant Price
+* Chat Commands: adds chat commands such as .help, .price and .priceschedule to find the traveling merchant Price, and .weather to open the Weather Tracker
 * Chat Log: saves chat to a log file and shows it in a window
 * Disable Pet Summon Messages: hides the messages when a pet is summoned
 * Disable Skill Rank Up Message: hides the skill rank up message
@@ -152,6 +152,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Uncap Auto Production: removes the limit on how many items the production window makes in one go
 * Uncap Flying Height: mounts can fly as high as you like
 * Warn Drop On All Items: with the game's drop warning on, asks before dropping any item, not only expensive ones
+* Weather Tracker: a weather forecast for every region, with countdowns to clear skies, clouds, rain and thunderstorms, opened in your browser from the Kanan menu (or type .weather with Chat Commands on)
 
 **Screenshots**
 * Lossless Screenshots: also saves each screenshot as a PNG

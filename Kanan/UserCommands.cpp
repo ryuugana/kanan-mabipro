@@ -7,6 +7,7 @@
 
 #include "Log.hpp"
 #include "UserCommands.hpp"
+#include "WeatherTracker.hpp"
 
 using namespace std;
 
@@ -289,8 +290,23 @@ namespace kanan {
                 L".ping .p - answers 'pong'\n"
                 L".swap .s - tells which skill the combat attack is swapped to\n"
                 L".price - where Price is and how long until he moves\n"
-                L".priceschedule - how long until Price arrives at each of his next stops"
+                L".priceschedule - how long until Price arrives at each of his next stops\n"
+                L".weather - opens the weather forecast for every region in your browser"
             );
+        }
+        else if (command == L"weather") {
+            auto tracker = WeatherTracker::instance();
+            wstring error;
+
+            if (tracker == nullptr) {
+                printToChat(L"The weather forecast is not available.");
+            }
+            else if (tracker->open(error)) {
+                printToChat(L"Opened the weather forecast in your browser.");
+            }
+            else {
+                printToChat(error);
+            }
         }
         else if (command == L"price" || command == L"priceschedule") {
             if (g_getGlobalTime == nullptr) {
@@ -383,7 +399,8 @@ namespace kanan {
 
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Type these in chat (they are not sent to other players):\n.help - list of commands\n.ping - answers pong\n.swap - which skill the combat attack is swapped to\n"
-                ".price - where Price is and how long until he moves\n.priceschedule - how long until Price arrives at each of his next stops");
+                ".price - where Price is and how long until he moves\n.priceschedule - how long until Price arrives at each of his next stops\n"
+                ".weather - opens the weather forecast for every region in your browser");
         }
     }
 

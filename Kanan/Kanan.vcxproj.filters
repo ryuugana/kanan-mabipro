@@ -222,6 +222,9 @@
     <ClCompile Include="TimeAlarm.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="WeatherTracker.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="UserCommands.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -500,6 +503,9 @@
     <ClInclude Include="TimeAlarm.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
+    <ClInclude Include="WeatherTracker.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
     <ClInclude Include="UserCommands.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
@@ -677,5 +683,15 @@
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Patches.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="WeatherTracker.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="WeatherTracker.html">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

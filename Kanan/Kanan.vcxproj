@@ -202,6 +202,7 @@
     <ClCompile Include="ShowTrueHP.cpp" />
     <ClCompile Include="TargetProps.cpp" />
     <ClCompile Include="TimeAlarm.cpp" />
+    <ClCompile Include="WeatherTracker.cpp" />
     <ClCompile Include="UserCommands.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
@@ -295,6 +296,7 @@
     <ClInclude Include="ShowTrueHP.hpp" />
     <ClInclude Include="TargetProps.hpp" />
     <ClInclude Include="TimeAlarm.hpp" />
+    <ClInclude Include="WeatherTracker.hpp" />
     <ClInclude Include="UserCommands.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
     <ClInclude Include="UIScaleXbr.h" />
@@ -344,6 +346,12 @@
     <CopyFileToFolders Include="Patches.json">
       <FileType>Document</FileType>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="WeatherTracker.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="WeatherTracker.html" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
