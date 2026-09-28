@@ -208,7 +208,7 @@ namespace kanan {
 
         addMessageMod(make_unique<AutoLoginChannel>(), convenience, "Auto Login Channel",
             "Logs in to the channel you choose automatically.");
-        addMessageMod(make_unique<AutoLoginChannel>(), convenience, "Auto Mount",
+        addMessageMod(make_unique<AutoMount>(), convenience, "Auto Mount",
             "Accepts mount requests automatically.");
         addMessageMod(make_unique<BlockSpam>(), chat, "Block Spam", "Hides spam messages from chat.");
         addMessageMod(make_unique<DpsMeter>(), combat, "DPS Meter", "Shows your damage per second.");

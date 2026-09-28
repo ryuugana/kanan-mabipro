@@ -130,6 +130,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 
 **Convenience**
 * Auto Login Channel: logs in to the channel you choose automatically
+* Auto Mount: accepts requests from other players to ride their mount automatically
 * Auto Mute: mutes the game while it's in the background
 * Block Ending Ads: stops the ad popup when you close the game
 * Enable Cutscene Skip: lets you skip cutscenes
