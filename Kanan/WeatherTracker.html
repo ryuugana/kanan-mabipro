@@ -51,7 +51,7 @@ h2 { font-size: 16px; margin: 0 0 10px; }
 .sub { color: var(--muted); font-size: 13px; }
 .clock { text-align: right; }
 .clock .time { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 18px; color: var(--muted); font-size: 13px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 0; color: var(--muted); font-size: 13px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 .w0 { background: var(--clear); } .w1 { background: var(--cloudy); } .w2 { background: var(--rain); } .w3 { background: var(--storm); }
@@ -138,14 +138,6 @@ svg.wx { display: block; }
       <div class="sub" id="date"></div>
     </div>
   </header>
-
-  <div class="legend">
-    <span><i class="swatch w0"></i>Clear</span>
-    <span><i class="swatch w1"></i>Cloudy</span>
-    <span><i class="swatch w2"></i>Rain</span>
-    <span><i class="swatch w3"></i>Thunderstorm</span>
-    <span><i class="swatch hatch"></i><span><b>May differ</b> (one 20-minute slot every ~8.7 days): see <a href="#maydiffer-info" data-info>About the "may differ" slots</a> at the bottom of the page</span></span>
-  </div>
 
   <div id="app"></div>
 
@@ -304,6 +296,13 @@ function build() {
         </div>
       </div>
       <div class="timeline-scroll" id="scroll"><div class="timeline" id="timeline"></div></div>
+      <div class="legend">
+        <span><i class="swatch w0"></i>Clear</span>
+        <span><i class="swatch w1"></i>Cloudy</span>
+        <span><i class="swatch w2"></i>Rain</span>
+        <span><i class="swatch w3"></i>Thunderstorm</span>
+        <span><i class="swatch hatch"></i><span><b>May differ</b> (one 20-minute slot every ~8.7 days): see <a href="#maydiffer-info" data-info>About the "may differ" slots</a> at the bottom of the page</span></span>
+      </div>
     </section>`;
 
   $("filter").addEventListener("click", e => { if (e.target.dataset.f) { filter = e.target.dataset.f; render(); } });
