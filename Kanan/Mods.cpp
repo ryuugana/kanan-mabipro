@@ -15,6 +15,7 @@
 // Misc Mods
 #include "AutoSetMTU.hpp"
 #include "CpuScheduling.hpp"
+#include "ThreadPriority.hpp"
 #include "OverlayDetection.hpp"
 #include "DisplayScaling.hpp"
 #include "GoldFormat.hpp"
@@ -242,6 +243,8 @@ namespace kanan {
         addMod(make_unique<TimeAlarm>(), convenience, "Time Alarm", "Alarms at in-game times, like transformation time.");
         addMod(make_unique<CpuScheduling>(), system, "CPU Scheduling",
             "Fixes freezes on Intel CPUs with performance and efficiency cores; power throttling.");
+        addMod(make_unique<ThreadPriority>(), system, "Thread Priority",
+            "Raises the game's main thread priority so it runs first when other programs are busy.");
         addMod(make_unique<OverlayDetection>(), system, "Overlay Detection",
             "Finds overlays like MSI Afterburner/RTSS that can hide Kanan's menu.");
         addMod(make_unique<GoldFormat>(), ui, "Gold Format", "Shows gold with commas (46,500), short (46.5k) or money letters, in thousands (k) and millions (m) (46k500).");

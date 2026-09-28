@@ -129,6 +129,9 @@
     <ClCompile Include="CpuScheduling.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="ThreadPriority.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="DisplayScaling.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -402,6 +405,9 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="CpuScheduling.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPriority.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="DisplayScaling.hpp">

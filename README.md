@@ -85,7 +85,6 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Disable Gray Fog: removes the gray distance fog
 * Disable Inventory Flashy: shows flashy items in your inventory and on the ground as their plain color
 * Disable Lights: turns off most light props, for more FPS in places like Emain Macha
-* Disable Nighttime: keeps the sky looking like daytime between 18:00 and 4:00
 * Disable Player Effects: turns off most player effects, for more FPS in places like Tara's castle
 * Disable Screen Shake: stops the camera from shaking
 * Disable Sunlight Glare: removes the bright sunlight glare and glow
@@ -96,6 +95,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Freeze Camera Angle: locks the camera's angle and position, handy for screenshots
 * No Render Sky: doesn't draw the sky
 * Render Distance: how far away the world is drawn
+* Sky Time: keeps the sky looking like daytime or nighttime, whatever the time in game
 * Texture Stop: uses the lowest texture detail
 * Zoom Limit: lets the camera zoom out farther
 
@@ -164,6 +164,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Disable Nagle: sends network messages right away, for less lag
 * Max Frame Rate: limits the frame rate, with a separate limit while the game is in the background
 * Overlay Detection: warns about overlays like MSI Afterburner/RTSS that can hide Kanan's menu
+* Thread Priority: raises the game's main thread priority, so it runs first when other programs are busy
 
 **Fun**
 * Basic Ghost Lock: aim and use non-target skills on other players
