@@ -11,11 +11,13 @@ namespace kanan {
     static uintptr_t g_flashyDyesReturn{ 0 };
 
     // Runs where the game copies an item's three dye colors (a pointer to them is at [ebp+18h]).
-    // A color whose top byte is 40h-7Fh is flashy; like AstralWorld, the range test is
-    // 40000000h <= color <= 7F000000h. Flashy colors get their top byte replaced, keeping the RGB.
+    // A color whose top byte is 40h-7Fh (top two bits 01) is flashy. Flashy colors get their top
+    // byte replaced, keeping the RGB. Like AstralWorld, the colors are changed where they are read
+    // from: the game passes the same pointer on to more functions after the copy.
     //
-    // AstralWorld put FFh in the top byte; 10h is used here instead, a color closer to the flashy one
-    // and the same as Kanan's DisableFlashy uses for inventory items.
+    // AstralWorld tested 40000000h <= color <= 7F000000h, which missed top byte 7Fh with any RGB.
+    // It put FFh in the top byte; 10h is used here instead, a color closer to the flashy one and the
+    // same as Kanan's DisableFlashy uses for inventory items.
     static __declspec(naked) void hookFlashyDyes() {
         __asm {
             mov     eax, dword ptr [ebp + 0x18]     // replaced: mov eax, [ebp+18h]
@@ -23,10 +25,10 @@ namespace kanan {
             XOR     edx, edx
         nextColor:
             mov     ecx, dword ptr [eax + edx * 4]
-            cmp     ecx, 0x40000000
-            jl      skipColor
-            cmp     ecx, 0x7F000000
-            jg      skipColor
+            test    ecx, 0x80000000
+            jnz     skipColor
+            test    ecx, 0x40000000
+            jz      skipColor
             AND     ecx, 0x00FFFFFF
             OR      ecx, 0x10000000
             mov     dword ptr [eax + edx * 4], ecx

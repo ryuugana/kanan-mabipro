@@ -35,7 +35,8 @@ namespace kanan {
 			mov		hexColorCode, eax
 		}
 
-		if (hexColorCode >= 0x40000000 && hexColorCode <= 0x7F000000) {
+		// Flashy: top byte 40h-7Fh (top two bits 01).
+		if ((hexColorCode >> 30) == 1) {
 			tempDiff = hexColorCode >> 24;
 			tempDiff = tempDiff << 24;
 			hexColorCode -= tempDiff;
