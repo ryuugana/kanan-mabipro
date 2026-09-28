@@ -7,6 +7,7 @@
 
 #include "Log.hpp"
 #include "UserCommands.hpp"
+#include "WeatherTracker.hpp"
 
 using namespace std;
 
@@ -28,6 +29,42 @@ namespace kanan {
 
     static UserCommands* g_userCommands{ nullptr };
     static function<int()> g_combatSwapQuery{};
+
+    // core::stdapi_GetGlobalTime: the server's clock in milliseconds, as the client keeps it.
+    using GetGlobalTimeFn = uint64_t(__cdecl*)();
+    static GetGlobalTimeFn g_getGlobalTime{ nullptr };
+
+    // An Erinn day is 36 real minutes (core::stdapi_GlobalTimeToGameDay divides by this).
+    static const uint64_t ERINN_DAY_MS = 36 * 60 * 1000;
+
+    // Price's stops, by Erinn day % 14 (GetTargetPosition in the server's npc/common.mint).
+    static const wchar_t* const PRICE_STOPS[14] = {
+        L"Tir Chonaill",
+        L"Dugald Aisle",
+        L"Dunbarton",
+        L"Gairech",
+        L"Bangor",
+        L"Sen Mag",
+        L"Emain Macha",
+        L"Ceo Island",
+        L"Emain Macha (another spot)",
+        L"Sen Mag",
+        L"Gairech",
+        L"Bangor (another spot)",
+        L"Dunbarton (another spot)",
+        L"Dugald Aisle",
+    };
+
+    // "2h 5m", "36m" or "1m": rounded up to the minute.
+    static wstring formatDuration(uint64_t ms) {
+        auto minutes = (ms + 59999) / 60000;
+
+        if (minutes < 60) {
+            return to_wstring(minutes) + L"m";
+        }
+
+        return to_wstring(minutes / 60) + L"h " + to_wstring(minutes % 60) + L"m";
+    }
 
     // The start of the game's chat input function: push 0Ch / mov eax, <handler>.
     static uintptr_t g_chatHandler{ 0 };
@@ -70,11 +107,46 @@ namespace kanan {
         }
     }
 
+    // The start of the chat send filter that runs before the chat input function: push 24h /
+    // mov eax, <handler>.
+    static uintptr_t g_filterHandler{ 0 };
+    static uintptr_t g_filterReturn{ 0 };
+
+    // bool SendFilter(esl::CStringT message, x, y, z): drops messages sent too quickly and repeats of
+    // the last message ("skip repeated messages for network stability"), then sends the rest on to
+    // the chat input function. Commands are answered here, before those checks, the same way as in
+    // hookChatInput: destroy the message and return true.
+    static __declspec(naked) void hookChatFilter() {
+        __asm {
+            lea     eax, [esp + 4]
+            pushad
+            pushfd
+            push    eax
+            call    handleChatInput
+            mov     g_chatHandled, al
+            popfd
+            popad
+            cmp     byte ptr g_chatHandled, 0
+            jne     handled
+
+            push    24h
+            mov     eax, g_filterHandler
+            jmp     g_filterReturn
+
+        handled:
+            lea     ecx, [esp + 4]
+            call    g_stringDtor
+            mov     al, 1
+            ret     10h
+        }
+    }
+
     UserCommands::UserCommands()
         : PatchMod{ "Chat Commands", "Adds chat commands such as .help and .ping." },
         m_enabled{ false },
         m_isAvailable{ false },
-        m_patch{}
+        m_patch{},
+        m_filterPatch{}
     {
         log("[UserCommands] Entering constructor...");
 
@@ -92,6 +164,13 @@ namespace kanan {
         g_stringDtor = (StringDtorFn)GetProcAddress(esl, "??1?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@XZ");
         g_stringContent = (StringContentFn)GetProcAddress(esl, "?GetSafeContent@?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QBEPB_WXZ");
         g_interfaceMgr = (void**)GetProcAddress(pleione, "?s_pInstanceBlock@?$TSingleton@VCInterfaceMgr@pleione@@@esl@@0PAEA");
+
+        // Only needed by .price and .priceschedule, which say so when it's missing.
+        auto standard = GetModuleHandleA("Standard.dll");
+
+        if (standard != nullptr) {
+            g_getGlobalTime = (GetGlobalTimeFn)GetProcAddress(standard, "?stdapi_GetGlobalTime@core@@YA_KXZ");
+        }
 
         // CInterfaceMgr's chat line function:
         //   push 0Ch / mov eax, <handler> / call <prolog> / mov edi, ecx / xor ebx, ebx /
@@ -128,6 +207,30 @@ namespace kanan {
         m_patch.bytes = { 0xE9, (int16_t)(rel & 0xFF), (int16_t)((rel >> 8) & 0xFF), (int16_t)((rel >> 16) & 0xFF), (int16_t)((rel >> 24) & 0xFF), 0x90, 0x90 };
         m_isAvailable = true;
         g_userCommands = this;
+
+        // The chat send filter (repeat and flood checks), which passes messages on to the chat
+        // input function. Commands are caught here too so those checks never see them; without it
+        // they are still answered, but a repeated long command gets "skip repeated messages".
+        //   push 24h / mov eax, <handler> / call <prolog> / mov edi, ecx / and [ebp-4], 0 / nop /
+        //   call / push eax / lea eax, [ebp+8] / push eax / lea ecx, [ebp-14h] / call /
+        //   mov byte ptr [ebp-4], 1
+        auto chatFilter = scan("Pleione.dll", "6A 24 B8 ? ? ? ? E8 ? ? ? ? 8B F9 83 65 FC 00 90 E8 ? ? ? ? 50 8D 45 08 50 8D 4D EC E8 ? ? ? ? C6 45 FC 01");
+
+        // It must also destroy its message with the CStringT destructor: mov esi, [~CStringT] at +57h.
+        if (chatFilter && *(uint16_t*)(*chatFilter + 0x57) == 0x358B && **(uintptr_t**)(*chatFilter + 0x59) == (uintptr_t)g_stringDtor) {
+            g_filterHandler = *(uintptr_t*)(*chatFilter + 3);
+            g_filterReturn = *chatFilter + 7;
+
+            auto filterRel = (uintptr_t)&hookChatFilter - (*chatFilter + 5);
+
+            m_filterPatch.address = *chatFilter;
+            m_filterPatch.bytes = { 0xE9, (int16_t)(filterRel & 0xFF), (int16_t)((filterRel >> 8) & 0xFF), (int16_t)((filterRel >> 16) & 0xFF), (int16_t)((filterRel >> 24) & 0xFF), 0x90, 0x90 };
+
+            log("[UserCommands] Found the chat send filter at %p", *chatFilter);
+        }
+        else {
+            log("[UserCommands] Failed to find the chat send filter; repeated commands may be skipped by the game.");
+        }
 
         log("[UserCommands] Found the chat input at %p and the chat window at %p", *chatInput, *showChatLine);
         log("[UserCommands] Leaving constructor.");
@@ -185,8 +288,58 @@ namespace kanan {
                 L"Available commands:\n"
                 L".help .h - shows the available commands\n"
                 L".ping .p - answers 'pong'\n"
-                L".swap .s - tells which skill the combat attack is swapped to"
+                L".swap .s - tells which skill the combat attack is swapped to\n"
+                L".price - where Price is and how long until he moves\n"
+                L".priceschedule - how long until Price arrives at each of his next stops\n"
+                L".weather - opens the weather forecast for every region in your browser"
             );
+        }
+        else if (command == L"weather") {
+            auto tracker = WeatherTracker::instance();
+            wstring error;
+
+            if (tracker == nullptr) {
+                printToChat(L"The weather forecast is not available.");
+            }
+            else if (tracker->open(error)) {
+                printToChat(L"Opened the weather forecast in your browser.");
+            }
+            else {
+                printToChat(error);
+            }
+        }
+        else if (command == L"price" || command == L"priceschedule") {
+            if (g_getGlobalTime == nullptr) {
+                printToChat(L"Price's location is not available for this version of the game.");
+                return true;
+            }
+
+            auto now = g_getGlobalTime();
+            auto day = now / ERINN_DAY_MS;
+            auto intoDay = now % ERINN_DAY_MS;
+            auto untilNextDay = ERINN_DAY_MS - intoDay;
+            auto stop = [&](uint64_t days) { return PRICE_STOPS[(day + days) % 14]; };
+
+            if (command == L"price") {
+                // He checks where to be every 30-40 seconds, so he may still be on his way.
+                if (intoDay < 40 * 1000) {
+                    printToChat(L"Price is moving to " + wstring{ stop(0) } + L" now (he arrives within a minute). " +
+                        L"He moves to " + stop(1) + L" in " + formatDuration(untilNextDay) + L".");
+                }
+                else {
+                    printToChat(L"Price is in " + wstring{ stop(0) } + L". He moves to " + stop(1) + L" in " +
+                        formatDuration(untilNextDay) + L".");
+                }
+            }
+            else {
+                wstring schedule = L"Price is in " + wstring{ stop(0) } + L" for another " + formatDuration(untilNextDay) + L". Next:";
+
+                for (uint64_t days = 1; days < 14; ++days) {
+                    schedule += L"\n" + wstring{ stop(days) } + L" in " + formatDuration(untilNextDay + (days - 1) * ERINN_DAY_MS);
+                }
+
+                printToChat(schedule);
+            }
         }
         else if (command == L"ping" || command == L"p") {
             printToChat(L"pong");
@@ -221,8 +374,16 @@ namespace kanan {
 
         if (m_enabled) {
             patch(m_patch);
+
+            if (m_filterPatch.address != 0) {
+                patch(m_filterPatch);
+            }
         }
         else {
+            if (m_filterPatch.address != 0) {
+                undoPatch(m_filterPatch);
+            }
+
             undoPatch(m_patch);
         }
     }
@@ -237,7 +398,9 @@ namespace kanan {
         }
 
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Type these in chat (they are not sent to other players):\n.help - list of commands\n.ping - answers pong\n.swap - which skill the combat attack is swapped to");
+            ImGui::SetTooltip("Type these in chat (they are not sent to other players):\n.help - list of commands\n.ping - answers pong\n.swap - which skill the combat attack is swapped to\n"
+                ".price - where Price is and how long until he moves\n.priceschedule - how long until Price arrives at each of his next stops\n"
+                ".weather - opens the weather forecast for every region in your browser");
         }
     }
 

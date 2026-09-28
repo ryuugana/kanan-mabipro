@@ -54,6 +54,7 @@
 #include "TargetProps.hpp"
 #include "TimeAlarm.hpp"
 #include "UserCommands.hpp"
+#include "WeatherTracker.hpp"
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
 #include "FontStyle.hpp"
@@ -207,7 +208,7 @@ namespace kanan {
 
         addMessageMod(make_unique<AutoLoginChannel>(), convenience, "Auto Login Channel",
             "Logs in to the channel you choose automatically.");
-        addMessageMod(make_unique<AutoLoginChannel>(), convenience, "Auto Mount",
+        addMessageMod(make_unique<AutoMount>(), convenience, "Auto Mount",
             "Accepts mount requests automatically.");
         addMessageMod(make_unique<BlockSpam>(), chat, "Block Spam", "Hides spam messages from chat.");
         addMessageMod(make_unique<DpsMeter>(), combat, "DPS Meter", "Shows your damage per second.");
@@ -241,13 +242,15 @@ namespace kanan {
         addMod(make_unique<ShowTrueDurability>(), ui, "Show True Durability",
             "Shows exact item durability in descriptions, with item colors.");
         addMod(make_unique<TimeAlarm>(), convenience, "Time Alarm", "Alarms at in-game times, like transformation time.");
+        addMod(make_unique<WeatherTracker>(), convenience, "Weather Tracker",
+            "A weather forecast for every region, with countdowns to each kind of weather, opened in your browser.");
         addMod(make_unique<CpuScheduling>(), system, "CPU Scheduling",
             "Fixes freezes on Intel CPUs with performance and efficiency cores; power throttling.");
         addMod(make_unique<ThreadPriority>(), system, "Thread Priority",
             "Raises the game's main thread priority so it runs first when other programs are busy.");
         addMod(make_unique<OverlayDetection>(), system, "Overlay Detection",
             "Finds overlays like MSI Afterburner/RTSS that can hide Kanan's menu.");
-        addMod(make_unique<GoldFormat>(), ui, "Gold Format", "Shows gold with commas (46,500), short (46.5k) or money letters, in thousands (k) and millions (m) (46k500).");
+        addMod(make_unique<GoldFormat>(), ui, "Gold Format", "Shows gold with commas (46,500), periods (46.500), short (46.5k) or money letters, in thousands (k) and millions (m) (46k500).");
         addMod(make_unique<ScreenshotFix>(), screenshots, "Screenshot Fix",
             "Fixes screenshots not being saved with Windows display scaling (DPI).");
         addMod(make_unique<LosslessScreenshots>(), screenshots, "Lossless Screenshots", "Also saves each screenshot as a PNG.");

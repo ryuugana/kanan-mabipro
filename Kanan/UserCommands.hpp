@@ -16,8 +16,17 @@ namespace kanan {
     //                setCombatSwapQuery; AstralWorld asked its Combat Mastery Swap patch)
     //   .reload / .r AstralWorld re-read mss32.ini; Kanan applies setting changes immediately, so
     //                this only explains where to change them.
+    //   .price       where the traveling merchant Price is and how long until he moves
+    //   .priceschedule  how long until Price arrives at each of his next stops
+    //   .weather     opens the Weather Tracker's forecast page (WeatherTracker)
     //
-    // The game's chat input function (the one that handles "/" commands) is hooked at its start.
+    // Price's location is worked out the way the server's script does it (GetTargetPosition in
+    // npc/common.mint): he stays at stop (Erinn day % 14) of a fixed rotation, and moves when a new
+    // Erinn day starts (every 36 minutes), on his next pulse (30-40 seconds later at most).
+    //
+    // The game's chat input function (the one that handles "/" commands) is hooked at its start, and
+    // so is the chat send filter in front of it, so its "skip repeated messages" and flood checks
+    // don't apply to commands.
     // A message is only taken as a command when it is a dot followed by a word (".help", ".s");
     // other messages that start with a dot ("...", ". ok") are sent as usual.
     class UserCommands : public PatchMod {
@@ -40,6 +49,7 @@ namespace kanan {
         bool m_enabled;
         bool m_isAvailable;
         Patch m_patch;
+        Patch m_filterPatch;    // the chat send filter, so its repeat/flood checks skip commands
 
         void apply();
         void printToChat(const std::wstring& message);

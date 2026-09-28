@@ -8,16 +8,18 @@
 #include "Mod.hpp"
 
 namespace kanan {
-    // Chooses how the game shows amounts of gold: with commas (46,500), short (46.5k), or in
-    // thousands and millions (46k500 or 46k 500).
+    // Chooses how the game shows amounts of gold: with commas (46,500) or periods (46.500), short
+    // (46.5k), or in thousands and millions (46k500 or 46k 500).
     class GoldFormat : public Mod {
     public:
+        // Saved in the config by number, so new styles go at the end.
         enum Style : int {
             GAME,
             COMMAS,
             SHORT,
             LETTERS,
             SPACED_LETTERS,
+            PERIODS,
             STYLE_COUNT,
         };
 

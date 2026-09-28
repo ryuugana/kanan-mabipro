@@ -1,0 +1,2 @@
+// The Weather Tracker page, built into Kanan.asi (see WeatherTracker.cpp).
+WEATHER_TRACKER_HTML RCDATA "WeatherTracker.html"
