@@ -23,7 +23,9 @@ namespace kanan {
     // npc/common.mint): he stays at stop (Erinn day % 14) of a fixed rotation, and moves when a new
     // Erinn day starts (every 36 minutes), on his next pulse (30-40 seconds later at most).
     //
-    // The game's chat input function (the one that handles "/" commands) is hooked at its start.
+    // The game's chat input function (the one that handles "/" commands) is hooked at its start, and
+    // so is the chat send filter in front of it, so its "skip repeated messages" and flood checks
+    // don't apply to commands.
     // A message is only taken as a command when it is a dot followed by a word (".help", ".s");
     // other messages that start with a dot ("...", ". ok") are sent as usual.
     class UserCommands : public PatchMod {
@@ -46,6 +48,7 @@ namespace kanan {
         bool m_enabled;
         bool m_isAvailable;
         Patch m_patch;
+        Patch m_filterPatch;    // the chat send filter, so its repeat/flood checks skip commands
 
         void apply();
         void printToChat(const std::wstring& message);

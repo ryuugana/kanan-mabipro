@@ -106,11 +106,46 @@ namespace kanan {
         }
     }
 
+    // The start of the chat send filter that runs before the chat input function: push 24h /
+    // mov eax, <handler>.
+    static uintptr_t g_filterHandler{ 0 };
+    static uintptr_t g_filterReturn{ 0 };
+
+    // bool SendFilter(esl::CStringT message, x, y, z): drops messages sent too quickly and repeats of
+    // the last message ("skip repeated messages for network stability"), then sends the rest on to
+    // the chat input function. Commands are answered here, before those checks, the same way as in
+    // hookChatInput: destroy the message and return true.
+    static __declspec(naked) void hookChatFilter() {
+        __asm {
+            lea     eax, [esp + 4]
+            pushad
+            pushfd
+            push    eax
+            call    handleChatInput
+            mov     g_chatHandled, al
+            popfd
+            popad
+            cmp     byte ptr g_chatHandled, 0
+            jne     handled
+
+            push    24h
+            mov     eax, g_filterHandler
+            jmp     g_filterReturn
+
+        handled:
+            lea     ecx, [esp + 4]
+            call    g_stringDtor
+            mov     al, 1
+            ret     10h
+        }
+    }
+
     UserCommands::UserCommands()
         : PatchMod{ "Chat Commands", "Adds chat commands such as .help and .ping." },
         m_enabled{ false },
         m_isAvailable{ false },
-        m_patch{}
+        m_patch{},
+        m_filterPatch{}
     {
         log("[UserCommands] Entering constructor...");
 
@@ -171,6 +206,30 @@ namespace kanan {
         m_patch.bytes = { 0xE9, (int16_t)(rel & 0xFF), (int16_t)((rel >> 8) & 0xFF), (int16_t)((rel >> 16) & 0xFF), (int16_t)((rel >> 24) & 0xFF), 0x90, 0x90 };
         m_isAvailable = true;
         g_userCommands = this;
+
+        // The chat send filter (repeat and flood checks), which passes messages on to the chat
+        // input function. Commands are caught here too so those checks never see them; without it
+        // they are still answered, but a repeated long command gets "skip repeated messages".
+        //   push 24h / mov eax, <handler> / call <prolog> / mov edi, ecx / and [ebp-4], 0 / nop /
+        //   call / push eax / lea eax, [ebp+8] / push eax / lea ecx, [ebp-14h] / call /
+        //   mov byte ptr [ebp-4], 1
+        auto chatFilter = scan("Pleione.dll", "6A 24 B8 ? ? ? ? E8 ? ? ? ? 8B F9 83 65 FC 00 90 E8 ? ? ? ? 50 8D 45 08 50 8D 4D EC E8 ? ? ? ? C6 45 FC 01");
+
+        // It must also destroy its message with the CStringT destructor: mov esi, [~CStringT] at +57h.
+        if (chatFilter && *(uint16_t*)(*chatFilter + 0x57) == 0x358B && **(uintptr_t**)(*chatFilter + 0x59) == (uintptr_t)g_stringDtor) {
+            g_filterHandler = *(uintptr_t*)(*chatFilter + 3);
+            g_filterReturn = *chatFilter + 7;
+
+            auto filterRel = (uintptr_t)&hookChatFilter - (*chatFilter + 5);
+
+            m_filterPatch.address = *chatFilter;
+            m_filterPatch.bytes = { 0xE9, (int16_t)(filterRel & 0xFF), (int16_t)((filterRel >> 8) & 0xFF), (int16_t)((filterRel >> 16) & 0xFF), (int16_t)((filterRel >> 24) & 0xFF), 0x90, 0x90 };
+
+            log("[UserCommands] Found the chat send filter at %p", *chatFilter);
+        }
+        else {
+            log("[UserCommands] Failed to find the chat send filter; repeated commands may be skipped by the game.");
+        }
 
         log("[UserCommands] Found the chat input at %p and the chat window at %p", *chatInput, *showChatLine);
         log("[UserCommands] Leaving constructor.");
@@ -299,8 +358,16 @@ namespace kanan {
 
         if (m_enabled) {
             patch(m_patch);
+
+            if (m_filterPatch.address != 0) {
+                patch(m_filterPatch);
+            }
         }
         else {
+            if (m_filterPatch.address != 0) {
+                undoPatch(m_filterPatch);
+            }
+
             undoPatch(m_patch);
         }
     }
