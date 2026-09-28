@@ -644,7 +644,8 @@ namespace kanan {
         if (ImGui::TreeNode("Weather Tracker")) {
             ImGui::TextWrapped(
                 "A forecast of the weather in every region, with countdowns to clear skies, clouds, rain and thunderstorms. "
-                "It opens in your browser; you can also type .weather in chat (with Chat Commands on)."
+                "It opens in your browser; you can also type .weather in chat (with Chat Commands on). "
+                "Leave it open while you play and it shows where you are."
             );
             ImGui::Spacing();
 

@@ -17,6 +17,10 @@ namespace kanan {
     // shows exactly what the game will show. The server only tells the client which table the
     // region group it's in uses; the other regions come from a built-in list (the server's
     // weatherserver.xml), which assignments seen in game correct and extend.
+    //
+    // "You're here" is the region the game says the player is in (pleione::CWorld's current region,
+    // and core::ITerrain for its group). Once the page has been made, Kanan keeps
+    // kananWeatherLive.js next to it up to date with that, so an open page follows the player.
     class WeatherTracker : public Mod {
     public:
         WeatherTracker();

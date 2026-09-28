@@ -153,7 +153,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Uncap Auto Production: removes the limit on how many items the production window makes in one go
 * Uncap Flying Height: mounts can fly as high as you like
 * Warn Drop On All Items: with the game's drop warning on, asks before dropping any item, not only expensive ones
-* Weather Tracker: a weather forecast for every region, with countdowns to clear skies, clouds, rain and thunderstorms, opened in your browser from the Kanan menu (or type .weather with Chat Commands on)
+* Weather Tracker: a weather forecast for every region, with countdowns to clear skies, clouds, rain and thunderstorms, opened in your browser from the Kanan menu (or type .weather with Chat Commands on); left open while you play, it shows where you are
 
 **Screenshots**
 * Lossless Screenshots: also saves each screenshot as a PNG
