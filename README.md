@@ -53,7 +53,9 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Large Clock Text: shows the in-game clock in large text
 * Meditation Tint: tints characters that are meditating, and can show a Meditation condition icon
 * Name Coloring: colors character names by type (player, NPC, pet, enemy)
+* No Window Close On Talk: open windows, like your inventory, stay open when you talk to an NPC
 * Party Board To Housing: the party board and party buttons open the housing board instead
+* Remove Blacklist Button: removes the Blacklist button from other players' right-click menu
 * Show Clock Minutes: the in-game clock shows exact minutes instead of rounding down to 10
 * Show Combat Power: shows the combat power and max HP numbers next to character names
 * Show Detailed FPS: shows the detailed frame rate and rendering statistics
@@ -67,6 +69,10 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Show True Durability: shows exact item durability in descriptions, with item colors
 * Show True Food Quality: shows the exact quality number next to the stars on food
 * Show True HP: shows your real maximum HP instead of the capped value
+* Show Unknown Quest Objectives: shows quest objectives that haven't been revealed yet
+* Show Unknown Skill Requirements: shows the hidden requirements for training skills
+* Show Unknown Titles: shows every title in the title list, including ones you don't know yet
+* Show Unknown Upgrades: shows the requirements of skill ranks you haven't unlocked yet
 * UI Scale: makes the game's interface bigger, with sharp or smooth text
 
 **Graphics & Camera**
@@ -101,6 +107,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Disable Skill Locks: lets you use other skills right after Flame Burst
 * DPS Meter: shows your damage per second
 * Elf Lag Fix: stops ranged skills misbehaving on high ping by turning off aiming while moving
+* Show Objects In Hide: shows characters and things that are hidden, like elves using Hide
 * Target Props: Ctrl-targeting can also pick props while in combat mode
 * Target Resting Enemies: lets you target mimics, watermelons, sulfur golems and flying books while they're still resting
 * Tick Timer: shows the timing of the game's regeneration ticks
@@ -129,6 +136,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Enter Remote Shop: opens player shops from any distance
 * Fast Flight: faster turning and climbing while flying
 * Fast Nao: Nao appears right away when you revive
+* Instant Conversation: NPC conversations show their text at once instead of letter by letter
 * Item Split Quantity: the amount the item split window starts at
 * Move While Talking: lets you walk around while talking to an NPC
 * Nao Counter: counts Nao Soul Stone revives
@@ -143,6 +151,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Uncap Alchemy Auto Production: removes the limit on alchemy auto production
 * Uncap Auto Production: removes the limit on how many items the production window makes in one go
 * Uncap Flying Height: mounts can fly as high as you like
+* Warn Drop On All Items: with the game's drop warning on, asks before dropping any item, not only expensive ones
 
 **Screenshots**
 * Lossless Screenshots: also saves each screenshot as a PNG
