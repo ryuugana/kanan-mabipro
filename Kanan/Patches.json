@@ -742,7 +742,7 @@
         "patches": [
             {
                 "location": "Pleione.dll",
-                "pattern": "D9 5D F8 D9 05 ? ? ? ? D8 5D F8 DF E0 F6 C4 01 75 15",
+                "pattern": "D9 5D ? D9 05 ? ? ? ? D8 5D ? DF E0 F6 C4 01 75 34",
                 "patch": "90 90",
                 "offset": 17
             }
