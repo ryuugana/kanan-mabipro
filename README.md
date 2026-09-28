@@ -45,6 +45,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Enable NPC Equip View: lets you view NPCs' equipment
 * Enable Self Right-Click: opens the right-click menu on your own character
 * Entity HP: shows HP numbers over monsters and characters
+* Entity Viewer: a window with the clothing, conditions and other details of characters and other entities
 * Faster Interface Windows: removes the fade and open/close animations of windows like the character and skill windows
 * Font Size: changes the size of TrueType interface text
 * Font Style: interface text in TrueType or bitmap fonts
@@ -120,13 +121,12 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Block Spam: hides spam messages from chat
 * Block System Spam: hides many system and some combat chat lines, including EXP gained
 * Chat Commands: adds chat commands such as .help, .price and .priceschedule to find the traveling merchant Price, and .weather to open the Weather Tracker
-* Chat Log: saves chat to a log file and shows it in a window
+* Chat Mods: adds the time to chat lines, saves chat to a log file and shows it in a window, and copies the messages that scroll across the screen into chat (field bosses, auctions)
 * Disable Pet Summon Messages: hides the messages when a pet is summoned
 * Disable Skill Rank Up Message: hides the skill rank up message
 * No Channel Penalty Message: hides the warning when you change channels during or right after combat
 * No SM Clear/Fail Message: hides the Mission Complete and Mission Failed messages
 * Remove Chat Restrictions: allows chat spam and repeated messages
-* Scrolling Messages To Chat: copies the messages that scroll across the screen into chat (field bosses, auctions)
 
 **Convenience**
 * Auto Login Channel: logs in to the channel you choose automatically
