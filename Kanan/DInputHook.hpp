@@ -15,6 +15,9 @@ namespace kanan {
         // Callbacks.
         std::function<void(DInputHook&, DWORD key)> onKeyDown{};
         std::function<void(DInputHook&, DWORD key)> onKeyUp{};
+        // Every key press, also while Kanan is taking input (onKeyDown isn't called then): for
+        // Kanan's own hotkeys.
+        std::function<void(DInputHook&, DWORD key)> onAnyKeyDown{};
 
         DInputHook() = delete;
         DInputHook(const DInputHook& other) = delete;

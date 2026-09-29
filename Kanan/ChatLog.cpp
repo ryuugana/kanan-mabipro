@@ -4,6 +4,8 @@
 #include <ctime>
 #include <String.hpp>
 
+#include <Scan.hpp>
+
 #include "dirent.h"
 #include "imgui.h"
 #include "MabiPacket.h"
@@ -11,6 +13,82 @@
 #include "Kanan.hpp"
 
 namespace kanan {
+	// Add Time to Chat puts the time in front of each line as the game adds it to the chat window,
+	// instead of changing chat packets, so the game's own handling of the messages (speech bubbles,
+	// name colors) sees them unchanged. The function is pleione::CInterfaceMgr's "add a line to the
+	// chat window" (the one UserCommands prints with); every kind of chat line goes through it.
+	using ChatLineFn = void(__fastcall*)(void* interfaceMgr, void* edx, const void* name, const void* message,
+		unsigned long unknown1, unsigned long type, const void* extra, unsigned long unknown2);
+	using StringCtorFn = void*(__thiscall*)(void* str, const wchar_t* text);
+	using StringDtorFn = void(__thiscall*)(void* str);
+	using StringContentFn = const wchar_t*(__thiscall*)(const void* str);
+
+	static ChatLog* g_chatLog{ nullptr };
+	static ChatLineFn g_originalChatLine{ nullptr };
+	static StringCtorFn g_stringCtor{ nullptr };
+	static StringDtorFn g_stringDtor{ nullptr };
+	static StringContentFn g_stringContent{ nullptr };
+
+	// In front of the name: the chat window's add-line function (Pleione.dll) first builds the name
+	// part of a line in a string at [ebp-10h] (the chat type's tag, if any, then the name), then
+	// looks up the name's color from the name itself:
+	//   lea ecx, [ebp-10h] / nop / call CStringT::operator= / cmp dword ptr [ebp+74h], 0 / jne ...
+	// The cmp/jne is replaced with a jump here, which puts the time in front of that string, so it
+	// comes before the name while the color lookup still sees the name as it is.
+	using StringAssignFn = void*(__thiscall*)(void* str, const wchar_t* text);
+
+	static StringAssignFn g_stringAssign{ nullptr };
+	static uintptr_t g_lineContinue{ 0 };      // after the cmp/jne, when the caller gave no color
+	static uintptr_t g_lineColorGiven{ 0 };    // the jne's target
+
+	static void __stdcall prefixLine(void* line) {
+		auto prefix = g_chatLog != nullptr ? g_chatLog->timePrefix() : std::wstring{};
+
+		if (prefix.empty()) {
+			return;
+		}
+
+		auto text = g_stringContent(line);
+		auto timed = prefix + (text != nullptr ? text : L"");
+
+		g_stringAssign(line, timed.c_str());
+	}
+
+	static __declspec(naked) void hookLineText() {
+		__asm {
+			pushad
+			pushfd
+			lea     eax, [ebp - 10h]
+			push    eax
+			call    prefixLine
+			popfd
+			popad
+			cmp     dword ptr [ebp + 74h], 0
+			jne     given
+			jmp     g_lineContinue
+
+		given:
+			jmp     g_lineColorGiven
+		}
+	}
+
+	static void __fastcall hookedChatLine(void* interfaceMgr, void* edx, const void* name, const void* message,
+		unsigned long unknown1, unsigned long type, const void* extra, unsigned long unknown2) {
+		auto prefix = g_chatLog != nullptr ? g_chatLog->timePrefix() : std::wstring{};
+		auto text = prefix.empty() || message == nullptr ? nullptr : g_stringContent(message);
+
+		if (text == nullptr || text[0] == L'\0') {
+			g_originalChatLine(interfaceMgr, edx, name, message, unknown1, type, extra, unknown2);
+			return;
+		}
+
+		auto timed = prefix + text;
+		uintptr_t str[4]{};     // an esl::CStringT is a single pointer
+		g_stringCtor(str, timed.c_str());
+		g_originalChatLine(interfaceMgr, edx, name, str, unknown1, type, extra, unknown2);
+		g_stringDtor(str);
+	}
+
 	ChatLog::ChatLog()
 		: m_fileLogEnabled{ false },
 		m_startedLogging{ false },
@@ -38,11 +116,71 @@ namespace kanan {
 		m_op.push_back(36504);
 		m_op.push_back(36520);
 		m_op.push_back(50031);
+
+		g_chatLog = this;
+
+		auto esl = GetModuleHandleA("ESL.dll");
+
+		if (esl != nullptr) {
+			g_stringCtor = (StringCtorFn)GetProcAddress(esl, "??0?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@PB_W@Z");
+			g_stringDtor = (StringDtorFn)GetProcAddress(esl, "??1?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@XZ");
+			g_stringContent = (StringContentFn)GetProcAddress(esl, "?GetSafeContent@?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QBEPB_WXZ");
+			g_stringAssign = (StringAssignFn)GetProcAddress(esl, "??4?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAEAAV01@PB_W@Z");
+		}
+
+		auto lineText = scan("Pleione.dll", "8D 4D F0 90 E8 ? ? ? ? 83 7D 74 00 75 11 FF 75 14 8B 0D ? ? ? ? E8");
+
+		if (lineText && g_stringContent != nullptr && g_stringAssign != nullptr) {
+			auto at = *lineText + 9;    // the cmp dword ptr [ebp+74h], 0 (4 bytes) and jne (2 bytes)
+			g_lineContinue = at + 6;
+			g_lineColorGiven = at + 6 + 0x11;
+
+			auto rel = (int32_t)((uintptr_t)&hookLineText - (at + 5));
+
+			m_linePatch.address = at;
+			m_linePatch.bytes = { 0xE9, (int16_t)(rel & 0xFF), (int16_t)((rel >> 8) & 0xFF), (int16_t)((rel >> 16) & 0xFF),
+				(int16_t)((rel >> 24) & 0xFF), 0x90 };
+
+			if (patch(m_linePatch)) {
+				log("[ChatLog] Patched the chat window's line text at %p", (void*)at);
+				return;
+			}
+
+			log("[ChatLog] Couldn't patch the chat window's line text; putting the time in front of messages instead");
+		}
+
+		auto chatLine = scan("Pleione.dll", "6A 0C B8 ? ? ? ? E8 ? ? ? ? 8B F9 33 DB 38 5F 48 0F 85 ? ? ? ? A1 ? ? ? ? 38 98 89 04 00 00");
+
+		if (g_stringCtor == nullptr || g_stringDtor == nullptr || g_stringContent == nullptr || !chatLine) {
+			log("[ChatLog] Failed to find the chat window function; Add Time to Chat won't work");
+			return;
+		}
+
+		m_chatLineHook = std::make_unique<FunctionHook>(*chatLine, (uintptr_t)&hookedChatLine);
+
+		if (m_chatLineHook->isValid()) {
+			g_originalChatLine = (ChatLineFn)m_chatLineHook->getOriginal();
+			log("[ChatLog] Hooked the chat window at %p", (void*)*chatLine);
+		}
+		else {
+			log("[ChatLog] Failed to hook the chat window; Add Time to Chat won't work");
+			m_chatLineHook.reset();
+		}
+	}
+
+	ChatLog::~ChatLog() {
+		undoPatch(m_linePatch);
+		m_chatLineHook.reset();
+		g_chatLog = nullptr;
+	}
+
+	std::wstring ChatLog::timePrefix() {
+		return m_isTime ? L"[" + widen(getTime()) + L"] " : std::wstring{};
 	}
 
 	void ChatLog::onUI() {
 		if (ImGui::TreeNode(getName().c_str())) {
-			ImGui::BeginDisabled(!m_isEnabled);
+			ImGui::BeginDisabled(!m_isEnabled && !m_isTime);
 			ImGui::TextWrapped("Uses 24-hour clock instead of 12-hour clock for all related chat mods below. \n");
 			ImGui::Checkbox("Use 24 hour clock", &m_is24hour);
 			ImGui::EndDisabled();
@@ -51,7 +189,8 @@ namespace kanan {
 
 			if (ImGui::TreeNode("Add Time to Chat"))
 			{
-				ImGui::TextWrapped("Adds current time to Mabinogi's in-game chat log.\n");
+				ImGui::TextWrapped("Puts the time in front of each line in Mabinogi's chat window. Only the chat window "
+					"changes: names keep their colors, and speech bubbles show the message as it is.\n");
 				ImGui::Checkbox("Add Time to Chat", &m_isTime);
 				ImGui::TreePop();
 			}
@@ -85,7 +224,8 @@ namespace kanan {
 			}
 			ImGui::TreePop();
 
-			m_isEnabled = m_isChatLog || m_isTime || m_isAuctionEnabled || m_isFieldBossEnabled;
+			// Add Time to Chat doesn't need the packets (see hookedChatLine).
+			m_isEnabled = m_isChatLog || m_isAuctionEnabled || m_isFieldBossEnabled;
 		}
 	}
 
@@ -101,11 +241,17 @@ namespace kanan {
 		m_isChatLog = cfg.get<bool>("ModChatLog.Enabled").value_or(false);
 		m_isOpen = cfg.get<bool>("ChatLog.OpenByDefault").value_or(false);
 		m_isTime = cfg.get<bool>("ChatTime.Enabled").value_or(false);
+
+		// Until it's set, the clock the PC uses (Windows' time format has "H" for a 24-hour clock).
+		wchar_t format[80]{};
+		auto pcUses24Hour = GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_STIMEFORMAT, format, 80) > 0 &&
+			wcschr(format, L'H') != nullptr;
+		m_is24hour = cfg.get<bool>("ChatTime.24Hour").value_or(pcUses24Hour);
 		m_isAuctionEnabled = cfg.get<bool>("AuctionMessageToChat.Enabled").value_or(false);
 		m_isFieldBossEnabled = cfg.get<bool>("FieldBossMessageToChat.Enabled").value_or(false);
 		m_isFieldBNotifyEnabled = cfg.get<bool>("FieldBossNotify.Enabled").value_or(false);
 		
-		m_isEnabled = m_isTime || m_isChatLog || m_isAuctionEnabled || m_isFieldBossEnabled;
+		m_isEnabled = m_isChatLog || m_isAuctionEnabled || m_isFieldBossEnabled;
 
 		if (m_isChatLog)
 			startLogging();
@@ -115,6 +261,7 @@ namespace kanan {
 		cfg.set<bool>("ModChatLog.Enabled", m_isChatLog);
 		cfg.set<bool>("ChatLog.OpenByDefault", m_isOpen);
 		cfg.set<bool>("ChatTime.Enabled", m_isTime);
+		cfg.set<bool>("ChatTime.24Hour", m_is24hour);
 		cfg.set<bool>("AuctionMessageToChat.Enabled", m_isAuctionEnabled);
 		cfg.set<bool>("FieldBossMessageToChat.Enabled", m_isFieldBossEnabled);
 		cfg.set<bool>("FieldBossNotify.Enabled", m_isFieldBNotifyEnabled);
@@ -140,10 +287,11 @@ namespace kanan {
 			hour = std::to_string(hour12);
 		}
 
-		if(localTimeNow.tm_min < 10)
-			ss << hour << ":0" << localTimeNow.tm_min << " " << ampm;
-		else
-			ss << hour << ":" << localTimeNow.tm_min << " " << ampm;
+		ss << hour << (localTimeNow.tm_min < 10 ? ":0" : ":") << localTimeNow.tm_min;
+
+		if (!m_is24hour)
+			ss << " " << ampm;
+
 		return ss.str();
 	}
 
@@ -204,7 +352,11 @@ namespace kanan {
 					BYTE* p;
 					int tmpSizw = recvPacket.BuildPacket(&p);
 
-					memcpy(mabiMessage.buffer, p, tmpSizw);
+					// Only into the game's buffer if it fits.
+					if (tmpSizw <= mabiMessage.size) {
+						memcpy(mabiMessage.buffer, p, tmpSizw);
+					}
+
 					delete[] p;
 				}
 				else if ((m_isFieldBossEnabled && message.find("has appeared") != string::npos) ||
@@ -217,7 +369,10 @@ namespace kanan {
 					BYTE* p;
 					int tmpSizw = recvPacket.BuildPacket(&p);
 
-					memcpy(mabiMessage.buffer, p, tmpSizw);
+					if (tmpSizw <= mabiMessage.size) {
+						memcpy(mabiMessage.buffer, p, tmpSizw);
+					}
+
 					delete[] p;
 
 					if (message.find("has appeared") != string::npos && m_isFieldBNotifyEnabled)
@@ -309,43 +464,6 @@ namespace kanan {
 				std::replace(log.begin(), log.end(), '%', 'p');
 				addChatLog(log.c_str());
 			}
-		}
-
-		if (m_isTime)
-		{
-			std::string addTime;
-			int index = 1;
-
-			if (op == 21100)
-			{
-				addTime = recvPacket.GetElement(index)->str;
-				addTime.append(" [" + getTime() + ']');
-			}
-			else if (op == 36502 || op == 36504)
-			{
-				return;
-			}
-			else
-			{
-				addTime = '[' + getTime() + "] ";
-				addTime.append(recvPacket.GetElement(index)->str);
-			}
-
-			PacketData data;
-			data.type = T_STRING;
-			data.str = addTime.data();
-			data.len = addTime.length();
-			recvPacket.SetElement(&data, index);
-
-			BYTE* p;
-			int tmpSizw = recvPacket.BuildPacket(&p);
-
-			MabiMessage newMsg;
-			newMsg.buffer = p;
-			newMsg.size = tmpSizw;
-			AddToRecvQ(newMsg);
-
-			memset(mabiMessage.buffer, 0, mabiMessage.size);
 		}
 	}
 

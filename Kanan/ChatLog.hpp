@@ -9,6 +9,9 @@
 #include <imgui.h>
 #include <Windows.h>
 
+#include <FunctionHook.hpp>
+#include <Patch.hpp>
+
 #include "MessageMod.hpp"
 
 
@@ -16,6 +19,7 @@ namespace kanan {
 	class ChatLog : public MessageMod {
 	public:
 		ChatLog();
+		~ChatLog();
 
 		std::string getName() override { return "Chat Mods"; }
 
@@ -27,6 +31,9 @@ namespace kanan {
 		void onConfigSave(Config& cfg) override;
 
 		void onRecv(MabiMessage mabiMessage) override;
+
+		// For the chat window hook: the time to put in front of a line, or "" when Add Time to Chat is off.
+		std::wstring timePrefix();
 	private:
 		void startLogging();
 		void deleteOldLogs(std::string path, std::string fileName, tm tstruct);
@@ -53,6 +60,12 @@ namespace kanan {
 
         std::vector<std::string> m_logs;
 		std::ofstream m_file;
+
+		// Add Time to Chat: in front of the name, where the chat window builds a line (see
+		// hookLineText); or, if that code isn't found, in front of the message, through the game's
+		// "add a line to the chat window" (pleione::CInterfaceMgr).
+		Patch m_linePatch;
+		std::unique_ptr<FunctionHook> m_chatLineHook;
 
 		std::unordered_map<long long, std::string> m_partyMembers;
 

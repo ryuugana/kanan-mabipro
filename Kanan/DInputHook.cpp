@@ -109,6 +109,18 @@ HRESULT DInputHook::getDeviceData(
             dinput->m_deviceObjectData.resize(*numElements);
 
             originalGetDeviceData(device, size, dinput->m_deviceObjectData.data(), numElements, flags);
+
+            if (flags == 0 && dinput->onAnyKeyDown && size <= sizeof(DIDEVICEOBJECTDATA)) {
+                auto start = (uintptr_t)dinput->m_deviceObjectData.data();
+
+                for (DWORD i = 0; i < *numElements; ++i) {
+                    auto obj_data = (DIDEVICEOBJECTDATA*)(start + i * size);
+
+                    if (obj_data->dwData & (1 << 7)) {
+                        dinput->onAnyKeyDown(*dinput, obj_data->dwOfs);
+                    }
+                }
+            }
         }
 
         *numElements = 0;
@@ -141,6 +153,10 @@ HRESULT DInputHook::getDeviceData(
             if (obj_data->data & (1 << 7)) {
                 if (dinput->onKeyDown) {
                     dinput->onKeyDown(*dinput, obj_data->key);
+                }
+
+                if (dinput->onAnyKeyDown) {
+                    dinput->onAnyKeyDown(*dinput, obj_data->key);
                 }
             } else {
                 if (dinput->onKeyUp) {

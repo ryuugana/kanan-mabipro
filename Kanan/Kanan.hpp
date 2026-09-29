@@ -94,6 +94,13 @@ namespace kanan {
         char m_search[128]{};
         bool m_wasSearching{};
 
+        // Keys like Insert share their virtual-key code with a numpad key when Num Lock is off
+        // (Numpad 0 is Insert then), so for those the hotkeys go by DirectInput, which tells the
+        // dedicated key from the numpad one: pressed since the last frame.
+        bool m_dedicatedKeyPressed[256]{};
+
+        bool wasHotkeyPressed(int key);
+
         void drawMods();
 
         void initializeMods();
