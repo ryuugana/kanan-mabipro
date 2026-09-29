@@ -14,7 +14,7 @@
 #include <String.hpp>
 
 #include "Log.hpp"
-#include "WeatherTracker.hpp"
+#include "MabiTrackers.hpp"
 
 #pragma comment(lib, "shell32.lib")
 
@@ -22,7 +22,7 @@ using namespace std;
 using nlohmann::json;
 
 namespace kanan {
-    static WeatherTracker* g_weatherTracker{ nullptr };
+    static MabiTrackers* g_mabiTrackers{ nullptr };
 
     // esl::CStringT<wchar_t> functions (ESL.dll). A CStringT is a single pointer.
     using StringCtorFn = void*(__thiscall*)(void* str, const wchar_t* text);
@@ -43,6 +43,11 @@ namespace kanan {
     static StringCtorFn g_stringCtor{ nullptr };
     static StringDtorFn g_stringDtor{ nullptr };
     static StringContentFn g_stringContent{ nullptr };
+    // core::CGateMgr (core::g_cGateMgrBlock is the object) and its GetMoongateSequence(): the moon
+    // gate rotation from db/gate.xml, a vector of gate names ("_moongate_tirchonaill").
+    using GetMoongateSequenceFn = const uintptr_t*(__thiscall*)(const void* mgr);
+    static void* g_gateMgr{ nullptr };
+    static GetMoongateSequenceFn g_getMoongateSequence{ nullptr };
 
     // Region groups with weather and their weather tables, from the server's weatherserver.xml. The
     // names are the game's own for the regions in each group (MabiPro's region files and minimap
@@ -95,8 +100,8 @@ namespace kanan {
     static const int SLOTS_BEFORE = 3 * 24;
     static const int SLOTS_AFTER = 14 * 24 * 3;
 
-    // The page, built into Kanan.asi from WeatherTracker.html (WeatherTracker.rc).
-    static const char* PAGE_PLACEHOLDER = "/*KANAN_WEATHER_DATA*/null";
+    // The page, built into Kanan.asi from MabiTrackers.html (MabiTrackers.rc).
+    static const char* PAGE_PLACEHOLDER = "/*MABI_TRACKERS_DATA*/null";
 
     static void resolveExports() {
         if (g_triedExports) {
@@ -122,9 +127,12 @@ namespace kanan {
         g_stringCtor = (StringCtorFn)GetProcAddress(esl, "??0?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@PB_W@Z");
         g_stringDtor = (StringDtorFn)GetProcAddress(esl, "??1?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@XZ");
         g_stringContent = (StringContentFn)GetProcAddress(esl, "?GetSafeContent@?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QBEPB_WXZ");
+        g_gateMgr = (void*)GetProcAddress(standard, "?g_cGateMgrBlock@core@@3PAEA");
+        g_getMoongateSequence = (GetMoongateSequenceFn)GetProcAddress(standard,
+            "?GetMoongateSequence@CGateMgr@core@@QBEPAV?$vector@V?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@V?$allocator@V?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@@stlpx_std@@@stlpx_std@@XZ");
 
-        log("[WeatherTracker] World %p, weather manager vtable %p, FindWeatherTable %p, GetGlobalTime %p",
-            g_worldBlock, g_weatherMgrVtable, g_findTable, g_getGlobalTime);
+        log("[MabiTrackers] World %p, weather manager vtable %p, FindWeatherTable %p, GetGlobalTime %p, gate manager %p",
+            g_worldBlock, g_weatherMgrVtable, g_findTable, g_getGlobalTime, g_gateMgr);
     }
 
     static bool hasExports() {
@@ -217,7 +225,7 @@ namespace kanan {
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
-            log("[WeatherTracker] Reading the weather assignments failed");
+            log("[MabiTrackers] Reading the weather assignments failed");
         }
 
         return count;
@@ -252,6 +260,47 @@ namespace kanan {
             auto b = a ? *(uintptr_t*)(a + 0x15C) : 0;
 
             return b ? *(uint32_t*)(b + 0x6C) : 0;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return 0;
+        }
+    }
+
+    // The moon gate rotation the game loaded (moongate_sequences in db/gate.xml): the server opens
+    // the gate at Erinn 18:00 and closes it at 6:00, and each night leads to sequence[Erinn day %
+    // size], the day being the one the night started on. Names are copied into `out`; returns how
+    // many, or 0 when the game has no rotation.
+    static const int MAX_MOONGATES = 64;
+    static const int MOONGATE_NAME = 64;
+
+    static int readMoongates(wchar_t (*out)[MOONGATE_NAME]) {
+        __try {
+            auto sequence = g_getMoongateSequence(g_gateMgr);
+
+            if (sequence == nullptr) {
+                return 0;
+            }
+
+            // An STLport vector of esl::CStringT: begin, end.
+            auto begin = (const uintptr_t*)sequence[0];
+            auto end = (const uintptr_t*)sequence[1];
+            auto count = (int)(end - begin);
+
+            if (begin == nullptr || count <= 0 || count > MAX_MOONGATES) {
+                return 0;
+            }
+
+            for (int i = 0; i < count; ++i) {
+                auto name = g_stringContent(&begin[i]);
+
+                if (name == nullptr || wcsncmp(name, L"_moongate_", 10) != 0) {
+                    return 0;
+                }
+
+                wcsncpy_s(out[i], MOONGATE_NAME, name, _TRUNCATE);
+            }
+
+            return count;
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             return 0;
@@ -328,7 +377,7 @@ namespace kanan {
             return "";
         }
 
-        auto resource = FindResourceW(module, L"WEATHER_TRACKER_HTML", RT_RCDATA);
+        auto resource = FindResourceW(module, L"MABI_TRACKERS_HTML", RT_RCDATA);
         auto data = resource ? LoadResource(module, resource) : nullptr;
         auto bytes = data ? (const char*)LockResource(data) : nullptr;
 
@@ -344,7 +393,7 @@ namespace kanan {
         return path.substr(0, path.find_last_of(L'\\') + 1);
     }
 
-    WeatherTracker::WeatherTracker()
+    MabiTrackers::MabiTrackers()
         : m_learned{},
         m_nextCheck{ 0 },
         m_status{},
@@ -352,22 +401,22 @@ namespace kanan {
         m_liveWritten{ 0 },
         m_hasPage{ -1 }
     {
-        g_weatherTracker = this;
+        g_mabiTrackers = this;
     }
 
-    WeatherTracker::~WeatherTracker() {
-        if (g_weatherTracker == this) {
-            g_weatherTracker = nullptr;
+    MabiTrackers::~MabiTrackers() {
+        if (g_mabiTrackers == this) {
+            g_mabiTrackers = nullptr;
         }
     }
 
-    WeatherTracker* WeatherTracker::instance() {
-        return g_weatherTracker;
+    MabiTrackers* MabiTrackers::instance() {
+        return g_mabiTrackers;
     }
 
     // Every few seconds: remember the server's weather for the region group the player is in, so
     // the page follows MabiPro if it assigns weather differently from the built-in list.
-    void WeatherTracker::onFrame() {
+    void MabiTrackers::onFrame() {
         auto now = GetTickCount();
 
         if ((int32_t)(now - m_nextCheck) < 0) {
@@ -384,7 +433,7 @@ namespace kanan {
 
     // The weather table a region group uses: what the server sent, or the built-in list. "" when it
     // has none (constant weather).
-    string WeatherTracker::tableFor(uint32_t group) const {
+    string MabiTrackers::tableFor(uint32_t group) const {
         auto learned = m_learned.find(group);
 
         if (learned != m_learned.end()) {
@@ -400,12 +449,12 @@ namespace kanan {
         return "";
     }
 
-    // Keeps kananWeatherLive.js, next to the page, up to date with where the player is, so an open
+    // Keeps MabiTrackersLive.js, next to the page, up to date with where the player is, so an open
     // page can move its "You're here" badge. Written when the region changes, and once a minute so
     // the page can tell the game is still running.
-    void WeatherTracker::updateLive(uintptr_t mgr) {
+    void MabiTrackers::updateLive(uintptr_t mgr) {
         if (m_hasPage < 0) {
-            m_hasPage = GetFileAttributesW((gameFolder() + L"kananWeather.html").c_str()) != INVALID_FILE_ATTRIBUTES;
+            m_hasPage = GetFileAttributesW((gameFolder() + L"MabiTrackers.html").c_str()) != INVALID_FILE_ATTRIBUTES;
         }
 
         auto region = currentRegion();
@@ -421,12 +470,12 @@ namespace kanan {
 
         FILE* f{};
 
-        if (_wfopen_s(&f, (gameFolder() + L"kananWeatherLive.js").c_str(), L"wb") == 0 && f != nullptr) {
+        if (_wfopen_s(&f, (gameFolder() + L"MabiTrackersLive.js").c_str(), L"wb") == 0 && f != nullptr) {
             fwrite(text.data(), 1, text.size(), f);
             fclose(f);
 
             if (region != m_liveRegion) {
-                log("[WeatherTracker] Live location: region %u, region group %u", region, group);
+                log("[MabiTrackers] Live location: region %u, region group %u", region, group);
             }
 
             m_liveRegion = region;
@@ -434,7 +483,7 @@ namespace kanan {
         }
     }
 
-    void WeatherTracker::learnAssignments() {
+    void MabiTrackers::learnAssignments() {
         auto mgr = findWeatherManager();
 
         if (mgr == 0) {
@@ -449,13 +498,83 @@ namespace kanan {
             auto known = m_learned.find(a.group);
 
             if (known == m_learned.end() || known->second != a.table) {
-                log("[WeatherTracker] Region group %u uses weather %s", a.group, a.table);
+                log("[MabiTrackers] Region group %u uses weather %s", a.group, a.table);
                 m_learned[a.group] = a.table;
             }
         }
     }
 
-    bool WeatherTracker::open(wstring& error) {
+    bool MabiTrackers::weatherHere(WeatherNow& out, wstring& error) {
+        auto mgr = findWeatherManager();
+
+        if (mgr == 0) {
+            error = L"The game's weather isn't available yet. Try again once you're in the game.";
+            return false;
+        }
+
+        learnAssignments();
+
+        auto region = currentRegion();
+        auto group = region ? regionGroupOf(mgr, region) : 0;
+        auto name = group ? tableFor(group) : "";
+        WeatherTable table{};
+
+        if (name.empty()) {
+            error = L"There's no weather cycle where you are. The Erinn Tracker (.tracker) has every region's weather.";
+            return false;
+        }
+
+        if (!findTable(mgr, name, table)) {
+            error = L"The game has no weather for where you are.";
+            return false;
+        }
+
+        out.place.clear();
+
+        for (auto& g : KNOWN_GROUPS) {
+            if (g.group == group) {
+                auto names = splitNames(g.names);
+
+                for (size_t i = 0; i < names.size(); ++i) {
+                    out.place += (i == 0 ? L"" : i + 1 == names.size() ? L" and " : L", ") + widen(names[i]);
+                }
+            }
+        }
+
+        // Slot k (starting base + k * slot) shows values[k + 1], as in open().
+        auto now = g_getGlobalTime();
+        auto typeOf = [&](int64_t k) { return weatherType(table.values[(uint64_t)(k + 1) % table.count]) - '0'; };
+        auto unsure = [&](int64_t k) { return isSessionEntry((uint64_t)(k + 1) % table.count); };
+        auto current = (int64_t)((now - table.base) / table.slot);
+        auto limit = current + SLOTS_AFTER;
+        auto k = current;
+
+        out.now = typeOf(current);
+        out.mayDiffer = false;
+
+        for (; k < limit && typeOf(k) == out.now; ++k) {
+            out.mayDiffer |= unsure(k);
+        }
+
+        auto nextStart = k;
+        out.next = typeOf(nextStart);
+
+        for (; k < limit && typeOf(k) == out.next; ++k) {
+            out.mayDiffer |= unsure(k);
+        }
+
+        out.untilNext = table.base + (uint64_t)nextStart * table.slot - now;
+        out.nextLength = (uint64_t)(k - nextStart) * table.slot;
+
+        if (nextStart >= limit) {
+            error = L"The weather here doesn't change in the next 14 days.";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool MabiTrackers::open(wstring& error) {
         auto mgr = findWeatherManager();
 
         if (mgr == 0) {
@@ -482,7 +601,7 @@ namespace kanan {
         auto region = currentRegion();
         auto group = region ? regionGroupOf(mgr, region) : 0;
 
-        log("[WeatherTracker] You're in region %u, region group %u", region, group);
+        log("[MabiTrackers] You're in region %u, region group %u", region, group);
 
         if (group != 0) {
             hereGroups.insert(group);
@@ -510,7 +629,7 @@ namespace kanan {
             WeatherTable table{};
 
             if (!findTable(mgr, name, table)) {
-                log("[WeatherTracker] The game has no weather table %s", name.c_str());
+                log("[MabiTrackers] The game has no weather table %s", name.c_str());
                 continue;
             }
 
@@ -599,17 +718,33 @@ namespace kanan {
         data["tables"] = tables;
         data["places"] = places;
 
+        // The moon gate rotation, when the game has one (the page has gate.xml's as a fallback).
+        auto moongates = json::array();
+
+        if (g_gateMgr != nullptr && g_getMoongateSequence != nullptr) {
+            static wchar_t names[MAX_MOONGATES][MOONGATE_NAME];
+            auto count = readMoongates(names);
+
+            for (int i = 0; i < count; ++i) {
+                moongates.push_back(narrow(names[i]));
+            }
+
+            log("[MabiTrackers] Moon gate rotation: %d gates", count);
+        }
+
+        data["moongates"] = moongates;
+
         auto page = loadPage();
         auto at = page.find(PAGE_PLACEHOLDER);
 
         if (at == string::npos) {
-            error = L"Kanan's weather page is missing.";
+            error = L"Kanan's tracker page is missing.";
             return false;
         }
 
         page.replace(at, strlen(PAGE_PLACEHOLDER), data.dump());
 
-        auto path = gameFolder() + L"kananWeather.html";
+        auto path = gameFolder() + L"MabiTrackers.html";
 
         FILE* f{};
 
@@ -621,6 +756,10 @@ namespace kanan {
         fwrite(page.data(), 1, page.size(), f);
         fclose(f);
 
+        // The page's names before it became MabiTrackers.
+        DeleteFileW((gameFolder() + L"kananWeather.html").c_str());
+        DeleteFileW((gameFolder() + L"kananWeatherLive.js").c_str());
+
         // The page follows the player from now on: write where they are right away.
         m_hasPage = 1;
         m_liveRegion = 0;
@@ -630,7 +769,7 @@ namespace kanan {
         auto quoted = L"\"" + path + L"\"";
         auto result = (intptr_t)ShellExecuteW(nullptr, L"open", L"explorer.exe", quoted.c_str(), nullptr, SW_SHOWNORMAL);
 
-        log("[WeatherTracker] Wrote %S (%zu tables, %zu places), opening it: %d", path.c_str(), tables.size(), places.size(), (int)result);
+        log("[MabiTrackers] Wrote %S (%zu tables, %zu places), opening it: %d", path.c_str(), tables.size(), places.size(), (int)result);
 
         if (result <= 32) {
             error = L"Couldn't open " + path;
@@ -640,16 +779,18 @@ namespace kanan {
         return true;
     }
 
-    void WeatherTracker::onUI() {
-        if (ImGui::TreeNode("Weather Tracker")) {
+    void MabiTrackers::onUI() {
+        if (ImGui::TreeNode("Erinn Tracker")) {
             ImGui::TextWrapped(
-                "A forecast of the weather in every region, with countdowns to clear skies, clouds, rain and thunderstorms. "
-                "It opens in your browser; you can also type .weather in chat (with Chat Commands on). "
+                "A page with the weather forecast for every region, with countdowns to clear skies, clouds, rain and "
+                "thunderstorms, where the moon gates lead each night, and the schedules of the NPCs that come and go: "
+                "Price, Rua, Fleta and Tarlach. "
+                "It opens in your browser; you can also type .tracker in chat (with Chat Commands on). "
                 "Leave it open while you play and it shows where you are."
             );
             ImGui::Spacing();
 
-            if (ImGui::Button("Open Weather Forecast")) {
+            if (ImGui::Button("Open Erinn Tracker")) {
                 wstring error;
                 m_status = open(error) ? "Opened in your browser." : narrow(error);
             }
@@ -663,10 +804,12 @@ namespace kanan {
     }
 
     // Learned assignments as "group:table,group:table".
-    void WeatherTracker::onConfigLoad(const Config& cfg) {
+    void MabiTrackers::onConfigLoad(const Config& cfg) {
         m_learned.clear();
 
-        stringstream ss{ cfg.get("WeatherTracker.Groups").value_or("") };
+        // Before the rename it was WeatherTracker.Groups.
+        auto saved = cfg.get("MabiTrackers.Groups");
+        stringstream ss{ saved ? *saved : cfg.get("WeatherTracker.Groups").value_or("") };
         string item;
 
         while (getline(ss, item, ',')) {
@@ -684,7 +827,7 @@ namespace kanan {
         }
     }
 
-    void WeatherTracker::onConfigSave(Config& cfg) {
+    void MabiTrackers::onConfigSave(Config& cfg) {
         string text;
 
         for (auto& [group, table] : m_learned) {
@@ -695,6 +838,6 @@ namespace kanan {
             text += to_string(group) + ':' + table;
         }
 
-        cfg.set("WeatherTracker.Groups", text);
+        cfg.set("MabiTrackers.Groups", text);
     }
 }

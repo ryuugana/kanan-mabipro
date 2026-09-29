@@ -17,8 +17,11 @@ namespace kanan {
     //   .reload / .r AstralWorld re-read mss32.ini; Kanan applies setting changes immediately, so
     //                this only explains where to change them.
     //   .price       where the traveling merchant Price is and how long until he moves
-    //   .priceschedule  how long until Price arrives at each of his next stops
-    //   .weather     opens the Weather Tracker's forecast page (WeatherTracker)
+    //   .rua / .fleta / .tarlach  where they are (Bean Rua or home; out in Sen Mag or not; a man or
+    //                a bear) and how long until that changes, from their server scripts
+    //   .weather     the weather where the player is and what comes next (MabiTrackers)
+    //   .tracker     opens the Erinn Tracker page (MabiTrackers): weather, moon gates, and Price,
+    //                Rua, Fleta and Tarlach's schedules
     //
     // Price's location is worked out the way the server's script does it (GetTargetPosition in
     // npc/common.mint): he stays at stop (Erinn day % 14) of a fixed rotation, and moves when a new
