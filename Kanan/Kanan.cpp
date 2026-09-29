@@ -79,11 +79,18 @@ namespace kanan {
         //
         log("Hooking D3D9...");
 
+        // The game can already be drawing: its Present and Reset go through Kanan only once the hook
+        // has kept them and its callbacks are set.
+        FunctionHook::setDeferEnabling(true);
+
         m_d3d9Hook = make_unique<D3D9Hook>();
 
         m_d3d9Hook->onPresent = [this](auto&) { onFrame(); };
         m_d3d9Hook->onPreReset = [](auto&) { ImGui_ImplDX9_InvalidateDeviceObjects(); };
         m_d3d9Hook->onPostReset = [](auto&) { ImGui_ImplDX9_CreateDeviceObjects(); };
+
+        FunctionHook::setDeferEnabling(false);
+        FunctionHook::enableDeferred();
 
         if (!m_d3d9Hook->isValid()) {
             error("Failed to hook D3D9.");
