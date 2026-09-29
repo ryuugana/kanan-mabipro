@@ -209,6 +209,27 @@ namespace kanan {
                 mod->onKeyUp(key);
             }
         };
+        // DirectInput tells the dedicated navigation keys from their numpad twins (DIK_INSERT isn't
+        // DIK_NUMPAD0), whatever Num Lock says; see wasHotkeyPressed.
+        m_dinputHook->onAnyKeyDown = [this](DInputHook& dinput, DWORD key) {
+            int vk = 0;
+
+            switch (key) {
+            case DIK_INSERT: vk = VK_INSERT; break;
+            case DIK_DELETE: vk = VK_DELETE; break;
+            case DIK_HOME: vk = VK_HOME; break;
+            case DIK_END: vk = VK_END; break;
+            case DIK_PRIOR: vk = VK_PRIOR; break;
+            case DIK_NEXT: vk = VK_NEXT; break;
+            case DIK_UP: vk = VK_UP; break;
+            case DIK_DOWN: vk = VK_DOWN; break;
+            case DIK_LEFT: vk = VK_LEFT; break;
+            case DIK_RIGHT: vk = VK_RIGHT; break;
+            default: return;
+            }
+
+            m_dedicatedKeyPressed[vk] = true;
+        };
 
         if (!m_dinputHook->isValid()) {
             error("Failed to hook DInput.");
@@ -284,7 +305,7 @@ namespace kanan {
                 mod->onFrame();
             }
 
-            if (wasKeyPressed(m_key.hotkey)) {
+            if (wasHotkeyPressed(m_key.hotkey)) {
                 m_isUIOpen = !m_isUIOpen;
 				
                 // Save the config whenever the menu closes.
@@ -293,7 +314,7 @@ namespace kanan {
                 }
             }
 
-			if (wasKeyPressed(m_housingKey.hotkey)) {
+			if (wasHotkeyPressed(m_housingKey.hotkey)) {
 				housingBoard();
 			}
 
@@ -373,6 +394,28 @@ namespace kanan {
                 mod->onFrameDrawn();
             }
         }
+    }
+
+    // Keys that have a numpad twin with the same virtual-key code when Num Lock is off.
+    static bool hasNumpadTwin(int key) {
+        switch (key) {
+        case VK_INSERT: case VK_DELETE: case VK_HOME: case VK_END: case VK_PRIOR: case VK_NEXT:
+        case VK_UP: case VK_DOWN: case VK_LEFT: case VK_RIGHT:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool Kanan::wasHotkeyPressed(int key) {
+        if (key <= 0 || key > 0xFF || !hasNumpadTwin(key)) {
+            return wasKeyPressed(key);
+        }
+
+        auto pressed = m_dedicatedKeyPressed[key];
+        m_dedicatedKeyPressed[key] = false;
+
+        return pressed;
     }
 
     bool Kanan::onMessage(HWND wnd, UINT message, WPARAM wParam, LPARAM lParam) {
