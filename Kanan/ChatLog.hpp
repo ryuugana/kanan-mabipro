@@ -35,6 +35,8 @@ namespace kanan {
 		// For the chat window hook: the time to put in front of a line, or "" when Add Time to Chat is off.
 		std::wstring timePrefix();
 	private:
+		void hookLogWindow();
+
 		void startLogging();
 		void deleteOldLogs(std::string path, std::string fileName, tm tstruct);
 
@@ -66,6 +68,12 @@ namespace kanan {
 		// "add a line to the chat window" (pleione::CInterfaceMgr).
 		Patch m_linePatch;
 		std::unique_ptr<FunctionHook> m_chatLineHook;
+
+		// The chat log window (the one that can be opened and expanded) and the chat's history
+		// (which that window is filled from when it opens) get the line's name as it came, not the
+		// line text the patch above puts the time in; these give them the name with the time.
+		std::unique_ptr<FunctionHook> m_logLineHook;
+		std::unique_ptr<FunctionHook> m_historyLineHook;
 
 		std::unordered_map<long long, std::string> m_partyMembers;
 
