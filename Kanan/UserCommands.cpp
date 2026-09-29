@@ -7,7 +7,7 @@
 
 #include "Log.hpp"
 #include "UserCommands.hpp"
-#include "WeatherTracker.hpp"
+#include "MabiTrackers.hpp"
 
 using namespace std;
 
@@ -37,23 +37,94 @@ namespace kanan {
     // An Erinn day is 36 real minutes (core::stdapi_GlobalTimeToGameDay divides by this).
     static const uint64_t ERINN_DAY_MS = 36 * 60 * 1000;
 
-    // Price's stops, by Erinn day % 14 (GetTargetPosition in the server's npc/common.mint).
+    // Price's stops, by Erinn day % 14 (GetTargetPosition in the server's npc/common.mint). He has
+    // two spots in Dunbarton, Bangor and Emain Macha, named by where each is from the other.
     static const wchar_t* const PRICE_STOPS[14] = {
         L"Tir Chonaill",
         L"Dugald Aisle",
-        L"Dunbarton",
+        L"Dunbarton (east)",
         L"Gairech",
-        L"Bangor",
-        L"Sen Mag",
-        L"Emain Macha",
+        L"Bangor (south)",
+        L"Sen Mag Plains",
+        L"Emain Macha (north)",
         L"Ceo Island",
-        L"Emain Macha (another spot)",
-        L"Sen Mag",
+        L"Emain Macha (south)",
+        L"Sen Mag Plains",
         L"Gairech",
-        L"Bangor (another spot)",
-        L"Dunbarton (another spot)",
+        L"Bangor (north)",
+        L"Dunbarton (west)",
         L"Dugald Aisle",
     };
+
+    // An Erinn hour is 90 real seconds.
+    static const uint64_t ERINN_HOUR_MS = 90 * 1000;
+
+    static uint64_t erinnHour(uint64_t time) {
+        return time % ERINN_DAY_MS / ERINN_HOUR_MS;
+    }
+
+    // Rua (the server's npc/emainmacha/rua.mint): on club days of a 43-day cycle (a day running 6:00
+    // to 6:00) she goes to Bean Rua from 17:00 to 6:00; on other days she goes home. In a club day's
+    // daytime she stays where she was. 1 at Bean Rua, 0 at home.
+    static bool isRuaClubDay(int64_t day) {
+        static const int CLUB_DAYS[] = { 0, 2, 3, 5, 6, 7, 15, 17, 20, 24, 28, 31, 35, 40 };
+        auto inCycle = (int)(((day % 43) + 43) % 43);
+
+        return find(begin(CLUB_DAYS), end(CLUB_DAYS), inCycle) != end(CLUB_DAYS);
+    }
+
+    static int ruaAt(uint64_t time) {
+        auto hour = erinnHour(time);
+        auto day = (int64_t)(time / ERINN_DAY_MS) - (hour < 6 ? 1 : 0);
+
+        if (!isRuaClubDay(day)) {
+            return 0;
+        }
+
+        return hour >= 17 || hour < 6 || isRuaClubDay(day - 1) ? 1 : 0;
+    }
+
+    // Fleta (npc/senmag/fleta.mint): out for a walk in Sen Mag Plains after meals, 9:00-11:00,
+    // 15:00-17:00 and 19:00-21:00. 1 out, 0 not.
+    static int fletaAt(uint64_t time) {
+        auto hour = erinnHour(time);
+
+        return hour == 9 || hour == 10 || hour == 15 || hour == 16 || hour == 19 || hour == 20 ? 1 : 0;
+    }
+
+    // Tarlach (npc/variable/tarlach.mint, tarlachbear.mint): a man from 18:00 to 6:00, a bear
+    // otherwise. 1 a man, 0 a bear.
+    static int tarlachAt(uint64_t time) {
+        auto hour = erinnHour(time);
+
+        return hour >= 18 || hour < 6 ? 1 : 0;
+    }
+
+    // When a schedule that changes on Erinn hours next changes after `now`, and how long what comes
+    // next lasts.
+    struct Change {
+        uint64_t at;
+        uint64_t length;
+    };
+
+    static Change nextChange(int (*stateAt)(uint64_t), uint64_t now) {
+        auto current = stateAt(now);
+        auto limit = now + 60 * ERINN_DAY_MS;
+        auto at = (now / ERINN_HOUR_MS + 1) * ERINN_HOUR_MS;
+
+        while (at < limit && stateAt(at) == current) {
+            at += ERINN_HOUR_MS;
+        }
+
+        auto next = stateAt(at);
+        auto end = at;
+
+        while (end < limit && stateAt(end) == next) {
+            end += ERINN_HOUR_MS;
+        }
+
+        return { at, end - at };
+    }
 
     // "2h 5m", "36m" or "1m": rounded up to the minute.
     static wstring formatDuration(uint64_t ms) {
@@ -64,6 +135,11 @@ namespace kanan {
         }
 
         return to_wstring(minutes / 60) + L"h " + to_wstring(minutes % 60) + L"m";
+    }
+
+    // "Rua is at home for another 2h 17m, then at Bean Rua in Emain Macha for 20m."
+    static wstring nowThen(const wstring& now, uint64_t remaining, const wstring& then, uint64_t length) {
+        return now + L" for another " + formatDuration(remaining) + L", then " + then + L" for " + formatDuration(length) + L".";
     }
 
     // The start of the game's chat input function: push 0Ch / mov eax, <handler>.
@@ -165,7 +241,7 @@ namespace kanan {
         g_stringContent = (StringContentFn)GetProcAddress(esl, "?GetSafeContent@?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QBEPB_WXZ");
         g_interfaceMgr = (void**)GetProcAddress(pleione, "?s_pInstanceBlock@?$TSingleton@VCInterfaceMgr@pleione@@@esl@@0PAEA");
 
-        // Only needed by .price and .priceschedule, which say so when it's missing.
+        // Only needed by .price, which says so when it's missing.
         auto standard = GetModuleHandleA("Standard.dll");
 
         if (standard != nullptr) {
@@ -289,26 +365,26 @@ namespace kanan {
                 L".help .h - shows the available commands\n"
                 L".ping .p - answers 'pong'\n"
                 L".swap .s - tells which skill the combat attack is swapped to\n"
-                L".price - where Price is and how long until he moves\n"
-                L".priceschedule - how long until Price arrives at each of his next stops\n"
-                L".weather - opens the weather forecast for every region in your browser"
+                L".price .rua .fleta .tarlach - where they are and how long until that changes\n"
+                L".weather - the weather where you are and what comes next\n"
+                L".tracker - opens the Erinn Tracker in your browser: the weather everywhere, where the moon gates lead, and when Price, Rua, Fleta and Tarlach are where"
             );
         }
-        else if (command == L"weather") {
-            auto tracker = WeatherTracker::instance();
+        else if (command == L"tracker") {
+            auto tracker = MabiTrackers::instance();
             wstring error;
 
             if (tracker == nullptr) {
-                printToChat(L"The weather forecast is not available.");
+                printToChat(L"The Erinn Tracker is not available.");
             }
             else if (tracker->open(error)) {
-                printToChat(L"Opened the weather forecast in your browser.");
+                printToChat(L"Opened the Erinn Tracker in your browser.");
             }
             else {
                 printToChat(error);
             }
         }
-        else if (command == L"price" || command == L"priceschedule") {
+        else if (command == L"price") {
             if (g_getGlobalTime == nullptr) {
                 printToChat(L"Price's location is not available for this version of the game.");
                 return true;
@@ -320,26 +396,61 @@ namespace kanan {
             auto untilNextDay = ERINN_DAY_MS - intoDay;
             auto stop = [&](uint64_t days) { return PRICE_STOPS[(day + days) % 14]; };
 
-            if (command == L"price") {
-                // He checks where to be every 30-40 seconds, so he may still be on his way.
-                if (intoDay < 40 * 1000) {
-                    printToChat(L"Price is moving to " + wstring{ stop(0) } + L" now (he arrives within a minute). " +
-                        L"He moves to " + stop(1) + L" in " + formatDuration(untilNextDay) + L".");
-                }
-                else {
-                    printToChat(L"Price is in " + wstring{ stop(0) } + L". He moves to " + stop(1) + L" in " +
-                        formatDuration(untilNextDay) + L".");
-                }
+            // He checks where to be every 30-40 seconds, so he may still be on his way.
+            auto here = L"Price is in " + wstring{ stop(0) } + (intoDay < 40 * 1000 ? L" (arriving within a minute)" : L"");
+
+            printToChat(nowThen(here, untilNextDay, L"in " + wstring{ stop(1) }, ERINN_DAY_MS));
+        }
+        else if (command == L"weather") {
+            auto tracker = MabiTrackers::instance();
+            MabiTrackers::WeatherNow weather{};
+            wstring error;
+
+            if (tracker == nullptr) {
+                printToChat(L"The weather is not available.");
+            }
+            else if (!tracker->weatherHere(weather, error)) {
+                printToChat(error);
             }
             else {
-                wstring schedule = L"Price is in " + wstring{ stop(0) } + L" for another " + formatDuration(untilNextDay) + L". Next:";
+                static const wchar_t* const NOW[] = { L"It's clear", L"It's cloudy", L"It's raining", L"There's a thunderstorm" };
+                static const wchar_t* const THEN[] = { L"clear", L"cloudy", L"rain", L"a thunderstorm" };
+                auto where = weather.place.empty() ? wstring{ L" here" } : L" in " + weather.place;
 
-                for (uint64_t days = 1; days < 14; ++days) {
-                    schedule += L"\n" + wstring{ stop(days) } + L" in " + formatDuration(untilNextDay + (days - 1) * ERINN_DAY_MS);
-                }
-
-                printToChat(schedule);
+                printToChat(nowThen(NOW[weather.now] + where, weather.untilNext, THEN[weather.next], weather.nextLength) +
+                    (weather.mayDiffer ? L" Part of this may differ for other players and the game servers (see .tracker)." : L""));
             }
+        }
+        else if (command == L"rua" || command == L"fleta" || command == L"tarlach") {
+            if (g_getGlobalTime == nullptr) {
+                printToChat(L"NPC schedules are not available for this version of the game.");
+                return true;
+            }
+
+            auto now = g_getGlobalTime();
+
+            // Each schedule has two states (1 and 0): how to say each one now, and after "then".
+            struct Schedule {
+                int (*stateAt)(uint64_t);
+                const wchar_t* now[2];
+                const wchar_t* then[2];
+            };
+
+            static const Schedule RUA{ ruaAt,
+                { L"Rua is at home", L"Rua is at Bean Rua in Emain Macha" },
+                { L"at home", L"at Bean Rua in Emain Macha" } };
+            static const Schedule FLETA{ fletaAt,
+                { L"Fleta is away", L"Fleta is out for a walk in Sen Mag Plains" },
+                { L"away", L"out for a walk in Sen Mag Plains" } };
+            static const Schedule TARLACH{ tarlachAt,
+                { L"Tarlach is a bear in North Sidhe Sneachta", L"Tarlach is a man in North Sidhe Sneachta" },
+                { L"a bear", L"a man" } };
+
+            auto& schedule = command == L"rua" ? RUA : command == L"fleta" ? FLETA : TARLACH;
+            auto state = schedule.stateAt(now);
+            auto next = nextChange(schedule.stateAt, now);
+
+            printToChat(nowThen(schedule.now[state], next.at - now, schedule.then[1 - state], next.length));
         }
         else if (command == L"ping" || command == L"p") {
             printToChat(L"pong");
@@ -399,8 +510,9 @@ namespace kanan {
 
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Type these in chat (they are not sent to other players):\n.help - list of commands\n.ping - answers pong\n.swap - which skill the combat attack is swapped to\n"
-                ".price - where Price is and how long until he moves\n.priceschedule - how long until Price arrives at each of his next stops\n"
-                ".weather - opens the weather forecast for every region in your browser");
+                ".price .rua .fleta .tarlach - where they are and how long until that changes\n"
+                ".weather - the weather where you are and what comes next\n"
+                ".tracker - opens the Erinn Tracker: the weather everywhere, moon gates, and NPC schedules");
         }
     }
 

@@ -54,7 +54,7 @@
 #include "TargetProps.hpp"
 #include "TimeAlarm.hpp"
 #include "UserCommands.hpp"
-#include "WeatherTracker.hpp"
+#include "MabiTrackers.hpp"
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
 #include "FontStyle.hpp"
@@ -242,8 +242,8 @@ namespace kanan {
         addMod(make_unique<ShowTrueDurability>(), ui, "Show True Durability",
             "Shows exact item durability in descriptions, with item colors.");
         addMod(make_unique<TimeAlarm>(), convenience, "Time Alarm", "Alarms at in-game times, like transformation time.");
-        addMod(make_unique<WeatherTracker>(), convenience, "Weather Tracker",
-            "A weather forecast for every region, with countdowns to each kind of weather, opened in your browser.");
+        addMod(make_unique<MabiTrackers>(), convenience, "Erinn Tracker",
+            "The weather forecast for every region, where the moon gates lead, and the schedules of Price, Rua, Fleta and Tarlach, with countdowns, opened in your browser.");
         addMod(make_unique<CpuScheduling>(), system, "CPU Scheduling",
             "Fixes freezes on Intel CPUs with performance and efficiency cores; power throttling.");
         addMod(make_unique<ThreadPriority>(), system, "Thread Priority",

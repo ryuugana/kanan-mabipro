@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Erinn Weather</title>
+<title>Erinn Tracker</title>
 <style>
 :root {
   --bg: #f4f5f8;
@@ -50,6 +50,21 @@ h1 { font-size: 26px; margin: 0; letter-spacing: -.01em; }
 h2 { font-size: 16px; margin: 0 0 10px; }
 .sub { color: var(--muted); font-size: 13px; }
 .clock { text-align: right; }
+.tabs { display: flex; gap: 6px; margin: 0 0 16px; border-bottom: 1px solid var(--line); }
+.tabs button { background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; cursor: pointer; margin-bottom: -1px; }
+.tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+.npc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.npc .where { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.npc .status { display: flex; align-items: center; gap: 10px; margin: 12px 0 10px; }
+.npc .state { font-size: 17px; font-weight: 600; }
+.npc .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--muted); }
+.npc .dot.on { background: var(--here); box-shadow: 0 0 0 3px color-mix(in srgb, var(--here) 25%, transparent); }
+.npc .for { color: var(--muted); font-size: 12.5px; }
+.npc h3 { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 12px 0 6px; }
+.npc ul { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.npc li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line); }
+.npc li .t { color: var(--muted); white-space: nowrap; }
+.npc li .c { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .live { margin-top: 3px; }
 .live .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
 .live.on .dot { background: var(--here); box-shadow: 0 0 0 3px color-mix(in srgb, var(--here) 25%, transparent); }
@@ -133,22 +148,28 @@ svg.wx { display: block; }
 <div class="wrap">
   <header>
     <div>
-      <h1>Erinn Weather</h1>
+      <h1>Erinn Tracker</h1>
       <div class="sub" id="source"></div>
       <div class="sub live" id="live"></div>
     </div>
     <div class="clock">
       <div class="time" id="clock"></div>
       <div class="sub" id="date"></div>
+      <div class="sub" id="erinn"></div>
     </div>
   </header>
 
+  <nav class="tabs" id="tabs">
+    <button data-view="weather">Weather</button><button data-view="npcs">Schedules</button>
+  </nav>
+
   <div id="app"></div>
 
-  <div class="note panel">
+  <div class="note panel" id="weather-notes">
     <p>Weather changes every 20 minutes, at the times shown, fading in over the first minute. It comes straight from your game, so it's what your game will show.</p>
+    <div id="weather-times"></div>
     <p><b>Where you are:</b> keep this page open while you play and it follows you. The line under the title says where you are, and that place's card and timeline row are marked "You're here". They update within a few seconds of changing regions, while the game is running.</p>
-    <p><b>Refresh:</b> type <b>.weather</b> in game (or use Weather Tracker in the Kanan menu) for a fresh page. Do it after restarting the game, since the slots marked "may differ" change with each game session; after a daylight saving change, since the page's times follow the game's clock as it was when the page was made; and when the forecast runs out after 14 days.</p>
+    <p><b>Refresh:</b> type <b>.tracker</b> in game (or use Erinn Tracker in the Kanan menu) for a fresh page. Do it after restarting the game, since the slots marked "may differ" change with each game session; after a daylight saving change, since the page's times follow the game's clock as it was when the page was made; and when the forecast runs out after 14 days.</p>
     <p>Places not listed (such as Physis, Ceo Island and Port Cobh) have no weather cycle.</p>
     <details id="maydiffer-info">
       <summary><b>About the "may differ" slots</b></summary>
@@ -163,7 +184,7 @@ svg.wx { display: block; }
 
 <script>
 "use strict";
-const DATA = /*KANAN_WEATHER_DATA*/null;
+const DATA = /*MABI_TRACKERS_DATA*/null;
 
 const NAMES = ["Clear", "Cloudy", "Rain", "Thunderstorm"];
 const COLORS = ["var(--clear)", "var(--cloudy)", "var(--rain)", "var(--storm)"];
@@ -261,9 +282,220 @@ function applyShown() {
 function gameNow() { return Date.now() + DATA.offset; }
 function toUnix(gameMs) { return gameMs - DATA.offset; }
 
+// ---- The game clock and NPC schedules ----
+// Game time is in milliseconds; an Erinn day is 36 real minutes and an Erinn hour 90 seconds
+// (core::stdapi_GlobalTimeToGameTime). The schedules below are the server's NPC scripts
+// (script/korea/npc/...), which check the clock every 30-40 seconds.
+const ERINN_DAY = 2160000;
+const ERINN_HOUR = 90000;
+const mod = (a, n) => ((a % n) + n) % n;
+
+function erinnTime(g) {
+  const day = Math.floor(g / ERINN_DAY);
+  const rest = g - day * ERINN_DAY;
+  return { day, hour: Math.floor(rest / ERINN_HOUR), minute: Math.floor(rest % ERINN_HOUR / 1500) };
+}
+
+// Runs of an NPC's state, which only changes on Erinn hour boundaries: {state, start, end}.
+function hourlyRuns(stateAt, from, hours) {
+  const first = Math.floor(from / ERINN_HOUR) * ERINN_HOUR;
+  const runs = [];
+  for (let t = first; t < first + hours * ERINN_HOUR; t += ERINN_HOUR) {
+    const state = stateAt(t);
+    const last = runs[runs.length - 1];
+    if (last && last.state === state) last.end = t + ERINN_HOUR;
+    else runs.push({ state, start: t, end: t + ERINN_HOUR });
+  }
+  return runs;
+}
+
+// Weather type (0-3) of a weather table at a game time, or null outside the forecast.
+function weatherAt(tableName, t) {
+  const table = DATA.tables[tableName];
+  if (!table) return null;
+  const i = Math.floor((t - table.base) / table.slot) - table.first;
+  return i >= 0 && i < table.weather.length ? +table.weather[i] : null;
+}
+
+// Price (npc/variable/price.mint, GetTargetPosition in npc/common.mint): stop (Erinn day % 14). He
+// has two spots in Dunbarton, Bangor and Emain Macha, named by where each is from the other.
+const PRICE_STOPS = ["Tir Chonaill", "Dugald Aisle", "Dunbarton (east)", "Gairech", "Bangor (south)", "Sen Mag Plains",
+  "Emain Macha (north)", "Ceo Island", "Emain Macha (south)", "Sen Mag Plains", "Gairech", "Bangor (north)",
+  "Dunbarton (west)", "Dugald Aisle"];
+
+// Rua (npc/emainmacha/rua.mint): on club days of a 43-day cycle (a day running 6:00 to 6:00) she goes
+// to Bean Rua from 17:00 to 6:00; on other days she goes home. In a club day's daytime she stays
+// where she was.
+const RUA_CLUB_DAYS = new Set([0, 2, 3, 5, 6, 7, 15, 17, 20, 24, 28, 31, 35, 40]);
+
+function ruaAt(t) {
+  const e = erinnTime(t);
+  const day = e.hour < 6 ? e.day - 1 : e.day;
+  const club = RUA_CLUB_DAYS.has(mod(day, 43));
+  if (club && (e.hour >= 17 || e.hour < 6)) return "club";
+  if (!club) return "home";
+  return RUA_CLUB_DAYS.has(mod(day - 1, 43)) ? "club" : "home";
+}
+
+// Fleta (npc/senmag/fleta.mint): out for a walk after meals, 9:00-11:00, 15:00-17:00 and 19:00-21:00,
+// dressed for Sen Mag's weather.
+function fletaAt(t) {
+  return [9, 10, 15, 16, 19, 20].includes(erinnTime(t).hour) ? "here" : "away";
+}
+
+// Tarlach (npc/variable/tarlach.mint, tarlachbear.mint): a man from 18:00 to 6:00, a bear otherwise.
+function tarlachAt(t) {
+  const hour = erinnTime(t).hour;
+  return hour >= 18 || hour < 6 ? "human" : "bear";
+}
+
+// Moon gates (the server's day control and moon gate code, db/gate.xml): every moon gate opens at
+// moonrise, Erinn 18:00, and closes at moonset, 6:00, and each night they all lead to one place, the
+// next in a fixed rotation: rotation[Erinn day % its length], the day being the one the night began
+// on. The rotation is the one the game loaded (DATA.moongates), or gate.xml's if Kanan couldn't read
+// it; the names are the game's (local/xml/gate.*.txt).
+const MOONGATE_NAMES = {
+  _moongate_alby_dungeon: "Alby Dungeon", _moongate_tirchonaill: "Tir Chonaill", _moongate_ciar_dungeon: "Ciar Dungeon",
+  _moongate_dugaldaisle: "Dugald Aisle", _moongate_rabbie_dungeon: "Rabbie Dungeon", _moongate_dunbarton: "Dunbarton",
+  _moongate_math_dungeon: "Math Dungeon", _moongate_fiodh_dungeon: "Fiodh Dungeon", _moongate_gairech: "Gairech",
+  _moongate_bangor: "Bangor", _moongate_emainmacha: "Emain Macha", _moongate_ceoisland: "Ceo Island",
+  _moongate_coill_dungeon: "Coill Dungeon", _moongate_peaca_dungeon: "Peaca Dungeon", _moongate_ceann_harbor: "Port Ceann",
+  _moongate_taillteann_west: "Taillteann", _moongate_tara_west: "Tara",
+};
+const MOONGATE_ROTATION = ["tara_west", "taillteann_west", "tirchonaill", "dunbarton", "bangor", "tara_west", "ceoisland",
+  "tirchonaill", "taillteann_west", "emainmacha", "tara_west", "dunbarton", "ceann_harbor", "bangor", "emainmacha",
+  "tara_west", "tirchonaill", "taillteann_west", "ceoisland", "emainmacha", "tara_west", "bangor", "dunbarton",
+  "ceann_harbor"].map(n => "_moongate_" + n);
+
+function moongateRotation() {
+  return DATA.moongates && DATA.moongates.length ? DATA.moongates : MOONGATE_ROTATION;
+}
+
+function moongateName(gate) {
+  return MOONGATE_NAMES[gate] || gate.replace(/^_moongate_/, "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// The night (open 18:00 to 6:00) that is on at game time t, or the next one: {gate, start, end}.
+function moongateNight(t) {
+  const e = erinnTime(t);
+  const day = e.hour < 6 ? e.day - 1 : e.day;
+  const rotation = moongateRotation();
+  const start = day * ERINN_DAY + 18 * ERINN_HOUR;
+  return { gate: moongateName(rotation[mod(day, rotation.length)]), start, end: start + 12 * ERINN_HOUR };
+}
+
+function when(t, now) {
+  return `<span class="t">${localTime(toUnix(t), true)}</span>`;
+}
+
+function npcCard(name, where, on, state, detail, listTitle, items) {
+  return `<div class="card npc">
+    <div class="name">${name}</div>
+    <div class="where">${where}</div>
+    <div class="status"><span class="dot${on ? " on" : ""}"></span><div><div class="state">${state}</div><div class="for">${detail}</div></div></div>
+    <h3>${listTitle}</h3>
+    <ul>${items.join("")}</ul>
+  </div>`;
+}
+
+function item(label, t, now, suffix) {
+  return `<li><span>${label}</span><span>${when(t, now)} &nbsp;<span class="c">in ${duration(t - now)}</span>${suffix || ""}</span></li>`;
+}
+
+function renderNpcs(now) {
+  const cards = [];
+
+  // Price: where he is, and his next stops.
+  {
+    const e = erinnTime(now);
+    const next = (e.day + 1) * ERINN_DAY;
+    const items = [];
+    for (let d = 1; d < 14; d++) items.push(item(PRICE_STOPS[mod(e.day + d, 14)], next + (d - 1) * ERINN_DAY, now));
+    cards.push(npcCard("Price", "The traveling merchant, somewhere new every Erinn day", true,
+      PRICE_STOPS[mod(e.day, 14)], `moves on in ${duration(next - now)}`, "Next stops", items));
+  }
+
+  // Moon gates: where tonight's gates lead, and the next nights.
+  {
+    const night = moongateNight(now);
+    const open = night.start <= now;
+    const nights = [];
+    for (let d = 1; d <= 12; d++) {
+      const n = moongateNight(night.start + d * ERINN_DAY);
+      nights.push(item(n.gate, n.start, now));
+    }
+    cards.push(npcCard("Moon Gates", "They open at Erinn 18:00 and close at 6:00; each night they all lead to one place, the next in a 24-night rotation", open,
+      open ? `Open to ${night.gate}` : `Closed, tonight to ${night.gate}`,
+      open ? `closes in ${duration(night.end - now)}` : `opens in ${duration(night.start - now)}`,
+      "Next nights", nights));
+  }
+
+  // Rua: Bean Rua or home.
+  {
+    const runs = hourlyRuns(ruaAt, now, 43 * 24 * 2);
+    const cur = runs.find(r => r.start <= now && now < r.end);
+    const nights = runs.filter(r => r.state === "club" && r.start > now).slice(0, 6)
+      .map(r => item(`For ${duration(r.end - r.start)}`, r.start, now));
+    const atClub = cur.state === "club";
+    const nextClub = runs.find(r => r.state === "club" && r.start > now);
+    cards.push(npcCard("Rua", "Emain Macha: at Bean Rua (the club) on club nights, otherwise at home", atClub,
+      atClub ? "At Bean Rua" : "At home",
+      atClub ? `goes home in ${duration(cur.end - now)}` : nextClub ? `next at Bean Rua in ${duration(nextClub.start - now)}` : "",
+      "Next nights at Bean Rua", nights));
+  }
+
+  // Fleta: in Sen Mag Plains three times an Erinn day, dressed for the weather.
+  {
+    const runs = hourlyRuns(fletaAt, now, 24 * 4);
+    const cur = runs.find(r => r.start <= now && now < r.end);
+    const senMag = places.find(p => p.names.includes("Sen Mag Plains"));
+    const outfit = t => {
+      const w = senMag ? weatherAt(senMag.tableName, t) : null;
+      return w === 3 ? " (storm outfit)" : w === 2 ? " (rain outfit)" : "";
+    };
+    const walks = runs.filter(r => r.state === "here" && r.start > now).slice(0, 6)
+      .map(r => item(`For ${duration(r.end - r.start)}${outfit(r.start)}`, r.start, now));
+    const here = cur.state === "here";
+    const next = runs.find(r => r.state === "here" && r.start > now);
+    cards.push(npcCard("Fleta", "Sen Mag Plains, out for a walk after meals (Erinn 9-11, 15-17, 19-21)", here,
+      here ? `Out for a walk${outfit(now)}` : "Not out",
+      here ? `leaves in ${duration(cur.end - now)}` : next ? `out again in ${duration(next.start - now)}` : "",
+      "Next walks", walks));
+  }
+
+  // Tarlach: a man at night, a bear by day.
+  {
+    const runs = hourlyRuns(tarlachAt, now, 24 * 4);
+    const cur = runs.find(r => r.start <= now && now < r.end);
+    const human = cur.state === "human";
+    const changes = runs.filter(r => r.start > now).slice(0, 6)
+      .map(r => item(r.state === "human" ? `A man for ${duration(r.end - r.start)}` : `A bear for ${duration(r.end - r.start)}`, r.start, now));
+    cards.push(npcCard("Tarlach", "North Sidhe Sneachta: a man from Erinn 18:00 to 6:00, a bear the rest of the day", human,
+      human ? "A man" : "A bear",
+      human ? `turns into a bear in ${duration(cur.end - now)}` : `a man again in ${duration(cur.end - now)}`,
+      "Next changes", changes));
+  }
+
+  $("npcs").innerHTML = cards.join("");
+}
+
+// The Weather and Schedules tabs, remembered in this browser when it allows it.
+function showView(view) {
+  $("view-weather").hidden = view !== "weather";
+  $("view-npcs").hidden = view !== "npcs";
+  $("weather-notes").hidden = view !== "weather";
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+  try { localStorage.setItem("kananTracker.view", view); } catch (e) { }
+  if (view === "weather") {
+    placeNowLine();
+    // The timeline can't scroll while it's hidden, so the first time it's shown, go to now.
+    if ($("scroll").scrollLeft === 0) $("scroll").scrollLeft = Math.max(0, nowX() - 60);
+  }
+}
+
 function build() {
   if (!DATA) {
-    $("app").innerHTML = '<div class="panel empty">Open this page from the game: type <b>.weather</b> in chat, or use Weather Tracker in the Kanan menu.</div>';
+    $("app").innerHTML = '<div class="panel empty">Open this page from the game: type <b>.tracker</b> in chat, or use Erinn Tracker in the Kanan menu.</div>';
     return;
   }
   places = DATA.places.map(p => {
@@ -271,9 +503,10 @@ function build() {
     return { ...p, tableName: p.table, table, runs: runsOf(table) };
   });
   const generated = new Date(DATA.generated);
-  $("source").textContent = `From your game, ${generated.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · forecast to ${localTime(toUnix(lastEnd()), true)} · type .weather in game to refresh`;
+  $("source").textContent = `From your game, ${generated.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · forecast to ${localTime(toUnix(lastEnd()), true)} · type .tracker in game to refresh`;
 
   $("app").innerHTML = `
+    <div id="view-weather">
     <section class="panel">
       <div class="row-head">
         <h2>Coming up</h2>
@@ -308,8 +541,22 @@ function build() {
         <span><i class="swatch w3"></i>Thunderstorm</span>
         <span><i class="swatch hatch"></i><span><b>May differ</b> (one 20-minute slot every ~8.7 days): see <a href="#maydiffer-info" data-info>About the "may differ" slots</a> at the bottom of the page</span></span>
       </div>
-    </section>`;
+    </section>
+    </div>
+    <div id="view-npcs" hidden>
+      <div class="npc-grid" id="npcs"></div>
+      <div class="note panel">
+        <p>Times are when each NPC's script changes things; they check the game clock every 30 to 40 seconds, so allow up to a minute. The schedules come from the game's server scripts and follow the game clock, like the weather. The moon gates open and close right on the hour, and their rotation is the one your game loaded.</p>
+        <p>An Erinn hour is 90 real seconds, and an Erinn day 36 real minutes.</p>
+        ${timesNote()}
+      </div>
+    </div>`;
+  $("weather-times").innerHTML = timesNote();
 
+  $("tabs").addEventListener("click", e => { if (e.target.dataset.view) showView(e.target.dataset.view); });
+  let view = "weather";
+  try { view = localStorage.getItem("kananTracker.view") || view; } catch (e) { }
+  showView(view === "npcs" ? "npcs" : "weather");
   $("filter").addEventListener("click", e => { if (e.target.dataset.f) { filter = e.target.dataset.f; render(); } });
   $("zoom").addEventListener("click", e => { if (e.target.dataset.z) { zoom = +e.target.dataset.z; drawTimeline(true); } });
   $("shown").addEventListener("click", e => {
@@ -337,7 +584,7 @@ function build() {
   tick();
 }
 
-// Live location: while the game runs, Kanan keeps kananWeatherLive.js next to this page up to date
+// Live location: while the game runs, Kanan keeps MabiTrackersLive.js next to this page up to date
 // with where you are ({region, group, table, time}), rewriting it when you change regions.
 let live = null;
 
@@ -356,7 +603,7 @@ function pollLive() {
   if (old) old.remove();
   const script = document.createElement("script");
   script.id = "live-script";
-  script.src = "kananWeatherLive.js?t=" + Date.now();
+  script.src = "MabiTrackersLive.js?t=" + Date.now();
   document.head.appendChild(script);
 }
 
@@ -376,10 +623,28 @@ function lastEnd() {
   return Math.min(...places.map(p => p.runs[p.runs.length - 1].end));
 }
 
+// The name of the viewer's time zone, "EDT" or "Eastern Daylight Time".
+function zoneName(style) {
+  try {
+    const part = new Intl.DateTimeFormat([], { timeZoneName: style }).formatToParts(new Date()).find(p => p.type === "timeZoneName");
+    if (part) return part.value;
+  } catch (e) { }
+  return "your computer's time zone";
+}
+
+// The note on what the page's times are based on, on both tabs.
+function timesNote() {
+  return `<p><b>Times:</b> the times on this page are in your computer's time zone (${zoneName("long")}), and the countdowns are the same for everyone. They're worked out from the game's clock, not your computer's: when the page is made, Kanan notes how far the game's clock is from your computer's, so they match the game even if your computer's clock is a little off. The Erinn time under the clock is the time in game.</p>`;
+}
+
 function tick() {
   const now = new Date();
   $("clock").textContent = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
-  $("date").textContent = now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  $("date").textContent = `${now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} · your time (${zoneName("short")})`;
+  if (DATA) {
+    const e = erinnTime(gameNow());
+    $("erinn").textContent = `Erinn ${String(e.hour).padStart(2, "0")}:${String(e.minute).padStart(2, "0")} · in game`;
+  }
   placeNowLine();
   showLive();
 }
@@ -390,6 +655,8 @@ function nextRun(p, now, types) { return p.runs.find(r => r.start > now && types
 function render() {
   if (!DATA) return;
   const now = gameNow();
+
+  renderNpcs(now);
 
   document.querySelectorAll("#filter button").forEach(b => b.classList.toggle("on", b.dataset.f === filter));
   document.querySelectorAll("#zoom button").forEach(b => b.classList.toggle("on", +b.dataset.z === zoom));
