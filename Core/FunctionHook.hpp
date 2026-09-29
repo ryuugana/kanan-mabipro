@@ -15,6 +15,14 @@ namespace kanan {
         // if you need to remove the hook.
         bool remove();
 
+        // Kanan loads on its own thread while the game is already running, so a hook turned on as
+        // soon as it's made can be called by the game before the code that made it has kept it
+        // (m_hook = make_unique<FunctionHook>(...)), when the hook's function finds no original to
+        // call. While deferring, hooks are made but not turned on until enableDeferred, which Kanan
+        // calls as soon as whatever made them (a mod, the D3D9 hook) is done setting up.
+        static void setDeferEnabling(bool isDeferring);
+        static void enableDeferred();
+
         auto getTarget() const {
             return m_target;
         }

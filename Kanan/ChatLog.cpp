@@ -41,7 +41,16 @@ namespace kanan {
 	static uintptr_t g_lineContinue{ 0 };      // after the cmp/jne, when the caller gave no color
 	static uintptr_t g_lineColorGiven{ 0 };    // the jne's target
 
-	static void __stdcall prefixLine(void* line) {
+	// The line being added: its name as it came (the add-line function's first argument, at
+	// [ebp+14h] where the patch is) and its text, and that name with the time in front, for the chat
+	// log window and the chat's history (see hookedLogLine).
+	static const void* g_liveName{ nullptr };
+	static std::wstring g_liveNameText{};
+	static std::wstring g_liveTimedName{};
+
+	static void __stdcall prefixLine(void* line, const void* name) {
+		g_liveName = nullptr;
+
 		auto prefix = g_chatLog != nullptr ? g_chatLog->timePrefix() : std::wstring{};
 
 		if (prefix.empty()) {
@@ -52,12 +61,21 @@ namespace kanan {
 		auto timed = prefix + (text != nullptr ? text : L"");
 
 		g_stringAssign(line, timed.c_str());
+
+		auto nameText = name != nullptr ? g_stringContent(name) : nullptr;
+
+		if (nameText != nullptr) {
+			g_liveName = name;
+			g_liveNameText = nameText;
+			g_liveTimedName = prefix + g_liveNameText;
+		}
 	}
 
 	static __declspec(naked) void hookLineText() {
 		__asm {
 			pushad
 			pushfd
+			push    dword ptr [ebp + 14h]
 			lea     eax, [ebp - 10h]
 			push    eax
 			call    prefixLine
@@ -70,6 +88,62 @@ namespace kanan {
 		given:
 			jmp     g_lineColorGiven
 		}
+	}
+
+	// After it builds the line for the chat at the bottom of the screen, the add-line function gives
+	// the name as it came to the chat log window (CChatLogView, the window that can be opened and
+	// expanded: name, message, extra, color, tab, and a flag) and to the chat's history, which that
+	// window is filled from when it's opened (name, message, extra, color, tab). The color is already
+	// worked out, so these never look it up from the name. When it's the line being added, they get
+	// the name with the time; lines filled in from the history already have it.
+	using LogLineFn = void(__fastcall*)(void* view, void* edx, const void* name, const void* message, const void* extra,
+		unsigned long color, unsigned long tab, unsigned long flag);
+	using HistoryLineFn = void(__fastcall*)(void* view, void* edx, const void* name, const void* message, const void* extra,
+		unsigned long color, unsigned long tab);
+
+	static LogLineFn g_originalLogLine{ nullptr };
+	static HistoryLineFn g_originalHistoryLine{ nullptr };
+
+	// Makes str the line's name with the time when name is the name of the line being added.
+	static bool makeTimedName(const void* name, uintptr_t* str) {
+		if (name == nullptr || name != g_liveName) {
+			return false;
+		}
+
+		auto text = g_stringContent(name);
+
+		if (text == nullptr || g_liveNameText != text) {
+			return false;
+		}
+
+		g_stringCtor(str, g_liveTimedName.c_str());
+		return true;
+	}
+
+	static void __fastcall hookedLogLine(void* view, void* edx, const void* name, const void* message, const void* extra,
+		unsigned long color, unsigned long tab, unsigned long flag) {
+		uintptr_t str[4]{};     // an esl::CStringT is a single pointer
+
+		if (!makeTimedName(name, str)) {
+			g_originalLogLine(view, edx, name, message, extra, color, tab, flag);
+			return;
+		}
+
+		g_originalLogLine(view, edx, str, message, extra, color, tab, flag);
+		g_stringDtor(str);
+	}
+
+	static void __fastcall hookedHistoryLine(void* view, void* edx, const void* name, const void* message, const void* extra,
+		unsigned long color, unsigned long tab) {
+		uintptr_t str[4]{};
+
+		if (!makeTimedName(name, str)) {
+			g_originalHistoryLine(view, edx, name, message, extra, color, tab);
+			return;
+		}
+
+		g_originalHistoryLine(view, edx, str, message, extra, color, tab);
+		g_stringDtor(str);
 	}
 
 	static void __fastcall hookedChatLine(void* interfaceMgr, void* edx, const void* name, const void* message,
@@ -143,6 +217,7 @@ namespace kanan {
 
 			if (patch(m_linePatch)) {
 				log("[ChatLog] Patched the chat window's line text at %p", (void*)at);
+				hookLogWindow();
 				return;
 			}
 
@@ -171,7 +246,35 @@ namespace kanan {
 	ChatLog::~ChatLog() {
 		undoPatch(m_linePatch);
 		m_chatLineHook.reset();
+		m_logLineHook.reset();
+		m_historyLineHook.reset();
 		g_chatLog = nullptr;
+	}
+
+	// The chat log window's add-line (CChatLogView) and the chat's history add-line (CMainChatView).
+	void ChatLog::hookLogWindow() {
+		auto logLine = scan("Pleione.dll", "55 8B EC 56 57 8B 7D 18 57 8B F1 E8 ? ? ? ? 59 84 C0 74 ? FF 75 1C 8B 8C BE 48 01 00 00");
+		auto historyLine = scan("Pleione.dll", "6A 10 B8 ? ? ? ? E8 ? ? ? ? 8B F9 8D 4D E4 E8 ? ? ? ? FF 75 08 8B 35 ? ? ? ? "
+			"83 65 FC 00 8D 4D E4 FF D6 FF 75 0C 8D 4D E8 FF D6 FF 75 10 8D 4D EC FF D6 8B 45 14 89 45 F0 8B 45 18 8D B4 87 98 01 00 00");
+
+		if (!logLine || !historyLine || g_stringCtor == nullptr || g_stringDtor == nullptr) {
+			log("[ChatLog] Couldn't find the chat log window's lines; it won't show the time");
+			return;
+		}
+
+		m_logLineHook = std::make_unique<FunctionHook>(*logLine, (uintptr_t)&hookedLogLine);
+		m_historyLineHook = std::make_unique<FunctionHook>(*historyLine, (uintptr_t)&hookedHistoryLine);
+
+		if (!m_logLineHook->isValid() || !m_historyLineHook->isValid()) {
+			log("[ChatLog] Couldn't hook the chat log window's lines; it won't show the time");
+			m_logLineHook.reset();
+			m_historyLineHook.reset();
+			return;
+		}
+
+		g_originalLogLine = (LogLineFn)m_logLineHook->getOriginal();
+		g_originalHistoryLine = (HistoryLineFn)m_historyLineHook->getOriginal();
+		log("[ChatLog] Hooked the chat log window's lines at %p and %p", (void*)*logLine, (void*)*historyLine);
 	}
 
 	std::wstring ChatLog::timePrefix() {

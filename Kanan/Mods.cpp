@@ -6,6 +6,7 @@
 #include <json.hpp>
 #include <String.hpp>
 #include <Config.hpp>
+#include <FunctionHook.hpp>
 
 #include "Mods.hpp"
 #include "Log.hpp"
@@ -157,6 +158,10 @@ namespace kanan {
         // Sections: what the mod is about, for players looking for it (Patches.json gives each
         // patch's section as its category).
         const string ui = "Interface";
+        // Hooks the mods below make are turned on as each is added, once it has kept them (see
+        // FunctionHook::setDeferEnabling); patches, like those above, aren't hooks and aren't delayed.
+        FunctionHook::setDeferEnabling(true);
+
         const string graphics = "Graphics & Camera";
         const string combat = "Combat & Skills";
         const string chat = "Chat & Messages";
@@ -255,6 +260,9 @@ namespace kanan {
             "Fixes screenshots not being saved with Windows display scaling (DPI).");
         addMod(make_unique<LosslessScreenshots>(), screenshots, "Lossless Screenshots", "Also saves each screenshot as a PNG.");
 
+        FunctionHook::setDeferEnabling(false);
+        FunctionHook::enableDeferred();
+
         sortMenu();
 
         log("[Mods] Finished loading mods.");
@@ -263,6 +271,9 @@ namespace kanan {
     void Mods::addMod(std::unique_ptr<Mod>&& mod, const std::string& section, const std::string& name,
         const std::string& description)
     {
+        // The mod is made and has kept its hooks: turn them on.
+        FunctionHook::enableDeferred();
+
         scoped_lock<mutex> _{ m_modsMutex };
 
         m_menu.push_back({ mod.get(), section, name, description, false });
@@ -272,6 +283,8 @@ namespace kanan {
     void Mods::addPatchMod(const std::string& section, std::unique_ptr<PatchMod>&& mod, const std::string& name,
         const std::string& description)
     {
+        FunctionHook::enableDeferred();
+
         scoped_lock<mutex> _{ m_modsMutex };
 
         m_menu.push_back({ mod.get(), section, name.empty() ? mod->getName() : name,
@@ -282,6 +295,8 @@ namespace kanan {
     void Mods::addMessageMod(std::unique_ptr<MessageMod>&& mod, const std::string& section, const std::string& name,
         const std::string& description)
     {
+        FunctionHook::enableDeferred();
+
         scoped_lock<mutex> _{ m_modsMutex };
 
         // Mods without a section have nothing to show in the menu.
