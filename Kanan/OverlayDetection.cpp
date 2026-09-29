@@ -233,7 +233,11 @@ namespace kanan {
             if (device != nullptr) {
                 auto entry = (*(uintptr_t**)device)[function.vtableIndex];
 
-                if (entry != function.hook.getTarget()) {
+                // A Reset Kanan hooked on the game's own device isn't a redirect.
+                auto isHooked = function.vtableIndex == resetIndex ? d3d9->isResetHooked(entry)
+                    : entry == function.hook.getTarget();
+
+                if (!isHooked) {
                     wstring name{};
 
                     if (moduleOf(entry, &name) == nullptr) {
