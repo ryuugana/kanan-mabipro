@@ -8,13 +8,19 @@ using namespace std;
 namespace kanan {
     static D3D9Hook* g_d3d9Hook{ nullptr };
 
+    // How deep in Reset calls the game is: the game device's Reset can call the one Kanan hooked
+    // first, and the callbacks only run for the outermost.
+    static int g_resetDepth{ 0 };
+
     D3D9Hook::D3D9Hook()
         : onPresent{},
         onPreReset{},
         onPostReset{},
         m_device{ nullptr },
         m_presentHook{ nullptr },
-        m_resetHook{ nullptr }
+        m_resetHook{ nullptr },
+        m_deviceResetHooks{},
+        m_lastDeviceReset{ 0 }
     {
         if (g_d3d9Hook == nullptr) {
             if (hook()) {
@@ -31,7 +37,71 @@ namespace kanan {
         m_presentHook.reset();
         m_resetHook.reset();
 
+        for (auto& hook : m_deviceResetHooks) {
+            hook.reset();
+        }
+
         g_d3d9Hook = nullptr;
+    }
+
+    bool D3D9Hook::isResetHooked(uintptr_t reset) const {
+        if (m_resetHook != nullptr && reset == m_resetHook->getTarget()) {
+            return true;
+        }
+
+        for (auto& hook : m_deviceResetHooks) {
+            if (hook != nullptr && reset == hook->getTarget()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Every frame: one read, unless the game device's Reset changed since the last frame.
+    void D3D9Hook::hookDeviceReset(IDirect3DDevice9* device) {
+        auto reset = (*(uintptr_t**)device)[16];
+
+        if (reset == m_lastDeviceReset) {
+            return;
+        }
+
+        if (m_lastDeviceReset == 0) {
+            log("Watching the game device's Reset (%p; hooked %p)", reset, m_resetHook->getTarget());
+        }
+
+        m_lastDeviceReset = reset;
+
+        if (isResetHooked(reset)) {
+            return;
+        }
+
+        static const uintptr_t destinations[DEVICE_RESET_SLOTS] = {
+            (uintptr_t)&D3D9Hook::deviceReset<0>,
+            (uintptr_t)&D3D9Hook::deviceReset<1>,
+            (uintptr_t)&D3D9Hook::deviceReset<2>,
+        };
+
+        for (size_t slot = 0; slot < DEVICE_RESET_SLOTS; ++slot) {
+            auto& hook = m_deviceResetHooks[slot];
+
+            if (hook != nullptr) {
+                continue;
+            }
+
+            log("The game's device now resets with %p, not a hooked Reset; hooking it too", reset);
+
+            hook = make_unique<FunctionHook>(reset, destinations[slot]);
+
+            if (!hook->isValid()) {
+                log("Failed to hook the game device's Reset");
+                hook.reset();
+            }
+
+            return;
+        }
+
+        log("The game's device resets with %p, but Kanan has no hooks left for it", reset);
     }
 
     bool D3D9Hook::hook() {
@@ -123,6 +193,9 @@ namespace kanan {
 
         d3d9->m_device = device;
 
+        // Make sure a reset of the game's own device goes through Kanan, even if its Reset changes.
+        d3d9->hookDeviceReset(device);
+
         // Call our present callback.
         if (d3d9->onPresent) {
             d3d9->onPresent(*d3d9);
@@ -135,21 +208,34 @@ namespace kanan {
     }
 
     HRESULT D3D9Hook::reset(IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* presentParams) {
+        return callReset(*g_d3d9Hook->m_resetHook, device, presentParams);
+    }
+
+    template <size_t slot>
+    HRESULT D3D9Hook::deviceReset(IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* presentParams) {
+        return callReset(*g_d3d9Hook->m_deviceResetHooks[slot], device, presentParams);
+    }
+
+    HRESULT D3D9Hook::callReset(const FunctionHook& hook, IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* presentParams) {
         auto d3d9 = g_d3d9Hook;
+        auto isOutermost = g_resetDepth == 0;
 
         d3d9->m_device = device;
 
         // Call our pre reset callback.
-        if (d3d9->onPreReset) {
+        if (isOutermost && d3d9->onPreReset) {
             d3d9->onPreReset(*d3d9);
         }
 
         // Call the original reset.
-        auto originalReset = (decltype(D3D9Hook::reset)*)d3d9->m_resetHook->getOriginal();
+        auto originalReset = (decltype(D3D9Hook::reset)*)hook.getOriginal();
+
+        ++g_resetDepth;
         auto result = originalReset(device, presentParams);
+        --g_resetDepth;
 
         // Call our post reset callback.
-        if (result == D3D_OK && d3d9->onPostReset) {
+        if (isOutermost && result == D3D_OK && d3d9->onPostReset) {
             d3d9->onPostReset(*d3d9);
         }
 
