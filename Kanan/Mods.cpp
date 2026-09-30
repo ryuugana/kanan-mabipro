@@ -224,7 +224,7 @@ namespace kanan {
         addMessageMod(make_unique<ChatLog>(), chat, "Chat Mods", "Includes various chat mods including a chat logger and adding time to chat.");
         addMod(make_unique<DisableNagle>(), system, "Disable Nagle", "Sends network messages right away, for less lag.");
         addMod(make_unique<BorderlessWindow>(), graphics, "Borderless Window", "Runs the game in a borderless window or fullscreen window.");
-        addMod(make_unique<EntityViewer>(), ui, "Entity Viewer", "Provides a window to view clothing, conditions, and other information from entities.");
+        addMessageMod(make_unique<EntityViewer>(), ui, "Entity Viewer", "Provides a window to view clothing, conditions, and other information from entities.");
         addMod(make_unique<FieldOfView>(), graphics, "Field Of View", "Changes the camera's field of view.");
         addMod(make_unique<DisplayScaling>(), graphics, "Display Scaling",
             "Makes the game sharp instead of blurry on high resolution screens (1440p, 4K, laptops) with Windows "
