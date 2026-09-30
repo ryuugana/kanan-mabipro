@@ -3,6 +3,7 @@
 #include "Log.hpp"
 #include <imgui.h>
 #include "AutoMute.hpp"
+#include "Kanan.hpp"
 
 namespace kanan {
 	LPVOID CMSS;
@@ -46,7 +47,7 @@ namespace kanan {
 	}
 
 	VOID MuteWhenBackground(LPVOID cmss) {
-		bool inBackground = GetActiveWindow() != GetForegroundWindow();
+		bool inBackground = g_kanan->getWindow() != GetForegroundWindow();
 		Mute(cmss, inBackground);
 	}
 
