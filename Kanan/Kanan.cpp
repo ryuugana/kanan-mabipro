@@ -525,28 +525,16 @@ namespace kanan {
         if (unzip_file(m_updateZipPath, m_path))
         {
             log("Success");
+
+            log("Update complete - Relaunching client.exe!");
+
+            start_application(m_updateExecPath);
+
+            exit(0);
         }
         else
         {
             log("Failed");
-        }
-
-        log("Update complete - Relaunching client.exe!");
-
-        if (start_application(m_updateExecPath))
-        {
-            if (GetLastError() != 0)
-            {
-                log("Failed to relaunch patcher. Error: %d", GetLastError());
-            }
-            else
-            {
-                exit(0);
-            }
-        }
-        else
-        {
-            exit(0);
         }
 
         log("Failed to update Kanan.");

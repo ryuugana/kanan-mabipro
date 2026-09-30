@@ -90,20 +90,17 @@ int main()
     if (unzip_file(filePath, path))
     {
         std::cout << "Success" << std::endl;
+
+        std::cout << "Update complete - Relaunching client.exe!" << std::endl;
     }
     else
     {
         std::cout << "Failed" << std::endl;
+
+        std::cout << "Update failed - Make sure all clients are closed and there is a stable internet connection, then try again." << std::endl;
     }
 
-    std::cout << "Update complete - Relaunching client.exe!" << std::endl;
-    if (launch_client(path))
-    {
-        if (GetLastError() != 0)
-        {
-            std::cout << "Failed to relaunch patcher. Error: " << GetLastError() << std::endl;
-        }
-    }
+    launch_client(path);
 
     std::cout << "Waiting before closing to show logging..." << std::endl;
     Sleep(20000);

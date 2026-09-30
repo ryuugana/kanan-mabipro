@@ -139,14 +139,8 @@ namespace kanan {
     bool launch_client(std::string mabiFolderPath)
     {
         std::string clientLaunch = mabiFolderPath;
-        if (std::filesystem::exists(clientLaunch + "\\MabiModManager.exe"))
-        {
-            clientLaunch.append("\\MabiModManager.exe");
-        }
-        else
-        {
-            clientLaunch.append("\\MabiProLauncher22.exe");
-        }
+
+        clientLaunch.append("\\MabiProLauncher.exe");
 
         return start_application(clientLaunch);
     }
