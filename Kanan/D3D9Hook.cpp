@@ -76,10 +76,11 @@ namespace kanan {
             return;
         }
 
+        using ResetFn = HRESULT(WINAPI*)(IDirect3DDevice9*, D3DPRESENT_PARAMETERS*);
         static const uintptr_t destinations[DEVICE_RESET_SLOTS] = {
-            (uintptr_t)&D3D9Hook::deviceReset<0>,
-            (uintptr_t)&D3D9Hook::deviceReset<1>,
-            (uintptr_t)&D3D9Hook::deviceReset<2>,
+            (uintptr_t)(ResetFn)&D3D9Hook::deviceReset<0>,
+            (uintptr_t)(ResetFn)&D3D9Hook::deviceReset<1>,
+            (uintptr_t)(ResetFn)&D3D9Hook::deviceReset<2>,
         };
 
         for (size_t slot = 0; slot < DEVICE_RESET_SLOTS; ++slot) {
