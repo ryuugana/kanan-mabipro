@@ -74,7 +74,7 @@ namespace kanan {
         }
 
         if (ImGui::TreeNode("Font Size")) {
-            ImGui::TextWrapped("Sets the size of the game's TrueType font text. The game's size is %d.", m_originalSize);
+            ImGui::TextWrapped("Sets the size of the game's TrueType font text. If you're looking to make the text larger, please look at UI Scaling first. The game's size is %d.", m_originalSize);
             ImGui::Spacing();
 
             auto changed = ImGui::Checkbox("Enabled##ModifyFontSize", &m_isEnabled);
@@ -85,7 +85,7 @@ namespace kanan {
                 apply();
             }
 
-            ImGui::TextDisabled("Only works with the TrueType font (Patches > Interface > Enable TrueType Font).\n"
+            ImGui::TextDisabled("This setting can cause crashing when the font is set larger than the original. Only works with the TrueType font (Patches > Interface > Enable TrueType Font).\n"
                 "Large sizes can cut off text.");
             ImGui::TreePop();
         }
