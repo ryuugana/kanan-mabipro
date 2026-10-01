@@ -172,7 +172,7 @@ svg.wx { display: block; }
     <p>Weather changes every 20 minutes, at the times shown, fading in over the first minute. It comes straight from your game, so it's what your game will show.</p>
     <div id="weather-times"></div>
     <p><b>Where you are:</b> keep this page open while you play and it follows you. The line under the title says where you are, and that place's card and timeline row are marked "You're here". They update within a few seconds of changing regions, while the game is running. With the game closed, the page doesn't show where you are; everything else keeps working.</p>
-    <p><b>Refresh:</b> type <b>.tracker</b> in game (or use Erinn Tracker in the Kanan menu) for a fresh page. Do it after restarting the game, since the slots marked "may differ" change with each game session; after a daylight saving change, since the page's times follow the game's clock as it was when the page was made; and when the forecast runs out after 14 days.</p>
+    <p><b>Refresh:</b> type <b>.tracker</b> in game (or use Erinn Tracker in the Kanan menu) for a fresh page after restarting the game, since the slots marked "may differ" change with each game session. Otherwise the page keeps going on its own, offline too: the game repeats the same weather every year, so the forecast never runs out, and the page's clock follows the game's whenever the game is running (and keeps the last one it got when it isn't).</p>
     <p>Places not listed (such as Physis, Ceo Island and Port Cobh) have no weather cycle.</p>
     <details id="maydiffer-info">
       <summary><b>About the "may differ" slots</b></summary>
@@ -282,8 +282,35 @@ function applyShown() {
   document.querySelectorAll(".tl-run").forEach(r => r.classList.toggle("dim", !shown.has(+r.dataset.t)));
 }
 
-function gameNow() { return Date.now() + DATA.offset; }
-function toUnix(gameMs) { return gameMs - DATA.offset; }
+// The game's clock, as an offset from this computer's: from when the page was made, then from the
+// game itself whenever it's running (the live file carries the game's clock), remembered here so the
+// page keeps the latest one when it's opened again with the game closed. Everything on the page,
+// weather included, is worked out from it, so the page keeps going offline.
+let clockOffset = null;
+let clockTaken = 0;
+
+function loadClock() {
+  clockOffset = DATA.offset;
+  clockTaken = DATA.generated;
+  try {
+    const saved = JSON.parse(localStorage.getItem("kananTracker.clock"));
+    if (saved && saved.taken > clockTaken && typeof saved.offset === "number") {
+      clockOffset = saved.offset;
+      clockTaken = saved.taken;
+    }
+  } catch (e) { }
+}
+
+function takeClock(game, unix) {
+  // The live file stays in the folder when the game closes: an older reading doesn't replace a newer one.
+  if (unix < clockTaken) return;
+  clockOffset = game - unix;
+  clockTaken = unix;
+  try { localStorage.setItem("kananTracker.clock", JSON.stringify({ offset: clockOffset, taken: clockTaken })); } catch (e) { }
+}
+
+function gameNow() { return Date.now() + clockOffset; }
+function toUnix(gameMs) { return gameMs - clockOffset; }
 
 // ---- The game clock and NPC schedules ----
 // Game time is in milliseconds; an Erinn day is 36 real minutes and an Erinn hour 90 seconds
@@ -312,12 +339,48 @@ function hourlyRuns(stateAt, from, hours) {
   return runs;
 }
 
-// Weather type (0-3) of a weather table at a game time, or null outside the forecast.
+// Weather type (0-3) of a weather table at a game time, from the whole table (any date), or null
+// without the table.
 function weatherAt(tableName, t) {
-  const table = DATA.tables[tableName];
-  if (!table) return null;
-  const i = Math.floor((t - table.base) / table.slot) - table.first;
-  return i >= 0 && i < table.weather.length ? +table.weather[i] : null;
+  const cycle = DATA.tables[tableName];
+  if (!cycle) return null;
+  return +cycle.weather[mod(Math.floor((t - cycle.base) / cycle.slot) + 1, cycle.weather.length)];
+}
+
+// Kanan writes each weather table whole: the game goes round it, slot k (from base, slot ms long)
+// showing entry (k + 1) % its length, with the "may differ" entries in unsure. The page works on a
+// window of it around now, rebuilt as time goes on, so the forecast never runs out.
+const WINDOW_BEFORE = 3 * 24;        // slots back (a day)
+const WINDOW_AFTER = 14 * 24 * 3;    // slots ahead (14 days)
+let windowFirst = 0;
+
+function windowOf(cycle, now) {
+  const count = cycle.weather.length;
+  const first = Math.floor((now - cycle.base) / cycle.slot) - WINDOW_BEFORE;
+  const unsureEntries = new Set(cycle.unsure || []);
+  const unsure = [];
+  let weather = "";
+  for (let i = 0; i < WINDOW_BEFORE + WINDOW_AFTER; i++) {
+    const entry = mod(first + i + 1, count);
+    weather += cycle.weather[entry];
+    if (unsureEntries.has(entry)) unsure.push(i);
+  }
+  return { base: cycle.base, slot: cycle.slot, first, weather, unsure };
+}
+
+// Builds each place's window around now (and its runs).
+function buildWindows() {
+  const now = gameNow();
+  for (const p of places) {
+    p.table = windowOf(DATA.tables[p.tableName], now);
+    p.runs = runsOf(p.table);
+  }
+  windowFirst = now;
+}
+
+// A window is rebuilt once now has moved a day into it.
+function windowsAreOld() {
+  return gameNow() - windowFirst > WINDOW_BEFORE * slotMs();
 }
 
 // Price (npc/variable/price.mint, GetTargetPosition in npc/common.mint): stop (Erinn day % 14). He
@@ -595,14 +658,13 @@ function build() {
     $("app").innerHTML = '<div class="panel empty">Open this page from the game: type <b>.tracker</b> in chat, or use Erinn Tracker in the Kanan menu.</div>';
     return;
   }
-  places = DATA.places.map(p => {
-    const table = DATA.tables[p.table];
-    // here: where you were when the page was made, until the live file says (and only while connected).
-    return { ...p, tableName: p.table, table, runs: runsOf(table), wasHere: p.here, here: false };
-  });
+  loadClock();
+  // here: where you were when the page was made, until the live file says (and only while connected).
+  places = DATA.places.map(p => ({ ...p, tableName: p.table, wasHere: p.here, here: false }));
+  buildWindows();
   for (const p of places) p.here = p.wasHere && isConnected();
   const generated = new Date(DATA.generated);
-  $("source").textContent = `From your game, ${generated.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · forecast to ${localTime(toUnix(lastEnd()), true)} · type .tracker in game to refresh`;
+  $("source").textContent = `From your game, ${generated.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · works offline · type .tracker in game to refresh`;
 
   $("app").innerHTML = `
     <div id="view-weather">
@@ -714,6 +776,7 @@ function updateHere() {
 
 window.kananLive = function (d) {
   live = d;
+  if (typeof d.game === "number" && typeof d.time === "number") takeClock(d.game, d.time);
   updateHere();
   showLive();
 };
@@ -782,6 +845,17 @@ function render() {
   if (!DATA) return;
   const now = gameNow();
 
+  // Left open for a while: move the forecast along (drawTimeline draws the rest).
+  if (places.length && windowsAreOld()) {
+    const oldStart = firstStart();
+    buildWindows();
+    // Keep the timeline on the same moment it was showing.
+    const scroll = $("scroll");
+    if (scroll) scroll.scrollLeft = Math.max(0, scroll.scrollLeft - (firstStart() - oldStart) / slotMs() * zoom);
+    drawTimeline(false);
+    return;
+  }
+
   renderNpcs(now);
 
   document.querySelectorAll("#filter button").forEach(b => b.classList.toggle("on", b.dataset.f === filter));
@@ -812,7 +886,7 @@ function render() {
     const next = [0, 1, 2, 3].map(type => {
       const run = nextRun(p, now, [type]);
       const text = cur && cur.type === type ? `now, ${duration(cur.end - now)} left${cur.unsure ? MAY_DIFFER : ""}` :
-        run ? `in ${duration(run.start - now)}${run.unsure ? MAY_DIFFER : ""}` : "not in the forecast";
+        run ? `in ${duration(run.start - now)}${run.unsure ? MAY_DIFFER : ""}` : "not in the next 14 days";
       return `<span class="k">${NAMES[type]}</span><span class="v">${text}</span>`;
     }).join("");
     return `<div class="card${p.here ? " here" : ""}">
@@ -857,7 +931,7 @@ function drawTimeline(scrollToNow) {
   first.setMinutes(0, 0, 0);
   for (let t = first.getTime(); t < toUnix(end); t += 3600000) {
     const d = new Date(t);
-    const x = (t + DATA.offset - start) / slot * zoom;
+    const x = (t + clockOffset - start) / slot * zoom;
     if (x < 0) continue;
     // Days on the top line, hours below them.
     if (d.getHours() === 0) {
