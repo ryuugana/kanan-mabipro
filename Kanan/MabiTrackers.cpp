@@ -96,8 +96,7 @@ namespace kanan {
         return out;
     }
 
-    // How far the page looks back and ahead, in 20-minute slots.
-    static const int SLOTS_BEFORE = 3 * 24;
+    // How far .weather looks ahead for the next change, in 20-minute slots.
     static const int SLOTS_AFTER = 14 * 24 * 3;
 
     // The page, built into Kanan.asi from MabiTrackers.html (MabiTrackers.rc).
@@ -449,9 +448,9 @@ namespace kanan {
         return "";
     }
 
-    // Keeps MabiTrackersLive.js, next to the page, up to date with where the player is, so an open
-    // page can move its "You're here" badge. Written when the region changes, and once a minute so
-    // the page can tell the game is still running.
+    // Keeps MabiTrackersLive.js, next to the page, up to date with where the player is and the
+    // game's clock, so an open page can move its "You're here" badge and keep its times right.
+    // Written when the region changes, and once a minute so the page can tell the game is running.
     void MabiTrackers::updateLive(uintptr_t mgr) {
         if (m_hasPage < 0) {
             m_hasPage = GetFileAttributesW((gameFolder() + L"MabiTrackers.html").c_str()) != INVALID_FILE_ATTRIBUTES;
@@ -466,6 +465,12 @@ namespace kanan {
 
         auto group = regionGroupOf(mgr, region);
         json live{ { "region", region }, { "group", group }, { "table", tableFor(group) }, { "time", unixMilliseconds() } };
+
+        // The game's clock at the same moment, so the page keeps its offset from the computer's
+        // clock up to date (it uses the last one it got when the game isn't running).
+        if (g_getGlobalTime != nullptr) {
+            live["game"] = g_getGlobalTime();
+        }
         auto text = "kananLive(" + live.dump() + ");\n";
 
         FILE* f{};
@@ -633,26 +638,23 @@ namespace kanan {
                 continue;
             }
 
-            // Slot k (starting base + k * slot) shows values[k + 1]; the first minute of each slot
-            // fades in from the previous weather.
-            auto current = (int64_t)((now - table.base) / table.slot);
-            auto first = current - SLOTS_BEFORE;
+            // The whole table, which the game goes round and round: slot k (starting base + k * slot)
+            // shows entry (k + 1) % count, so with all of it the page has the weather for any date,
+            // offline. The first minute of each slot fades in from the previous weather.
             string weather;
             json unsure = json::array();
 
-            weather.reserve(SLOTS_BEFORE + SLOTS_AFTER);
+            weather.reserve(table.count);
 
-            for (int64_t k = first; k < current + SLOTS_AFTER; ++k) {
-                auto entry = (uint64_t)(k + 1) % table.count;
-
+            for (uint64_t entry = 0; entry < table.count; ++entry) {
                 weather += weatherType(table.values[entry]);
 
                 if (isSessionEntry(entry)) {
-                    unsure.push_back(k - first);
+                    unsure.push_back(entry);
                 }
             }
 
-            tables[name] = { { "base", table.base }, { "slot", table.slot }, { "first", first }, { "weather", weather }, { "unsure", unsure } };
+            tables[name] = { { "base", table.base }, { "slot", table.slot }, { "weather", weather }, { "unsure", unsure } };
         }
 
         // One place per table, named after its region groups, in the built-in order.
