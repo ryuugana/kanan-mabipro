@@ -65,6 +65,9 @@ h2 { font-size: 16px; margin: 0 0 10px; }
 .npc li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line); }
 .npc li .t { color: var(--muted); white-space: nowrap; }
 .npc li .c { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.npc li.day { display: block; }
+.npc li.day .when { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
+.npc li.day .town { color: var(--muted); }
 .live { margin-top: 3px; }
 .live .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
 .live.on .dot { background: var(--here); box-shadow: 0 0 0 3px color-mix(in srgb, var(--here) 25%, transparent); }
@@ -514,11 +517,14 @@ function renderNpcs(now) {
     const days = [];
     for (let d = 1; d <= 6; d++) {
       const m = shadowMissionsOn(today.day + d);
-      days.push(item(`${m.Taillteann} · ${m.Tara}`, next + (d - 1) * 86400000, now));
+      const t = next + (d - 1) * 86400000;
+      // The day on its own line, then each town's mission on a line of its own.
+      days.push(`<li class="day"><div class="when">${when(t, now)}<span class="c">in ${duration(t - now)}</span></div>` +
+        `<div><span class="town">Taillteann:</span> ${m.Taillteann}</div><div><span class="town">Tara:</span> ${m.Tara}</div></li>`);
     }
     cards.push(npcCard("Shadow Missions", "Today's missions on the Shadow Mission board in Taillteann and Tara; they change at 7:00 AM server time", true,
       `Taillteann: ${missions.Taillteann}<br>Tara: ${missions.Tara}`,
-      `change in ${duration(next - now)}`, "Next days (Taillteann · Tara)", days));
+      `change in ${duration(next - now)}`, "Next days", days));
   }
 
   // Rua: Bean Rua or home.
