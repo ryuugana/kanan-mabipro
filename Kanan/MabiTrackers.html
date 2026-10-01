@@ -65,6 +65,9 @@ h2 { font-size: 16px; margin: 0 0 10px; }
 .npc li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid var(--line); }
 .npc li .t { color: var(--muted); white-space: nowrap; }
 .npc li .c { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.npc li.day { display: block; }
+.npc li.day .when { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
+.npc li.day .town { color: var(--muted); }
 .live { margin-top: 3px; }
 .live .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
 .live.on .dot { background: var(--here); box-shadow: 0 0 0 3px color-mix(in srgb, var(--here) 25%, transparent); }
@@ -168,7 +171,7 @@ svg.wx { display: block; }
   <div class="note panel" id="weather-notes">
     <p>Weather changes every 20 minutes, at the times shown, fading in over the first minute. It comes straight from your game, so it's what your game will show.</p>
     <div id="weather-times"></div>
-    <p><b>Where you are:</b> keep this page open while you play and it follows you. The line under the title says where you are, and that place's card and timeline row are marked "You're here". They update within a few seconds of changing regions, while the game is running.</p>
+    <p><b>Where you are:</b> keep this page open while you play and it follows you. The line under the title says where you are, and that place's card and timeline row are marked "You're here". They update within a few seconds of changing regions, while the game is running. With the game closed, the page doesn't show where you are; everything else keeps working.</p>
     <p><b>Refresh:</b> type <b>.tracker</b> in game (or use Erinn Tracker in the Kanan menu) for a fresh page. Do it after restarting the game, since the slots marked "may differ" change with each game session; after a daylight saving change, since the page's times follow the game's clock as it was when the page was made; and when the forecast runs out after 14 days.</p>
     <p>Places not listed (such as Physis, Ceo Island and Port Cobh) have no weather cycle.</p>
     <details id="maydiffer-info">
@@ -384,6 +387,82 @@ function moongateNight(t) {
   return { gate: moongateName(rotation[mod(day, rotation.length)]), start, end: start + 12 * ERINN_HOUR };
 }
 
+// Today's shadow missions (the server's CTodayShadowMissionMgr and db/todayshadowmission.xml): one
+// for Taillteann and one for Tara each day, shown on the Shadow Mission board. The day turns at 7:00
+// on the game's (the server's) clock; it's counted from 1 January of year 1, like
+// core::stdapi_GetDayCount (game time / 1 day + 1). Each group's missions are split into divisions;
+// today's division is day % (the largest division) + 1, and the mission is drawn from that
+// division's list, in the file's order, with esl::CRandom seeded with the day. The names are the
+// client's own, from its achievements (local/xml/achievementtable).
+const SHADOW_MISSION_RESET = 7 * 3600000;
+const SHADOW_MISSIONS = {
+  Taillteann: [
+    ["Defeat Fomor Commander I", 1], ["Rescue the Scout", 2], ["Battle for Taillteann I", 1],
+    ["Battle for Taillteann II", 2], ["Dorren's Request", 1], ["Taillteann Defensive Battle", 1],
+    ["Defeat Fomor Commander II", 2], ["Defeat the Shadow Wizard", 2], ["Offering", 2], ["Provocation", 1],
+  ],
+  Tara: [
+    ["Shadow Cast City", 1], ["Lingering Darkness", 2], ["Enemy Behind", 2], ["Their Method", 1],
+    ["The Other Alchemists", 1], ["Ghost of Partholon", 2], ["Fomor Attack", 2],
+    ["The Sulfur Spider inside Shadow Realm", 1],
+  ],
+};
+
+// esl::CRandom (ESL.dll): MT19937 with the game's own seeding. Only its first few numbers are drawn
+// here, so its refill quirk (see the weather notes) never comes into it.
+function eslRandom(seed) {
+  const N = 624;
+  const mt = new Array(N);
+  let x = seed >>> 0;
+  for (let i = 0; i < N; i++) {
+    const y = Math.imul(x, 69069) >>> 0;
+    mt[i] = ((x & 0xFFFF0000) | (y >>> 16)) >>> 0;
+    x = (Math.imul(y, 69069) + 69070) >>> 0;
+  }
+  for (let i = 0; i < N; i++) {
+    const y = (mt[i] & 0x80000000) | (mt[(i + 1) % N] & 0x7FFFFFFF);
+    mt[i] = (mt[(i + 397) % N] ^ (y >>> 1) ^ (mt[(i + 1) % N] & 1 ? 0x9908B0DF : 0)) >>> 0;
+  }
+  let index = 0;
+  return () => {
+    let y = mt[index++];
+    y ^= y >>> 11;
+    y ^= (y << 7) & 0x9D2C5680;
+    y ^= (y << 15) & 0xEFC60000;
+    y ^= y >>> 18;
+    return y >>> 0;
+  };
+}
+
+// esl::CRandom::RandomU32_N: draws masked to the next power of two until one is under n.
+function randomBelow(next, n) {
+  if (n <= 0) return 0;
+  let mask = n - 1;
+  mask |= mask >>> 1; mask |= mask >>> 2; mask |= mask >>> 4; mask |= mask >>> 8; mask |= mask >>> 16;
+  for (;;) {
+    const v = (next() & mask) >>> 0;
+    if (v < n) return v;
+  }
+}
+
+// The shadow mission day at game time t, and when it started.
+function shadowMissionDay(t) {
+  const day = Math.floor((t - SHADOW_MISSION_RESET) / 86400000) + 1;
+  return { day, start: (day - 1) * 86400000 + SHADOW_MISSION_RESET };
+}
+
+// That day's missions: {Taillteann, Tara}.
+function shadowMissionsOn(day) {
+  const out = {};
+  for (const [group, missions] of Object.entries(SHADOW_MISSIONS)) {
+    const divisions = Math.max(...missions.map(m => m[1]));
+    const division = day % divisions + 1;
+    const list = missions.filter(m => m[1] === division).map(m => m[0]);
+    out[group] = list[randomBelow(eslRandom(day), list.length)];
+  }
+  return out;
+}
+
 function when(t, now) {
   return `<span class="t">${localTime(toUnix(t), true)}</span>`;
 }
@@ -428,6 +507,24 @@ function renderNpcs(now) {
       open ? `Open to ${night.gate}` : `Closed, tonight to ${night.gate}`,
       open ? `closes in ${duration(night.end - now)}` : `opens in ${duration(night.start - now)}`,
       "Next nights", nights));
+  }
+
+  // Today's shadow missions, and the next days'.
+  {
+    const today = shadowMissionDay(now);
+    const missions = shadowMissionsOn(today.day);
+    const next = today.start + 86400000;
+    const days = [];
+    for (let d = 1; d <= 6; d++) {
+      const m = shadowMissionsOn(today.day + d);
+      const t = next + (d - 1) * 86400000;
+      // The day on its own line, then each town's mission on a line of its own.
+      days.push(`<li class="day"><div class="when">${when(t, now)}<span class="c">in ${duration(t - now)}</span></div>` +
+        `<div><span class="town">Taillteann:</span> ${m.Taillteann}</div><div><span class="town">Tara:</span> ${m.Tara}</div></li>`);
+    }
+    cards.push(npcCard("Shadow Missions", "Today's missions on the Shadow Mission board in Taillteann and Tara; they change at 7:00 AM server time", true,
+      `Taillteann: ${missions.Taillteann}<br>Tara: ${missions.Tara}`,
+      `change in ${duration(next - now)}`, "Next days", days));
   }
 
   // Rua: Bean Rua or home.
@@ -500,8 +597,10 @@ function build() {
   }
   places = DATA.places.map(p => {
     const table = DATA.tables[p.table];
-    return { ...p, tableName: p.table, table, runs: runsOf(table) };
+    // here: where you were when the page was made, until the live file says (and only while connected).
+    return { ...p, tableName: p.table, table, runs: runsOf(table), wasHere: p.here, here: false };
   });
+  for (const p of places) p.here = p.wasHere && isConnected();
   const generated = new Date(DATA.generated);
   $("source").textContent = `From your game, ${generated.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · forecast to ${localTime(toUnix(lastEnd()), true)} · type .tracker in game to refresh`;
 
@@ -588,13 +687,34 @@ function build() {
 // with where you are ({region, group, table, time}), rewriting it when you change regions.
 let live = null;
 
-window.kananLive = function (d) {
-  const moved = !live || live.region !== d.region || live.table !== d.table;
-  live = d;
-  if (moved && places.length) {
-    for (const p of places) p.here = !!d.table && p.tableName === d.table;
-    drawTimeline(false);
+// Where you are is only shown while the game is running, which is when Kanan keeps the live file
+// fresh (it's rewritten at least once a minute). Opened later, or with the game closed, the page
+// doesn't say where you are: nothing is telling it.
+const LIVE_FRESH_MS = 90000;
+
+function isConnected() {
+  const since = live ? live.time : DATA.generated;
+  return Date.now() - since < LIVE_FRESH_MS;
+}
+
+// Marks the place you're in, or none when the game isn't connected; redraws when that changes.
+function updateHere() {
+  const connected = isConnected();
+  const table = live ? live.table : null;
+  let changed = false;
+  for (const p of places) {
+    const here = connected && (live ? !!table && p.tableName === table : p.wasHere);
+    if (p.here !== here) {
+      p.here = here;
+      changed = true;
+    }
   }
+  if (changed) drawTimeline(false);
+}
+
+window.kananLive = function (d) {
+  live = d;
+  updateHere();
   showLive();
 };
 
@@ -609,14 +729,20 @@ function pollLive() {
 
 function showLive() {
   const el = $("live");
-  if (!live) return;
+  updateHere();
+  const connected = isConnected();
+  el.classList.toggle("on", connected);
+  if (!connected) {
+    el.innerHTML = '<span class="dot"></span>Not connected to the game: where you are shows while it\'s running';
+    return;
+  }
+  if (!live) {
+    el.innerHTML = "";
+    return;
+  }
   const place = places.find(p => p.here);
   const where = place ? place.names.join(", ") : "a place without a weather cycle";
-  const fresh = Date.now() - live.time < 90000;
-  el.classList.toggle("on", fresh);
-  el.innerHTML = '<span class="dot"></span>' + (fresh ?
-    `Live: you're in ${where}` :
-    `You were in ${where} at ${localTime(live.time)} (the location updates while the game is running)`);
+  el.innerHTML = `<span class="dot"></span>Live: you're in ${where}`;
 }
 
 function lastEnd() {

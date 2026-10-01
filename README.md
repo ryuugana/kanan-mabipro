@@ -120,7 +120,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Block Pet Status Messages: hides your pet's status messages
 * Block Spam: hides spam messages from chat
 * Block System Spam: hides many system and some combat chat lines, including EXP gained
-* Chat Commands: adds chat commands such as .help, .price, .rua, .fleta and .tarlach for where those NPCs are and when that changes, .weather for the weather where you are and what comes next, and .tracker to open the Erinn Tracker
+* Chat Commands: adds chat commands such as .help, .price, .rua, .fleta and .tarlach for where those NPCs are and when that changes, .weather for the weather where you are and what comes next, .sm for today's shadow missions, and .tracker to open the Erinn Tracker
 * Chat Mods: adds the time to chat lines, saves chat to a log file and shows it in a window, and copies the messages that scroll across the screen into chat (field bosses, auctions)
 * Disable Pet Summon Messages: hides the messages when a pet is summoned
 * Disable Skill Rank Up Message: hides the skill rank up message
@@ -135,7 +135,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Block Ending Ads: stops the ad popup when you close the game
 * Enable Cutscene Skip: lets you skip cutscenes
 * Enter Remote Shop: opens player shops from any distance
-* Erinn Tracker: a page with the weather forecast for every region, with countdowns to clear skies, clouds, rain and thunderstorms, where the moon gates lead each night, and the schedules of the NPCs that come and go (Price, Rua, Fleta and Tarlach), opened in your browser from the Kanan menu (or type .tracker with Chat Commands on); left open while you play, it shows where you are
+* Erinn Tracker: a page with the weather forecast for every region, with countdowns to clear skies, clouds, rain and thunderstorms, where the moon gates lead each night, today's shadow missions in Taillteann and Tara, and the schedules of the NPCs that come and go (Price, Rua, Fleta and Tarlach), opened in your browser from the Kanan menu (or type .tracker with Chat Commands on); left open while you play, it shows where you are
 * Fast Flight: faster turning and climbing while flying
 * Fast Nao: Nao appears right away when you revive
 * Instant Conversation: NPC conversations show their text at once instead of letter by letter
