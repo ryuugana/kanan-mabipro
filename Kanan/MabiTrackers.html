@@ -168,7 +168,7 @@ svg.wx { display: block; }
   <div class="note panel" id="weather-notes">
     <p>Weather changes every 20 minutes, at the times shown, fading in over the first minute. It comes straight from your game, so it's what your game will show.</p>
     <div id="weather-times"></div>
-    <p><b>Where you are:</b> keep this page open while you play and it follows you. The line under the title says where you are, and that place's card and timeline row are marked "You're here". They update within a few seconds of changing regions, while the game is running.</p>
+    <p><b>Where you are:</b> keep this page open while you play and it follows you. The line under the title says where you are, and that place's card and timeline row are marked "You're here". They update within a few seconds of changing regions, while the game is running. With the game closed, the page doesn't show where you are; everything else keeps working.</p>
     <p><b>Refresh:</b> type <b>.tracker</b> in game (or use Erinn Tracker in the Kanan menu) for a fresh page. Do it after restarting the game, since the slots marked "may differ" change with each game session; after a daylight saving change, since the page's times follow the game's clock as it was when the page was made; and when the forecast runs out after 14 days.</p>
     <p>Places not listed (such as Physis, Ceo Island and Port Cobh) have no weather cycle.</p>
     <details id="maydiffer-info">
@@ -500,8 +500,10 @@ function build() {
   }
   places = DATA.places.map(p => {
     const table = DATA.tables[p.table];
-    return { ...p, tableName: p.table, table, runs: runsOf(table) };
+    // here: where you were when the page was made, until the live file says (and only while connected).
+    return { ...p, tableName: p.table, table, runs: runsOf(table), wasHere: p.here, here: false };
   });
+  for (const p of places) p.here = p.wasHere && isConnected();
   const generated = new Date(DATA.generated);
   $("source").textContent = `From your game, ${generated.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })} · forecast to ${localTime(toUnix(lastEnd()), true)} · type .tracker in game to refresh`;
 
@@ -588,13 +590,34 @@ function build() {
 // with where you are ({region, group, table, time}), rewriting it when you change regions.
 let live = null;
 
-window.kananLive = function (d) {
-  const moved = !live || live.region !== d.region || live.table !== d.table;
-  live = d;
-  if (moved && places.length) {
-    for (const p of places) p.here = !!d.table && p.tableName === d.table;
-    drawTimeline(false);
+// Where you are is only shown while the game is running, which is when Kanan keeps the live file
+// fresh (it's rewritten at least once a minute). Opened later, or with the game closed, the page
+// doesn't say where you are: nothing is telling it.
+const LIVE_FRESH_MS = 90000;
+
+function isConnected() {
+  const since = live ? live.time : DATA.generated;
+  return Date.now() - since < LIVE_FRESH_MS;
+}
+
+// Marks the place you're in, or none when the game isn't connected; redraws when that changes.
+function updateHere() {
+  const connected = isConnected();
+  const table = live ? live.table : null;
+  let changed = false;
+  for (const p of places) {
+    const here = connected && (live ? !!table && p.tableName === table : p.wasHere);
+    if (p.here !== here) {
+      p.here = here;
+      changed = true;
+    }
   }
+  if (changed) drawTimeline(false);
+}
+
+window.kananLive = function (d) {
+  live = d;
+  updateHere();
   showLive();
 };
 
@@ -609,14 +632,20 @@ function pollLive() {
 
 function showLive() {
   const el = $("live");
-  if (!live) return;
+  updateHere();
+  const connected = isConnected();
+  el.classList.toggle("on", connected);
+  if (!connected) {
+    el.innerHTML = '<span class="dot"></span>Not connected to the game: where you are shows while it\'s running';
+    return;
+  }
+  if (!live) {
+    el.innerHTML = "";
+    return;
+  }
   const place = places.find(p => p.here);
   const where = place ? place.names.join(", ") : "a place without a weather cycle";
-  const fresh = Date.now() - live.time < 90000;
-  el.classList.toggle("on", fresh);
-  el.innerHTML = '<span class="dot"></span>' + (fresh ?
-    `Live: you're in ${where}` :
-    `You were in ${where} at ${localTime(live.time)} (the location updates while the game is running)`);
+  el.innerHTML = `<span class="dot"></span>Live: you're in ${where}`;
 }
 
 function lastEnd() {
