@@ -14,7 +14,8 @@ CookingOverlay::CookingOverlay()
     m_texture(nullptr),
     m_w(0),
     m_h(0),
-    m_scale(1.0f)
+    m_scale(1.0f),
+    m_replaceColor(0.0f, 0.0f, 0.0f, 1.0f)
 {
 }
 
@@ -39,6 +40,13 @@ void CookingOverlay::onUI() {
         ImGui::SameLine();
         if (ImGui::Button("Reset")) {
             m_scale = 1.0f;
+        }
+
+        ImGui::Spacing();
+        ImGui::Text("Color:");
+        // ColorEdit4 returns true when the color was changed; if changed, drop texture so it will be recreated with new color
+        if (ImGui::ColorEdit4("##CookingOverlayReplaceColor", reinterpret_cast<float*>(&m_replaceColor))) {
+            releaseTexture();
         }
 
         ImGui::TreePop();
@@ -73,7 +81,7 @@ void CookingOverlay::drawWindow() {
     const float scaledH = baseH * m_scale;
 
     // Set the window size slightly larger to the scaled texture size so it fits.
-    ImGui::SetNextWindowSize(ImVec2{ scaledW + 15, scaledH + 20}, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2{ scaledW + 15, scaledH + 20 }, ImGuiCond_Always);
 
     // No title bar/resize to resemble an overlay
     if (!ImGui::Begin("CookingOverlay", &m_isEnabled,
@@ -215,6 +223,12 @@ void CookingOverlay::createTextureFromResource() {
     const bool srcHad32 = (bm.bmBitsPixel == 32);
     const bool premultiplyAlpha = false; // set true if your pipeline expects premultiplied alpha
 
+    // Precompute replacement color bytes
+    uint8_t repR = static_cast<uint8_t>(std::clamp(m_replaceColor.x, 0.0f, 1.0f) * 255.0f);
+    uint8_t repG = static_cast<uint8_t>(std::clamp(m_replaceColor.y, 0.0f, 1.0f) * 255.0f);
+    uint8_t repB = static_cast<uint8_t>(std::clamp(m_replaceColor.z, 0.0f, 1.0f) * 255.0f);
+    uint8_t repA = static_cast<uint8_t>(std::clamp(m_replaceColor.w, 0.0f, 1.0f) * 255.0f);
+
     for (int y = 0; y < height; ++y) {
         uint8_t* dstRow = dst + (y * dstPitch);
         const uint8_t* srcRow = src + (y * width * 4);
@@ -231,12 +245,22 @@ void CookingOverlay::createTextureFromResource() {
                 a = 0x00; // fully transparent
             }
             else {
-                a = 0xFF; // fully opaque
+                a = 0xFF; // fully opaque by default (may be overridden for black replacement)
             }
 
             uint8_t outR = r;
             uint8_t outG = g;
             uint8_t outB = b;
+
+            // If the source pixel is pure black, replace it with user-selected color
+            bool isBlack = (r == 0 && g == 0 && b == 0);
+            if (isBlack) {
+                outR = repR;
+                outG = repG;
+                outB = repB;
+                // use replacement alpha if provided by user; otherwise keep fully opaque
+                a = repA;
+            }
 
             if (premultiplyAlpha && a != 0xFF) {
                 float alphaF = (a / 255.0f);
@@ -278,9 +302,20 @@ void CookingOverlay::onConfigLoad(const Config& cfg) {
     m_scale = cfg.get<float>("CookingOverlay.Scale").value_or(1.0f);
     // clamp loaded value to safe range
     m_scale = std::clamp(m_scale, 0.05f, 10.0f);
+
+    // Load replacement color (stored as floats 0..1)
+    m_replaceColor.x = cfg.get<float>("CookingOverlay.ReplaceColor.R").value_or(0.0f);
+    m_replaceColor.y = cfg.get<float>("CookingOverlay.ReplaceColor.G").value_or(0.0f);
+    m_replaceColor.z = cfg.get<float>("CookingOverlay.ReplaceColor.B").value_or(0.0f);
+    m_replaceColor.w = cfg.get<float>("CookingOverlay.ReplaceColor.A").value_or(1.0f);
 }
 
 void CookingOverlay::onConfigSave(Config& cfg) {
     cfg.set<bool>("CookingOverlay.Enabled", m_isEnabled);
     cfg.set<float>("CookingOverlay.Scale", m_scale);
+
+    cfg.set<float>("CookingOverlay.ReplaceColor.R", m_replaceColor.x);
+    cfg.set<float>("CookingOverlay.ReplaceColor.G", m_replaceColor.y);
+    cfg.set<float>("CookingOverlay.ReplaceColor.B", m_replaceColor.z);
+    cfg.set<float>("CookingOverlay.ReplaceColor.A", m_replaceColor.w);
 }

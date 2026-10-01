@@ -30,5 +30,8 @@ namespace kanan {
 
         // Scale factor applied to both window size and displayed image (1.0 = 100%)
         float m_scale;
+
+		// Replace pure black pixels with this color for user configurable color replacement. Default is opaque black (0, 0, 0, 1).
+        ImVec4 m_replaceColor;
     };
 }
