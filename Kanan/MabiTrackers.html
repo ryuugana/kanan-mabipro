@@ -384,6 +384,82 @@ function moongateNight(t) {
   return { gate: moongateName(rotation[mod(day, rotation.length)]), start, end: start + 12 * ERINN_HOUR };
 }
 
+// Today's shadow missions (the server's CTodayShadowMissionMgr and db/todayshadowmission.xml): one
+// for Taillteann and one for Tara each day, shown on the Shadow Mission board. The day turns at 7:00
+// on the game's (the server's) clock; it's counted from 1 January of year 1, like
+// core::stdapi_GetDayCount (game time / 1 day + 1). Each group's missions are split into divisions;
+// today's division is day % (the largest division) + 1, and the mission is drawn from that
+// division's list, in the file's order, with esl::CRandom seeded with the day. The names are the
+// client's own, from its achievements (local/xml/achievementtable).
+const SHADOW_MISSION_RESET = 7 * 3600000;
+const SHADOW_MISSIONS = {
+  Taillteann: [
+    ["Defeat Fomor Commander I", 1], ["Rescue the Scout", 2], ["Battle for Taillteann I", 1],
+    ["Battle for Taillteann II", 2], ["Dorren's Request", 1], ["Taillteann Defensive Battle", 1],
+    ["Defeat Fomor Commander II", 2], ["Defeat the Shadow Wizard", 2], ["Offering", 2], ["Provocation", 1],
+  ],
+  Tara: [
+    ["Shadow Cast City", 1], ["Lingering Darkness", 2], ["Enemy Behind", 2], ["Their Method", 1],
+    ["The Other Alchemists", 1], ["Ghost of Partholon", 2], ["Fomor Attack", 2],
+    ["The Sulfur Spider inside Shadow Realm", 1],
+  ],
+};
+
+// esl::CRandom (ESL.dll): MT19937 with the game's own seeding. Only its first few numbers are drawn
+// here, so its refill quirk (see the weather notes) never comes into it.
+function eslRandom(seed) {
+  const N = 624;
+  const mt = new Array(N);
+  let x = seed >>> 0;
+  for (let i = 0; i < N; i++) {
+    const y = Math.imul(x, 69069) >>> 0;
+    mt[i] = ((x & 0xFFFF0000) | (y >>> 16)) >>> 0;
+    x = (Math.imul(y, 69069) + 69070) >>> 0;
+  }
+  for (let i = 0; i < N; i++) {
+    const y = (mt[i] & 0x80000000) | (mt[(i + 1) % N] & 0x7FFFFFFF);
+    mt[i] = (mt[(i + 397) % N] ^ (y >>> 1) ^ (mt[(i + 1) % N] & 1 ? 0x9908B0DF : 0)) >>> 0;
+  }
+  let index = 0;
+  return () => {
+    let y = mt[index++];
+    y ^= y >>> 11;
+    y ^= (y << 7) & 0x9D2C5680;
+    y ^= (y << 15) & 0xEFC60000;
+    y ^= y >>> 18;
+    return y >>> 0;
+  };
+}
+
+// esl::CRandom::RandomU32_N: draws masked to the next power of two until one is under n.
+function randomBelow(next, n) {
+  if (n <= 0) return 0;
+  let mask = n - 1;
+  mask |= mask >>> 1; mask |= mask >>> 2; mask |= mask >>> 4; mask |= mask >>> 8; mask |= mask >>> 16;
+  for (;;) {
+    const v = (next() & mask) >>> 0;
+    if (v < n) return v;
+  }
+}
+
+// The shadow mission day at game time t, and when it started.
+function shadowMissionDay(t) {
+  const day = Math.floor((t - SHADOW_MISSION_RESET) / 86400000) + 1;
+  return { day, start: (day - 1) * 86400000 + SHADOW_MISSION_RESET };
+}
+
+// That day's missions: {Taillteann, Tara}.
+function shadowMissionsOn(day) {
+  const out = {};
+  for (const [group, missions] of Object.entries(SHADOW_MISSIONS)) {
+    const divisions = Math.max(...missions.map(m => m[1]));
+    const division = day % divisions + 1;
+    const list = missions.filter(m => m[1] === division).map(m => m[0]);
+    out[group] = list[randomBelow(eslRandom(day), list.length)];
+  }
+  return out;
+}
+
 function when(t, now) {
   return `<span class="t">${localTime(toUnix(t), true)}</span>`;
 }
@@ -428,6 +504,21 @@ function renderNpcs(now) {
       open ? `Open to ${night.gate}` : `Closed, tonight to ${night.gate}`,
       open ? `closes in ${duration(night.end - now)}` : `opens in ${duration(night.start - now)}`,
       "Next nights", nights));
+  }
+
+  // Today's shadow missions, and the next days'.
+  {
+    const today = shadowMissionDay(now);
+    const missions = shadowMissionsOn(today.day);
+    const next = today.start + 86400000;
+    const days = [];
+    for (let d = 1; d <= 6; d++) {
+      const m = shadowMissionsOn(today.day + d);
+      days.push(item(`${m.Taillteann} · ${m.Tara}`, next + (d - 1) * 86400000, now));
+    }
+    cards.push(npcCard("Shadow Missions", "Today's missions on the Shadow Mission board in Taillteann and Tara; they change at 7:00 AM server time", true,
+      `Taillteann: ${missions.Taillteann}<br>Tara: ${missions.Tara}`,
+      `change in ${duration(next - now)}`, "Next days (Taillteann · Tara)", days));
   }
 
   // Rua: Bean Rua or home.

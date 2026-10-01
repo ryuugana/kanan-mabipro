@@ -20,6 +20,7 @@ namespace kanan {
     //   .rua / .fleta / .tarlach  where they are (Bean Rua or home; out in Sen Mag or not; a man or
     //                a bear) and how long until that changes, from their server scripts
     //   .weather     the weather where the player is and what comes next (MabiTrackers)
+    //   .sm          today's shadow missions in Taillteann and Tara, picked the way the server does
     //   .tracker     opens the Erinn Tracker page (MabiTrackers): weather, moon gates, and Price,
     //                Rua, Fleta and Tarlach's schedules
     //

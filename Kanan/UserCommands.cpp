@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cwctype>
+#include <vector>
 
 #include <imgui.h>
 
@@ -135,6 +136,105 @@ namespace kanan {
         }
 
         return to_wstring(minutes / 60) + L"h " + to_wstring(minutes % 60) + L"m";
+    }
+
+    // Today's shadow missions, picked the way the server does (CTodayShadowMissionMgr and
+    // db/todayshadowmission.xml; the Erinn Tracker page does the same, see MabiTrackers.html): the
+    // day turns at 7:00 on the game's clock and counts from 1 January of year 1; today's division is
+    // day % (the largest division) + 1, and the mission is drawn from that division's list, in the
+    // file's order, with esl::CRandom seeded with the day. The names are the client's own.
+    static const uint64_t SHADOW_MISSION_RESET_MS = 7 * 60 * 60 * 1000;
+    static const uint64_t DAY_MS = 24 * 60 * 60 * 1000;
+
+    struct ShadowMission {
+        const wchar_t* name;
+        int division;
+    };
+
+    static const ShadowMission TAILLTEANN_MISSIONS[] = {
+        { L"Defeat Fomor Commander I", 1 }, { L"Rescue the Scout", 2 }, { L"Battle for Taillteann I", 1 },
+        { L"Battle for Taillteann II", 2 }, { L"Dorren's Request", 1 }, { L"Taillteann Defensive Battle", 1 },
+        { L"Defeat Fomor Commander II", 2 }, { L"Defeat the Shadow Wizard", 2 }, { L"Offering", 2 }, { L"Provocation", 1 },
+    };
+
+    static const ShadowMission TARA_MISSIONS[] = {
+        { L"Shadow Cast City", 1 }, { L"Lingering Darkness", 2 }, { L"Enemy Behind", 2 }, { L"Their Method", 1 },
+        { L"The Other Alchemists", 1 }, { L"Ghost of Partholon", 2 }, { L"Fomor Attack", 2 },
+        { L"The Sulfur Spider inside Shadow Realm", 1 },
+    };
+
+    // esl::CRandom (ESL.dll): MT19937 with the game's own seeding. Only its first few numbers are
+    // drawn here, before it would need to refill.
+    class EslRandom {
+    public:
+        explicit EslRandom(uint32_t seed) {
+            auto x = seed;
+
+            for (auto& value : m_mt) {
+                uint32_t y = x * 69069u;
+                value = (x & 0xFFFF0000u) | (y >> 16);
+                x = y * 69069u + 69070u;
+            }
+
+            for (size_t i = 0; i < N; ++i) {
+                auto next = m_mt[(i + 1) % N];
+                uint32_t y = (m_mt[i] & 0x80000000u) | (next & 0x7FFFFFFFu);
+                m_mt[i] = m_mt[(i + 397) % N] ^ (y >> 1) ^ ((next & 1) ? 0x9908B0DFu : 0u);
+            }
+        }
+
+        uint32_t next() {
+            uint32_t y = m_mt[m_index++ % N];
+            y ^= y >> 11;
+            y ^= (y << 7) & 0x9D2C5680u;
+            y ^= (y << 15) & 0xEFC60000u;
+            y ^= y >> 18;
+            return y;
+        }
+
+        // RandomU32_N: draws masked to the next power of two until one is under n.
+        uint32_t below(uint32_t n) {
+            if (n == 0) {
+                return 0;
+            }
+
+            auto mask = n - 1;
+            mask |= mask >> 1; mask |= mask >> 2; mask |= mask >> 4; mask |= mask >> 8; mask |= mask >> 16;
+
+            for (;;) {
+                auto value = next() & mask;
+
+                if (value < n) {
+                    return value;
+                }
+            }
+        }
+
+    private:
+        static const size_t N = 624;
+        uint32_t m_mt[N]{};
+        size_t m_index{ 0 };
+    };
+
+    template <size_t count>
+    static const wchar_t* shadowMissionOn(const ShadowMission (&missions)[count], uint32_t day) {
+        auto divisions = 1;
+
+        for (auto& mission : missions) {
+            divisions = mission.division > divisions ? mission.division : divisions;
+        }
+
+        auto division = (int)(day % divisions) + 1;
+        vector<const wchar_t*> today{};
+
+        for (auto& mission : missions) {
+            if (mission.division == division) {
+                today.push_back(mission.name);
+            }
+        }
+
+        EslRandom random{ day };
+        return today.empty() ? L"" : today[random.below((uint32_t)today.size())];
     }
 
     // "Rua is at home for another 2h 17m, then at Bean Rua in Emain Macha for 20m."
@@ -366,6 +466,7 @@ namespace kanan {
                 L".ping .p - answers 'pong'\n"
                 L".swap .s - tells which skill the combat attack is swapped to\n"
                 L".price .rua .fleta .tarlach - where they are and how long until that changes\n"
+                L".sm - today's shadow missions in Taillteann and Tara\n"
                 L".weather - the weather where you are and what comes next\n"
                 L".tracker - opens the Erinn Tracker in your browser: the weather everywhere, where the moon gates lead, and when Price, Rua, Fleta and Tarlach are where"
             );
@@ -420,6 +521,20 @@ namespace kanan {
                 printToChat(nowThen(NOW[weather.now] + where, weather.untilNext, THEN[weather.next], weather.nextLength) +
                     (weather.mayDiffer ? L" Part of this may differ for other players and the game servers (see .tracker)." : L""));
             }
+        }
+        else if (command == L"sm") {
+            if (g_getGlobalTime == nullptr) {
+                printToChat(L"Today's shadow missions are not available for this version of the game.");
+                return true;
+            }
+
+            auto now = g_getGlobalTime();
+            auto day = (uint32_t)((now - SHADOW_MISSION_RESET_MS) / DAY_MS + 1);
+            auto untilNext = (uint64_t)day * DAY_MS + SHADOW_MISSION_RESET_MS - now;
+
+            printToChat(L"Today's shadow missions are " + wstring{ shadowMissionOn(TAILLTEANN_MISSIONS, day) } +
+                L" in Taillteann and " + shadowMissionOn(TARA_MISSIONS, day) + L" in Tara, for another " +
+                formatDuration(untilNext) + L" (they change at 7:00 AM server time).");
         }
         else if (command == L"rua" || command == L"fleta" || command == L"tarlach") {
             if (g_getGlobalTime == nullptr) {
@@ -511,6 +626,7 @@ namespace kanan {
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Type these in chat (they are not sent to other players):\n.help - list of commands\n.ping - answers pong\n.swap - which skill the combat attack is swapped to\n"
                 ".price .rua .fleta .tarlach - where they are and how long until that changes\n"
+                ".sm - today's shadow missions in Taillteann and Tara\n"
                 ".weather - the weather where you are and what comes next\n"
                 ".tracker - opens the Erinn Tracker: the weather everywhere, moon gates, and NPC schedules");
         }

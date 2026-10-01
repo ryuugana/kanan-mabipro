@@ -783,8 +783,8 @@ namespace kanan {
         if (ImGui::TreeNode("Erinn Tracker")) {
             ImGui::TextWrapped(
                 "A page with the weather forecast for every region, with countdowns to clear skies, clouds, rain and "
-                "thunderstorms, where the moon gates lead each night, and the schedules of the NPCs that come and go: "
-                "Price, Rua, Fleta and Tarlach. "
+                "thunderstorms, where the moon gates lead each night, today's shadow missions in Taillteann and Tara, "
+                "and the schedules of the NPCs that come and go: Price, Rua, Fleta and Tarlach. "
                 "It opens in your browser; you can also type .tracker in chat (with Chat Commands on). "
                 "Leave it open while you play and it shows where you are."
             );
