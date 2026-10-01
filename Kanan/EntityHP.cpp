@@ -158,7 +158,7 @@ namespace kanan {
         m_textShadow{ true },
         m_showBox{ false },
         m_decimals{ 1 },
-        m_offsetY{ 30.0f },
+        m_offsetY{ -20.0f },
         m_fontSize{ 16.0f },
         m_boxPadding{ 3.0f },
         m_boxRounding{ 3.0f },
@@ -332,7 +332,7 @@ namespace kanan {
             ImGui::Checkbox("NPCs and monsters##EntityHP", &m_showMonsters);
             ImGui::Checkbox("Show max HP##EntityHP", &m_showMax);
             ImGui::SliderInt("Decimals##EntityHP", &m_decimals, 0, 2);
-            ImGui::SliderFloat("Height above name##EntityHP", &m_offsetY, 0.0f, 150.0f, "%.0f px");
+            ImGui::SliderFloat("Height above name##EntityHP", &m_offsetY, -150.0f, 150.0f, "%.0f px");
 
             if (isOverlay) {
                 ImGui::SliderFloat("Text size##EntityHP", &m_fontSize, 10.0f, 32.0f, "%.0f");
