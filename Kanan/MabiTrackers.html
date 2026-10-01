@@ -18,6 +18,7 @@
   --rain: #3f8ee0;
   --storm: #8c5ae8;
   --here: #19a974;
+  --warn: #a86a00;
   --shadow: 0 1px 2px rgba(20, 30, 60, .06), 0 4px 16px rgba(20, 30, 60, .06);
 }
 @media (prefers-color-scheme: dark) {
@@ -34,6 +35,7 @@
     --rain: #4f9df0;
     --storm: #a57af5;
     --here: #34c98f;
+    --warn: #e3b04b;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .25);
   }
 }
@@ -69,6 +71,7 @@ h2 { font-size: 16px; margin: 0 0 10px; }
 .npc li.day .when { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
 .npc li.day .town { color: var(--muted); }
 .live { margin-top: 3px; }
+.clock-warning { margin-top: 3px; color: var(--warn); max-width: 640px; }
 .live .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
 .live.on .dot { background: var(--here); box-shadow: 0 0 0 3px color-mix(in srgb, var(--here) 25%, transparent); }
 .clock .time { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -154,6 +157,7 @@ svg.wx { display: block; }
       <h1>Erinn Tracker</h1>
       <div class="sub" id="source"></div>
       <div class="sub live" id="live"></div>
+      <div class="sub clock-warning" id="clock-warning" hidden></div>
     </div>
     <div class="clock">
       <div class="time" id="clock"></div>
@@ -172,7 +176,7 @@ svg.wx { display: block; }
     <p>Weather changes every 20 minutes, at the times shown, fading in over the first minute. It comes straight from your game, so it's what your game will show.</p>
     <div id="weather-times"></div>
     <p><b>Where you are:</b> keep this page open while you play and it follows you. The line under the title says where you are, and that place's card and timeline row are marked "You're here". They update within a few seconds of changing regions, while the game is running. With the game closed, the page doesn't show where you are; everything else keeps working.</p>
-    <p><b>Refresh:</b> type <b>.tracker</b> in game (or use Erinn Tracker in the Kanan menu) for a fresh page after restarting the game, since the slots marked "may differ" change with each game session. Otherwise the page keeps going on its own, offline too: the game repeats the same weather every year, so the forecast never runs out, and the page's clock follows the game's whenever the game is running (and keeps the last one it got when it isn't).</p>
+    <p><b>Refresh:</b> type <b>.tracker</b> in game (or use Erinn Tracker in the Kanan menu) for a fresh page after restarting the game, since the slots marked "may differ" change with each game session, and after a daylight saving time change, if the server changes its clock (see Daylight saving below). Otherwise the page keeps going on its own, offline too: the game repeats the same weather every year, so the forecast never runs out, and the page's clock follows the game's whenever the game is running (and keeps the last one it got when it isn't).</p>
     <p>Places not listed (such as Physis, Ceo Island and Port Cobh) have no weather cycle.</p>
     <details id="maydiffer-info">
       <summary><b>About the "may differ" slots</b></summary>
@@ -307,6 +311,32 @@ function takeClock(game, unix) {
   clockOffset = game - unix;
   clockTaken = unix;
   try { localStorage.setItem("kananTracker.clock", JSON.stringify({ offset: clockOffset, taken: clockTaken })); } catch (e) { }
+}
+
+// US Eastern time's offset from UTC at a moment, in minutes, or null if the browser can't tell.
+function easternOffset(unix) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", timeZoneName: "shortOffset" })
+      .formatToParts(new Date(unix));
+    const m = /GMT([+-]\d+)(?::(\d+))?/.exec(parts.find(p => p.type === "timeZoneName").value);
+    return m ? (+m[1]) * 60 + Math.sign(+m[1]) * (+(m[2] || 0)) : 0;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Whether a US daylight saving change has happened since the page last heard the game's clock. The
+// server's clock is the game's, and it may change with them; the page can't know while the game is
+// closed, so it says to refresh.
+function showClockWarning() {
+  const el = $("clock-warning");
+  if (!el) return;
+  const then = easternOffset(clockTaken), now = easternOffset(Date.now());
+  const changed = then !== null && now !== null && then !== now;
+  el.hidden = !changed;
+  if (changed) {
+    el.textContent = "Daylight saving time has changed since this page last heard from the game. If the server's clock changed too, times here are an hour off: type .tracker in game to update.";
+  }
 }
 
 function gameNow() { return Date.now() + clockOffset; }
@@ -823,7 +853,8 @@ function zoneName(style) {
 
 // The note on what the page's times are based on, on both tabs.
 function timesNote() {
-  return `<p><b>Times:</b> the times on this page are in your computer's time zone (${zoneName("long")}), and the countdowns are the same for everyone. They're worked out from the game's clock, not your computer's: when the page is made, Kanan notes how far the game's clock is from your computer's, so they match the game even if your computer's clock is a little off. The Erinn time under the clock is the time in game.</p>`;
+  return `<p><b>Times:</b> the times on this page are in your computer's time zone (${zoneName("long")}), and the countdowns are the same for everyone. They're worked out from the game's clock, not your computer's: Kanan notes how far the game's clock is from your computer's when the page is made, and again every minute while the game runs, so they match the game even if your computer's clock is a little off. The Erinn time under the clock is the time in game.</p>
+    <p><b>Daylight saving:</b> the game's clock is the server's own. If the server changes its clock for daylight saving, the page can't tell while the game is closed, and its times are an hour off until it next hears from the game: type <b>.tracker</b> in game (or play with the page open) after a time change. The page says so at the top when a US time change (March and November) has happened since it last heard from the game.</p>`;
 }
 
 function tick() {
@@ -836,6 +867,7 @@ function tick() {
   }
   placeNowLine();
   showLive();
+  showClockWarning();
 }
 
 function currentRun(p, now) { return p.runs.find(r => r.start <= now && now < r.end); }
