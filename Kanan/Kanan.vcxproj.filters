@@ -330,6 +330,9 @@
     <ClCompile Include="AutoMount.cpp">
       <Filter>Source Files\MessageMods</Filter>
     </ClCompile>
+    <ClCompile Include="CookingOverlay.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -680,6 +683,12 @@
     <ClInclude Include="AutoMount.hpp">
       <Filter>Header Files\MessageMods</Filter>
     </ClInclude>
+    <ClInclude Include="CookingOverlay.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Patches.json" />
@@ -688,10 +697,18 @@
     <ResourceCompile Include="MabiTrackers.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
+    <ResourceCompile Include="Kanan.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="MabiTrackers.html">
       <Filter>Resource Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="cook.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

@@ -15,6 +15,7 @@
 
 // Misc Mods
 #include "AutoSetMTU.hpp"
+#include "CookingOverlay.hpp"
 #include "CpuScheduling.hpp"
 #include "ThreadPriority.hpp"
 #include "OverlayDetection.hpp"
@@ -216,6 +217,7 @@ namespace kanan {
         addMessageMod(make_unique<AutoMount>(), convenience, "Auto Mount",
             "Accepts mount requests automatically.");
         addMessageMod(make_unique<BlockSpam>(), chat, "Block Spam", "Hides spam messages from chat.");
+        addMod(make_unique<CookingOverlay>(), ui, "Cooking Overlay", "Opens a new ImGui window with a cooking overlay.");
         addMessageMod(make_unique<DpsMeter>(), combat, "DPS Meter", "Shows your damage per second.");
         addMessageMod(make_unique<GetInfo>(), "", "", "");
         addMessageMod(make_unique<NaoCounter>(), convenience, "Nao Counter", "Counts Nao Soul Stone revives.");

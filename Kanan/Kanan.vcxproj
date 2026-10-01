@@ -139,18 +139,21 @@
     <ClCompile Include="BlockSpam.cpp" />
     <ClCompile Include="BorderlessWindow.cpp" />
     <ClCompile Include="ChangeChannelHotkey.cpp" />
+    <ClCompile Include="CookingOverlay.cpp" />
     <ClCompile Include="Creature.cpp" />
     <ClCompile Include="DisableFlashy.cpp" />
     <ClCompile Include="DpsMeter.cpp" />
     <ClCompile Include="EntityViewer.cpp" />
     <ClCompile Include="EntityWindow.cpp" />
     <ClInclude Include="AutoMount.hpp" />
+    <ClInclude Include="CookingOverlay.hpp" />
     <ClInclude Include="EntityWindow.hpp" />
     <ClCompile Include="GetInfo.cpp" />
     <ClCompile Include="MaintLogin.cpp" />
     <ClInclude Include="MaintLogin.hpp" />
     <ClCompile Include="MaxFrameRate.cpp" />
     <ClCompile Include="Prop.cpp" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="TickTracker.hpp" />
     <ClCompile Include="Hotkey.cpp" />
     <ClCompile Include="ChatLog.cpp" />
@@ -348,10 +351,14 @@
     </CopyFileToFolders>
   </ItemGroup>
   <ItemGroup>
+    <ResourceCompile Include="Kanan.rc" />
     <ResourceCompile Include="MabiTrackers.rc" />
   </ItemGroup>
   <ItemGroup>
     <None Include="MabiTrackers.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="cook.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
