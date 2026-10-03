@@ -1,3 +1,5 @@
+#include <cwchar>
+#include <cwctype>
 #include <memory>
 
 #include <imgui.h>
@@ -22,117 +24,144 @@ namespace kanan {
     constexpr uint32_t PROGRESS_PREPARING = 1;
     constexpr uint32_t PROGRESS_WAITING = 2;
 
-    // The skills this applies to, and what they're used on: 1 your current target, 2 yourself.
-    // Unlisted skills just load as usual.
-    struct SkillTarget {
-        uint16_t skill;
-        uint8_t type;
+    // What a press does with a skill, decided from the game's own skill data (skillinfo, loaded
+    // at startup): attacks aimed at enemies go at your current target; melee skills that go off in
+    // place go off where you stand; everything else loads as usual.
+    enum CastKind {
+        CAST_NONE,
+        CAST_TARGET,
+        CAST_SELF,
     };
 
-    static const SkillTarget g_skillTargets[] = {
-        { 20002, 1 },   // Smash
-        { 20011, 1 },   // Charge
-        { 20017, 1 },   // Lance Charge
-        { 20018, 1 },   // Rage Impact
-        { 20019, 1 },   // Bash
-        { 21001, 1 },   // Ranged Attack
-        { 21002, 1 },   // Magnum Shot
-        { 21004, 1 },   // Arrow Revolver
-        { 21006, 1 },   // Support Shot
-        { 21007, 1 },   // Mirage Missile
-        { 21009, 1 },   // Ego Bow Incarnate
-        { 21010, 1 },   // Throw Attack
-        { 21012, 1 },   // Spider Shot
-        { 21014, 1 },   // Urgent Shot
-        { 22001, 2 },   // Windmill
-        { 22004, 1 },   // Final Hit
-        { 22005, 1 },   // Ego Sword Incarnate
-        { 22006, 1 },   // Ego Blunt Incarnate
-        { 22011, 1 },   // Crash Shot
-        { 23106, 1 },   // Gold Strike
-        { 26000, 1 },   // Shuriken Mastery
-        { 26001, 1 },   // Shuriken Charging
-        { 26002, 1 },   // Kunai Rush / Shuriken Storm
-        { 26003, 2 },   // Shadow Bind
-        { 26007, 1 },   // Abyss Recall / Cherry Blossom Wind
-        { 27002, 1 },   // Dorcha Snatch
-        { 27003, 1 },   // Chain Impale
-        { 27004, 2 },   // Raging Thrust
-        { 27005, 1 },   // Spinning Slash
-        { 27006, 1 },   // Chain Crush
-        { 27007, 1 },   // Chain Sweeping
-        { 27010, 1 },   // Death Marker
-        { 27012, 1 },   // Tuairim Explosion
-        { 30015, 1 },   // Lure of Ballad
-        { 30101, 1 },   // Lightning Bolt
-        { 30102, 1 },   // Thunder
-        { 30201, 1 },   // Firebolt
-        { 30202, 1 },   // Fireball
-        { 30205, 1 },   // Meteor Strike
-        { 30301, 1 },   // Icebolt
-        { 30302, 1 },   // Ice Spear
-        { 30307, 1 },   // Hailstorm
-        { 30401, 1 },   // Ego Wand Incarnate
-        { 35002, 1 },   // Life Drain
-        { 35004, 1 },   // Water Cannon
-        { 35007, 1 },   // Wind Blast
-        { 35008, 1 },   // Flamer
-        { 35009, 1 },   // Sand Burst
-        { 35011, 1 },   // Frozen Blast
-        { 35013, 1 },   // Spark
-        { 35101, 1 },   // Ego Cylinder Incarnate
-        { 41002, 1 },   // Control of Darkness
-        { 43002, 1 },   // Elven Magic Missile
-        { 44002, 1 },   // Giant Full Swing
-        { 45005, 1 },   // Spear of Light
-        { 45009, 1 },   // Rage of Wings
-        { 46002, 1 },   // Celestial Spike
-        { 46003, 1 },   // Judgment Blade
-        { 46004, 1 },   // Divine Link
-        { 46006, 1 },   // Divine Impact
-        { 46008, 1 },   // Ruin of Nova
-        { 50075, 1 },   // Glove Throwing (snow)
-        { 50180, 1 },   // Pet: Fairy's Magical Dust
-        { 50181, 1 },   // Pet: Healing Breeze
-        { 50201, 1 },   // Cocopo Blow
-        { 52032, 1 },   // Fanaticism
-        { 52036, 1 },   // Albangolem Ice Slip
-        { 52046, 1 },   // Shooting Star
-        { 52073, 1 },   // Purgatory
-        { 52096, 1 },   // Dark Bolt
-        { 52500, 1 },   // Stop There
-        { 53001, 1 },   // Melody Shock
-        { 53002, 2 },   // Encore
-        { 54101, 1 },   // Act 2: Angry Rush
-        { 54102, 1 },   // Act 1: Accidental Crash
-        { 54103, 2 },   // Act 4: Jealousy Incarnate
-        { 54104, 2 },   // Act 6: Temptational Trap
-        { 54151, 1 },   // Act 2: Angry Rush (AI)
-        { 54152, 1 },   // Act 1: Accidental Crash (AI)
-        { 54153, 1 },   // Act 4: Jealousy Incarnate (AI)
-        { 54154, 1 },   // Act 6: Temptational Trap (AI)
-        { 54201, 1 },   // Wire Pulling
-        { 54202, 1 },   // Wire Binding
-        { 54302, 1 },   // Dual Gun Mastery
-        { 54303, 1 },   // Cross Buster
-        { 54304, 1 },   // Closer
-        { 54305, 1 },   // Far Away
-        { 54306, 2 },   // Shooting Rush
-        { 54307, 2 },   // Bullet Storm
-        { 60002, 1 },   // Unlimited Blade Works
-        { 60003, 1 },   // Caladbolg 2
-        { 60005, 1 },   // Gate of Babylon
-        { 65007, 2 },   // Super Temptational Trap
+    // core::SSkillDesc lock bits (WaitLock: while loaded; ProcessLock: while going off).
+    constexpr uint32_t LOCK_WALK = 0x8;
+    constexpr uint32_t LOCK_HIT = 0x20;
+
+    // core::ESkillType of attack skills: melee, ranged, magic, and alchemy (the rebalanced type
+    // alchemy attacks like Water Cannon get: skillinfo's SkillTypeRebalance).
+    constexpr uint32_t SKILL_MELEE = 1;
+    constexpr uint32_t SKILL_RANGED = 2;
+    constexpr uint32_t SKILL_MAGIC = 3;
+    constexpr uint32_t SKILL_ALCHEMY = 11;
+
+    // Standard.dll's core::CSkillDescMgr and core::SSkillDesc, and ESL.dll's string.
+    using SkillDescMgrFn = void*(__cdecl*)();
+    using SkillDescReadyFn = bool(__fastcall*)(void* mgr, void* edx);
+    using FindSkillDescFn = const void*(__fastcall*)(void* mgr, void* edx, uint32_t skill, uint32_t race);
+    using DescStringFn = const void*(__fastcall*)(const void* desc, void* edx);
+    using DescValueFn = uint32_t(__fastcall*)(const void* desc, void* edx);
+    using DescFlagFn = bool(__fastcall*)(const void* desc, void* edx);
+    using StringContentFn = const wchar_t*(__fastcall*)(const void* str, void* edx);
+
+    static SkillDescMgrFn g_skillDescMgr{ nullptr };
+    static SkillDescReadyFn g_skillDescReady{ nullptr };
+    static FindSkillDescFn g_findSkillDesc{ nullptr };
+    static DescStringFn g_targetPreference{ nullptr };
+    static DescValueFn g_skillType{ nullptr };
+    static DescValueFn g_useType{ nullptr };
+    static DescValueFn g_waitLock{ nullptr };
+    static DescValueFn g_processLock{ nullptr };
+    static DescFlagFn g_isHidden{ nullptr };
+    static StringContentFn g_stringContent{ nullptr };
+
+    struct SkillDescInfo {
+        wchar_t preference[64];     // TargetPreference, lowercase: "enemy", "enemy|prop(...)", "me & friend"...
+        uint32_t type;
+        uint32_t useType;
+        uint32_t waitLock;
+        uint32_t processLock;
+        bool hidden;
     };
 
-    static int skillTarget(uint16_t skill) {
-        for (auto& p : g_skillTargets) {
-            if (p.skill == skill) {
-                return p.type;
+    // SKILL's data, from the game. False if it isn't loaded or there's no such skill. SEH-guarded.
+    static bool readSkillDesc(uint16_t skill, SkillDescInfo& info) {
+        __try {
+            auto mgr = g_skillDescMgr();
+
+            if (mgr == nullptr || !g_skillDescReady(mgr, nullptr)) {
+                return false;
+            }
+
+            // Race 0: the human table; every race's copy has the same targeting.
+            auto desc = g_findSkillDesc(mgr, nullptr, skill, 0);
+
+            if (desc == nullptr) {
+                return false;
+            }
+
+            auto preference = g_stringContent(g_targetPreference(desc, nullptr), nullptr);
+            size_t n = 0;
+
+            for (; preference != nullptr && preference[n] != 0 && n + 1 < _countof(info.preference); ++n) {
+                info.preference[n] = towlower(preference[n]);
+            }
+
+            info.preference[n] = 0;
+            info.type = g_skillType(desc, nullptr);
+            info.useType = g_useType(desc, nullptr);
+            info.waitLock = g_waitLock(desc, nullptr);
+            info.processLock = g_processLock(desc, nullptr);
+            info.hidden = g_isHidden(desc, nullptr);
+
+            return true;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return false;
+        }
+    }
+
+    // Whether TEXT has WORD as a whole word.
+    static bool hasWord(const wchar_t* text, const wchar_t* word) {
+        auto length = wcslen(word);
+
+        for (auto p = text; *p != 0;) {
+            if (!iswalpha(*p)) {
+                ++p;
+                continue;
+            }
+
+            auto start = p;
+
+            while (iswalpha(*p)) {
+                ++p;
+            }
+
+            if ((size_t)(p - start) == length && wcsncmp(start, word, length) == 0) {
+                return true;
             }
         }
 
-        return 0;
+        return false;
+    }
+
+    static CastKind castKind(uint16_t skill) {
+        SkillDescInfo info{};
+
+        // Only active attack skills (not hidden, passive, or toggled).
+        if (!readSkillDesc(skill, info) || info.hidden || info.useType != 0) {
+            return CAST_NONE;
+        }
+
+        if (info.type != SKILL_MELEE && info.type != SKILL_RANGED && info.type != SKILL_MAGIC &&
+            info.type != SKILL_ALCHEMY)
+        {
+            return CAST_NONE;
+        }
+
+        // Aimed at enemies only; skills that can also take you or friends (healing...) load as usual.
+        if (wcsncmp(info.preference, L"enemy", 5) != 0 || hasWord(info.preference, L"me") ||
+            hasWord(info.preference, L"friend"))
+        {
+            return CAST_NONE;
+        }
+
+        // Melee skills that can't walk once loaded can't head for a target. The ones that also can't
+        // be hit while they go off spin in place (Windmill); the rest (Stomp...) load as usual.
+        if (info.type == SKILL_MELEE && (info.waitLock & LOCK_WALK) != 0) {
+            return (info.processLock & LOCK_HIT) != 0 ? CAST_SELF : CAST_NONE;
+        }
+
+        return CAST_TARGET;
     }
 
     // mint::CMessage passed by value: vtable, reading offset, shared data.
@@ -289,17 +318,17 @@ namespace kanan {
     static bool castOnTarget(uint16_t skill) {
         g_pending = {};
 
-        auto type = skillTarget(skill);
+        auto kind = castKind(skill);
         auto ownID = playerID();
         auto local = ownID != 0 ? findObject(ownID) : 0;
         auto skillMgr = local != 0 ? skillMgrOf(local) : 0;
 
-        if (type == 0 || skillMgr == 0) {
+        if (kind == CAST_NONE || skillMgr == 0) {
             return false;
         }
 
         auto progress = skillProgress((void*)skillMgr, skill);
-        auto targetID = type == 2 ? ownID : currentTarget(local);
+        auto targetID = kind == CAST_SELF ? ownID : currentTarget(local);
         auto target = targetID != 0 ? findObject(targetID) : 0;
 
         if (target == 0) {
@@ -307,7 +336,7 @@ namespace kanan {
         }
 
         // Skills used on yourself (Windmill...) need no target: they go off on whatever's in range.
-        if (type == 2) {
+        if (kind == CAST_SELF) {
             if (progress != PROGRESS_WAITING) {
                 return false;
             }
@@ -396,6 +425,22 @@ namespace kanan {
 
         if (standard != nullptr) {
             g_getProgress = (GetProgressFn)GetProcAddress(standard, "?GetProgress@ISkillMgr@core@@QBE?AW4ESkillProgress@2@G@Z");
+            g_skillDescMgr = (SkillDescMgrFn)GetProcAddress(standard, "?Instance@CSkillDescMgr@core@@SAAAV12@XZ");
+            g_skillDescReady = (SkillDescReadyFn)GetProcAddress(standard, "?IsInitialized@CSkillDescMgr@core@@QBE_NXZ");
+            g_findSkillDesc = (FindSkillDescFn)GetProcAddress(standard,
+                "?Find@CSkillDescMgr@core@@QBEPBUSSkillDesc@2@GW4ERaceType@@@Z");
+            g_targetPreference = (DescStringFn)GetProcAddress(standard,
+                "?GetTargetPreference@SSkillDesc@core@@QBEABV?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@XZ");
+            g_skillType = (DescValueFn)GetProcAddress(standard, "?GetSkillType@SSkillDesc@core@@QBE?AW4ESkillType@2@XZ");
+            g_useType = (DescValueFn)GetProcAddress(standard, "?GetUseType@SSkillDesc@core@@QBE?AW4ESkillUseType@2@XZ");
+            g_waitLock = (DescValueFn)GetProcAddress(standard, "?GetWaitLock@SSkillDesc@core@@QBE?BKXZ");
+            g_processLock = (DescValueFn)GetProcAddress(standard, "?GetProcessLock@SSkillDesc@core@@QBE?BKXZ");
+            g_isHidden = (DescFlagFn)GetProcAddress(standard, "?IsHidden@SSkillDesc@core@@QBE_NXZ");
+        }
+
+        if (auto esl = GetModuleHandleA("ESL.dll"); esl != nullptr) {
+            g_stringContent = (StringContentFn)GetProcAddress(esl,
+                "?GetSafeContent@?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QBEPB_WXZ");
         }
 
         // CUISkillMgr::UseSkill: push 8Ch; mov eax, <handler>; call _EH_prolog3; mov [ebp-54h], ecx;
@@ -412,11 +457,13 @@ namespace kanan {
         }
 
         auto messages = g_ctor && g_ctorOp && g_writeU16 && g_writeU64 && g_copy && g_dtor && g_send && g_instance;
+        auto skillData = g_skillDescMgr && g_skillDescReady && g_findSkillDesc && g_targetPreference && g_skillType &&
+            g_useType && g_waitLock && g_processLock && g_isHidden && g_stringContent;
 
-        if (!messages || !g_getProgress || !g_interfaceMgr || !useSkill || !g_commandProcessSkill) {
-            log("[SkillHotkey] Failed to find everything needed (messages %d, progress %d, interface %d, use skill %d, "
-                "process skill %d)", messages, g_getProgress != nullptr, g_interfaceMgr != nullptr, (bool)useSkill,
-                g_commandProcessSkill != nullptr);
+        if (!messages || !skillData || !g_getProgress || !g_interfaceMgr || !useSkill || !g_commandProcessSkill) {
+            log("[SkillHotkey] Failed to find everything needed (messages %d, skill data %d, progress %d, interface %d, "
+                "use skill %d, process skill %d)", messages, skillData, g_getProgress != nullptr, g_interfaceMgr != nullptr,
+                (bool)useSkill, g_commandProcessSkill != nullptr);
             log("[SkillHotkey] Leaving constructor");
             return;
         }
