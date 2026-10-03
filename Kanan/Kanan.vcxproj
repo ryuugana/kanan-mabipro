@@ -171,6 +171,7 @@
     <ClCompile Include="FieldOfView.cpp" />
     <ClCompile Include="FreezeTimeOfDay.cpp" />
     <ClCompile Include="EntityHP.cpp" />
+    <ClCompile Include="SkillHotkey.cpp" />
     <ClCompile Include="CharacterHook.cpp" />
     <ClCompile Include="MeditationTint.cpp" />
     <ClCompile Include="CpuScheduling.cpp" />
@@ -265,6 +266,7 @@
     <ClInclude Include="FontData.hpp" />
     <ClInclude Include="FreezeTimeOfDay.hpp" />
     <ClInclude Include="EntityHP.hpp" />
+    <ClInclude Include="SkillHotkey.hpp" />
     <ClInclude Include="CharacterHook.hpp" />
     <ClInclude Include="MeditationTint.hpp" />
     <ClInclude Include="CpuScheduling.hpp" />
