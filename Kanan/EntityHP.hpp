@@ -60,10 +60,17 @@ namespace kanan {
         bool m_canDrawInGame;
         uintptr_t m_nameRangeLoad;
 
+        // Screen pixels per pixel of the name tags and of the interface (MabiPro's Bexon.dll sizes
+        // them separately).
+        float m_tagScale;
+        float m_interfaceScale;
+        DWORD m_scaleTick;
+
         std::mutex m_labelsMutex;
         std::unordered_map<uintptr_t, Label> m_labels;
 
         void onCharacterUpdate(uintptr_t character);
+        void updateScales();
         void formatLabel(float life, float lifeMax, char* text, size_t size) const;
         uint32_t labelColor(float life, float lifeMax) const;
     };

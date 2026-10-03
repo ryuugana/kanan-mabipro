@@ -1,5 +1,9 @@
 #include <cfloat>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+#include <Windows.h>
 
 #include <imgui.h>
 
@@ -67,9 +71,34 @@ namespace kanan {
         return (color & 0xFF00FF00) | ((color & 0xFF) << 16) | ((color >> 16) & 0xFF);
     }
 
-    // Draws a line of text centered above the name tag with the client's own text rendering.
+    // MabiPro's Bexon.dll scales the interface ("Interface size") and, separately, the name tags and
+    // other world overlays ("World overlay size", 0 = as the interface), and saves both as options.
+    // For the overlays it shrinks the interface's layout by interface / overlay while
+    // CCharacterSticker::PreRender runs, so a name tag's screen position is in pixels of the
+    // overlay size, then draws the tags at that size. Returns the size in percent, or 0.
+    static long readBexonOption(const wchar_t* name) {
+        wchar_t text[16]{};
+        DWORD number{};
+        DWORD type{};
+        DWORD size{ sizeof(text) };
+
+        if (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Nexon\\Mabinogi", name, RRF_RT_REG_SZ | RRF_RT_REG_DWORD, &type,
+            text, &size) != ERROR_SUCCESS) {
+            return 0;
+        }
+
+        if (type == REG_DWORD) {
+            memcpy(&number, text, sizeof(number));
+            return (long)number;
+        }
+
+        return wcstol(text, nullptr, 10);
+    }
+
+    // Draws a line of text centered above the name tag with the client's own text rendering, in the
+    // interface's pixels: SCALE turns the tag's position (and the offset) into them.
     // Kept free of C++ objects so the SEH guard can protect it.
-    static void drawInGame(const NameTag& tag, const wchar_t* text, float offsetY, uint32_t color, bool outline) {
+    static void drawInGame(const NameTag& tag, float scale, const wchar_t* text, float offsetY, uint32_t color, bool outline) {
         __try {
             auto windowMgr = *g_windowMgr;
 
@@ -83,8 +112,8 @@ namespace kanan {
             g_stringConstruct(string, text);
             g_measureString(windowMgr, string, &width, &height, 0);
 
-            auto x = (int32_t)tag.x - (int32_t)width / 2;
-            auto y = (int32_t)(tag.y - offsetY) - (int32_t)height;
+            auto x = (int32_t)(tag.x * scale) - (int32_t)width / 2;
+            auto y = (int32_t)((tag.y - offsetY) * scale) - (int32_t)height;
             auto outlineColor = outline ? (color & 0xFF000000) : 0;
 
             g_renderString(windowMgr, string, x, y, tag.layer, color, outlineColor, outline ? 1 : 0, 0, 0, 0);
@@ -167,6 +196,9 @@ namespace kanan {
         m_isHooked{ false },
         m_canDrawInGame{ false },
         m_nameRangeLoad{ 0 },
+        m_tagScale{ 1.0f },
+        m_interfaceScale{ 1.0f },
+        m_scaleTick{ 0 },
         m_labelsMutex{},
         m_labels{}
     {
@@ -252,7 +284,43 @@ namespace kanan {
         return ImGui::ColorConvertFloat4ToU32(m_textColor);
     }
 
+    // The sizes name tags and the interface are drawn at, from Bexon's options (checked once a
+    // second) or Kanan's UI Scale.
+    void EntityHP::updateScales() {
+        auto now = GetTickCount();
+
+        if (m_scaleTick != 0 && now - m_scaleTick < 1000) {
+            return;
+        }
+
+        m_scaleTick = now == 0 ? 1 : now;
+
+        if (GetModuleHandleA("Bexon.dll") == nullptr) {
+            m_tagScale = m_interfaceScale = UIScale::current();
+            return;
+        }
+
+        auto interfaceSize = readBexonOption(L"MabiProInterfaceScale");
+        auto overlaySize = readBexonOption(L"MabiProOverlayScale");
+
+        if (interfaceSize < 50 || interfaceSize > 1000) {
+            interfaceSize = 100;
+        }
+
+        // 0 is "as the interface".
+        if (overlaySize < 50 || overlaySize > 1000) {
+            overlaySize = interfaceSize;
+        }
+
+        m_interfaceScale = interfaceSize / 100.0f;
+        m_tagScale = overlaySize / 100.0f;
+    }
+
     void EntityHP::onFrame() {
+        if (m_isEnabled) {
+            updateScales();
+        }
+
         if (!m_isEnabled || (m_mode == MODE_IN_GAME && m_canDrawInGame)) {
             scoped_lock<mutex> _{ m_labelsMutex };
 
@@ -264,8 +332,8 @@ namespace kanan {
         auto drawList = ImGui::GetBackgroundDrawList();
         auto font = ImGui::GetFont();
         auto now = GetTickCount();
-        // Name tag positions are in the interface's (possibly scaled) virtual pixels.
-        auto uiScale = UIScale::current();
+        // Name tag positions (and the height above them) are in the name tags' scaled pixels.
+        auto scale = m_tagScale;
         char text[64];
 
         scoped_lock<mutex> _{ m_labelsMutex };
@@ -281,8 +349,8 @@ namespace kanan {
 
             ++it;
 
-            auto x = label.x * uiScale;
-            auto y = label.y * uiScale;
+            auto x = label.x * scale;
+            auto y = label.y * scale;
 
             if (x < -50.0f || y < -50.0f || x > io.DisplaySize.x + 50.0f || y > io.DisplaySize.y + 50.0f) {
                 continue;
@@ -292,7 +360,7 @@ namespace kanan {
 
             auto color = labelColor(label.life, label.lifeMax);
             auto size = font->CalcTextSizeA(m_fontSize, FLT_MAX, 0.0f, text);
-            ImVec2 pos{ x - size.x / 2.0f, y - m_offsetY - size.y };
+            ImVec2 pos{ x - size.x / 2.0f, y - m_offsetY * scale - size.y };
 
             if (m_showBox) {
                 drawList->AddRectFilled(
@@ -417,7 +485,9 @@ namespace kanan {
                 wideText[i] = (wchar_t)(unsigned char)text[i];
             }
 
-            drawInGame(tag, wideText, m_offsetY, toARGB(labelColor(tag.life, tag.lifeMax)), m_textShadow);
+            // From the name tags' pixels to the interface's, which the client's text is drawn in.
+            drawInGame(tag, m_tagScale / m_interfaceScale, wideText, m_offsetY, toARGB(labelColor(tag.life, tag.lifeMax)),
+                m_textShadow);
             return;
         }
 
