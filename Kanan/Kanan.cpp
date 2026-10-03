@@ -777,7 +777,7 @@ namespace kanan {
         if (ImGui::BeginMenuBar()) {
             if (ImGui::BeginMenu("File")) {
                 if (ImGui::MenuItem("New Client")) {
-                    launch_client(m_path);
+                    launch_client_with_args(m_path);
                 }
                 if (ImGui::MenuItem("Save Config")) {
                     saveConfig();

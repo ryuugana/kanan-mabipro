@@ -4,6 +4,7 @@
 
 #include "miniz.h"
 #include "Utility.hpp"
+#include "String.hpp"
 
 using namespace std;
 
@@ -143,5 +144,77 @@ namespace kanan {
         clientLaunch.append("\\MabiProLauncher.exe");
 
         return start_application(clientLaunch);
+    }
+
+    // Launch client.exe in the provided Mabi root, forwarding this process's
+    // command-line arguments to the launched client.
+    bool launch_client_with_args(std::string mabiFolderPath)
+    {
+        using namespace std;
+        filesystem::path rootPath(mabiFolderPath);
+        filesystem::path clientPath = rootPath / "client.exe";
+        wstring clientPathW = widen(clientPath.u8string());
+
+        // Get the raw command line for this process.
+        LPWSTR rawCmd = GetCommandLineW();
+        if (!rawCmd) {
+            return false;
+        }
+
+        // Skip the program name in rawCmd per Windows command-line parsing rules.
+        LPWSTR p = rawCmd;
+        if (*p == L'"') {
+            // Skip quoted program name
+            ++p;
+            while (*p && *p != L'"') ++p;
+            if (*p == L'"') ++p;
+        } else {
+            // Skip unquoted program name
+            while (*p && *p != L' ' && *p != L'\t') ++p;
+        }
+        // Skip any whitespace after program name.
+        while (*p == L' ' || *p == L'\t') ++p;
+
+        // p now points to the first character of the original arguments (or to the terminating NUL).
+        wstring trailingArgs;
+        if (*p) {
+            trailingArgs = p; // preserves original formatting/quoting exactly
+        }
+
+        // Build command line: quoted client path followed by original args (if any).
+        wstring cmdLine = L"\"";
+        cmdLine += clientPathW;
+        cmdLine += L"\"";
+        if (!trailingArgs.empty()) {
+            cmdLine.push_back(L' ');
+            cmdLine += trailingArgs;
+        }
+
+        // Prepare startup info and working directory.
+        STARTUPINFOW startupInfo = { 0 };
+        startupInfo.cb = sizeof(startupInfo);
+        PROCESS_INFORMATION processInformation = { 0 };
+
+        wstring cwd = widen(rootPath.u8string());
+
+        // CreateProcessW needs a mutable buffer for lpCommandLine.
+        BOOL result = CreateProcessW(
+            nullptr,                // lpApplicationName - we're passing full command line instead
+            &cmdLine[0],            // lpCommandLine (writable buffer)
+            nullptr,                // lpProcessAttributes
+            nullptr,                // lpThreadAttributes
+            FALSE,                  // bInheritHandles
+            0,                      // dwCreationFlags
+            nullptr,                // lpEnvironment
+            cwd.c_str(),            // lpCurrentDirectory
+            &startupInfo,
+            &processInformation);
+
+        if (result) {
+            CloseHandle(processInformation.hProcess);
+            CloseHandle(processInformation.hThread);
+        }
+
+        return result != FALSE;
     }
 }

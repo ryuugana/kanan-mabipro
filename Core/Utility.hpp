@@ -18,6 +18,10 @@ namespace kanan {
     bool start_application(std::string appPath);
     bool launch_client(std::string mabiFolderPath);
 
+    // Launches client.exe in the provided Mabi root, forwarding the arguments
+    // used to launch the current process to the new client process.
+    bool launch_client_with_args(std::string mabiFolderPath);
+
     // Given the address of a relative offset, calculate the absolute address.
     constexpr uintptr_t rel_to_abs(uintptr_t address, int offset = 4) {
         auto rel = *(int*)(address);
