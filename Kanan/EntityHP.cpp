@@ -402,6 +402,8 @@ namespace kanan {
         m_interfaceScale{ 1.0f },
         m_scaleTick{ 0 },
         m_debugLog{ false },
+        m_perfLog{ false },
+        m_perf{},
         m_labelsMutex{},
         m_labels{}
     {
@@ -444,9 +446,23 @@ namespace kanan {
         }
 
         m_isHooked = addCharacterUpdateCallback([this](uintptr_t character) {
-            if (m_isEnabled) {
-                onCharacterUpdate(character);
+            if (!m_isEnabled) {
+                return;
             }
+
+            if (!m_perfLog) {
+                onCharacterUpdate(character);
+                return;
+            }
+
+            LARGE_INTEGER start, end;
+
+            QueryPerformanceCounter(&start);
+            onCharacterUpdate(character);
+            QueryPerformanceCounter(&end);
+
+            m_perf.updateTicks += end.QuadPart - start.QuadPart;
+            ++m_perf.updates;
         });
 
         log("[EntityHP] Leaving constructor");
@@ -535,6 +551,58 @@ namespace kanan {
             return;
         }
 
+        // PERF LOG: times this frame's work, and reports once a second.
+        struct FrameTimer {
+            EntityHP* self;
+            LARGE_INTEGER start;
+
+            ~FrameTimer() {
+                if (!self->m_perfLog) {
+                    return;
+                }
+
+                LARGE_INTEGER end;
+
+                QueryPerformanceCounter(&end);
+
+                auto ticks = end.QuadPart - start.QuadPart;
+                auto& perf = self->m_perf;
+
+                perf.frameTicks += ticks;
+                perf.frameMaxTicks = ticks > perf.frameMaxTicks ? ticks : perf.frameMaxTicks;
+                ++perf.frames;
+            }
+        };
+
+        FrameTimer timer{ this, {} };
+
+        if (m_perfLog) {
+            QueryPerformanceCounter(&timer.start);
+
+            auto now = GetTickCount();
+
+            if (m_perf.tick == 0) {
+                m_perf.tick = now;
+            }
+            else if (now - m_perf.tick >= 1000 && m_perf.frames != 0) {
+                LARGE_INTEGER frequency;
+
+                QueryPerformanceFrequency(&frequency);
+
+                auto ms = 1000.0 / frequency.QuadPart;
+
+                log("[EntityHP][perf] %u frames: draw %.3f ms avg, %.3f ms worst; %.1f labels, %.1f pieces, "
+                    "%.1f windows a frame | %u character updates: %.3f ms total, %.4f ms each",
+                    m_perf.frames, m_perf.frameTicks * ms / m_perf.frames, m_perf.frameMaxTicks * ms,
+                    (double)m_perf.labels / m_perf.frames, (double)m_perf.pieces / m_perf.frames,
+                    (double)m_perf.windows / m_perf.frames, m_perf.updates, m_perf.updateTicks * ms,
+                    m_perf.updates != 0 ? m_perf.updateTicks * ms / m_perf.updates : 0.0);
+
+                m_perf = PerfStats{};
+                m_perf.tick = now;
+            }
+        }
+
         updateScales();
 
         auto& io = ImGui::GetIO();
@@ -550,6 +618,8 @@ namespace kanan {
         // scaled like the labels).
         WindowInfo windows[64];
         auto windowCount = readWindows(m_interfaceScale, windows, _countof(windows));
+
+        m_perf.windows += windowCount;  // PERF LOG
 
         struct Occluder {
             float x1, y1, x2, y2;
@@ -643,6 +713,14 @@ namespace kanan {
             auto emit = [&](float clx1, float cly1, float clx2, float cly2, bool clip) {
                 if (clip && (clx2 <= clx1 || cly2 <= cly1)) {
                     return;
+                }
+
+                // PERF LOG
+                if (clip) {
+                    ++m_perf.pieces;
+                }
+                else {
+                    ++m_perf.labels;
                 }
 
                 if (clip) {
@@ -762,6 +840,7 @@ namespace kanan {
         m_textColor = ImGui::ColorConvertU32ToFloat4(cfg.get<unsigned int>("EntityHP.TextColor").value_or(IM_COL32(255, 255, 255, 255)));
         m_boxColor = ImGui::ColorConvertU32ToFloat4(cfg.get<unsigned int>("EntityHP.BoxColor").value_or(IM_COL32(0, 0, 0, 153)));
         m_debugLog = cfg.get<bool>("EntityHP.DebugLog").value_or(false);
+        m_perfLog = cfg.get<bool>("EntityHP.PerfLog").value_or(false);
     }
 
     void EntityHP::onConfigSave(Config& cfg) {
@@ -780,6 +859,7 @@ namespace kanan {
         cfg.set<unsigned int>("EntityHP.TextColor", ImGui::ColorConvertFloat4ToU32(m_textColor));
         cfg.set<unsigned int>("EntityHP.BoxColor", ImGui::ColorConvertFloat4ToU32(m_boxColor));
         cfg.set<bool>("EntityHP.DebugLog", m_debugLog);
+        cfg.set<bool>("EntityHP.PerfLog", m_perfLog);
     }
 
     void EntityHP::onCharacterUpdate(uintptr_t character) {

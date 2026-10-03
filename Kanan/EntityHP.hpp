@@ -68,6 +68,24 @@ namespace kanan {
         // Off by default and not in the menu: set EntityHP.DebugLog=true in config.txt.
         bool m_debugLog;
 
+        // Logs, once a second, how long Entity HP takes per frame and in character updates. Off by
+        // default and not in the menu: set EntityHP.PerfLog=true in config.txt.
+        bool m_perfLog;
+
+        struct PerfStats {
+            int64_t frameTicks;         // QueryPerformanceCounter ticks spent in onFrame
+            int64_t frameMaxTicks;
+            int64_t updateTicks;        // ticks spent in character updates
+            uint32_t frames;
+            uint32_t updates;
+            uint32_t labels;            // labels drawn
+            uint32_t pieces;            // partial pieces drawn for labels behind windows
+            uint32_t windows;           // windows read
+            DWORD tick;
+        };
+
+        PerfStats m_perf;
+
         // DEBUG LOG: raw chat balloon fields per character, to find which mean "showing" and where
         // the balloon is drawn.
         struct BalloonRaw {
