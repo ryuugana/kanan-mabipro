@@ -24,7 +24,12 @@ namespace kanan {
     //   CCharacterSticker +0x10 layer its texts are drawn at, +0x14 depth, +0x54 camera distance,
     //   +0x58/+0x5A screen x/y, +0x64 chat balloon, +0xA5 enabled
     //   CCharacter vtable +0x50 -> core::IParameter
+    //   pleione::CCharacter +0x04 -> its object id (u64), +0x168 -> CDemiGodComponent (+0x10: the id of
+    //   the character a Demigod afterimage copies; 0 on real characters)
     namespace offsets {
+        constexpr uintptr_t objectId = 0x04;
+        constexpr uintptr_t demiGod = 0x168;
+        constexpr uintptr_t demiGodParent = 0x10;
         constexpr uintptr_t renderEntry = 0x198;
         constexpr uintptr_t sticker = 0x0C;
         constexpr uintptr_t stickerLayer = 0x10;
@@ -33,8 +38,6 @@ namespace kanan {
         constexpr uintptr_t stickerScreenX = 0x58;
         constexpr uintptr_t stickerScreenY = 0x5A;
         constexpr uintptr_t stickerBalloon = 0x64;   // its chat balloon (CBalloon, a CWindow)
-        constexpr uintptr_t stickerBalloon2 = 0x68;  // a second balloon-like window (debug log only,
-                                                     //   not yet identified)
         constexpr uintptr_t stickerEnabled = 0xA5;
         constexpr uintptr_t getParameter = 0x50;
     }
@@ -293,6 +296,27 @@ namespace kanan {
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             return false;
+        }
+    }
+
+    // Whether CHARACTER only exists in the client: a Demigod afterimage, a Ninja or warp clone, a
+    // dummy. These are real characters to the game (with a name tag and a placeholder HP), so they'd
+    // get labels. Server characters' ids have a high half of 0x0010...; the client's own have 0
+    // (temporary ids from 0x10000001, or 0). SEH-guarded.
+    static bool isClientOnly(uintptr_t character) {
+        __try {
+            auto id = *(uint64_t**)(character + offsets::objectId);
+
+            if (id == nullptr || (*id >> 32) == 0) {
+                return true;
+            }
+
+            auto demiGod = *(uintptr_t*)(character + offsets::demiGod);
+
+            return demiGod != 0 && *(uint64_t*)(demiGod + offsets::demiGodParent) != 0;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return true;
         }
     }
 
@@ -863,6 +887,10 @@ namespace kanan {
     }
 
     void EntityHP::onCharacterUpdate(uintptr_t character) {
+        if (isClientOnly(character)) {
+            return;
+        }
+
         // Any character's chat balloon hides labels, whether or not that character shows HP.
         int16_t balloon[4]{};
 
