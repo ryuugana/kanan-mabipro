@@ -25,6 +25,12 @@ namespace kanan {
         void onConfigLoad(const Config& cfg) override;
         void onConfigSave(Config& cfg) override;
 
+        // Where the labels are drawn.
+        enum Mode : int {
+            MODE_OVERLAY, // Kanan's overlay, on top of everything
+            MODE_IN_GAME, // the client's own name tag layer and font, covered by the interface like names are
+        };
+
     private:
         struct Label {
             float x;
@@ -35,6 +41,7 @@ namespace kanan {
         };
 
         bool m_isEnabled;
+        int m_mode;
         bool m_showPlayers;
         bool m_showMonsters;
         bool m_showMax;
@@ -50,6 +57,7 @@ namespace kanan {
         ImVec4 m_boxColor;
 
         bool m_isHooked;
+        bool m_canDrawInGame;
         uintptr_t m_nameRangeLoad;
 
         // Screen pixels per pixel of the name tags and of the interface (MabiPro's Bexon.dll sizes
