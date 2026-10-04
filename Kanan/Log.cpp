@@ -24,6 +24,16 @@ namespace kanan {
             m_autoScroll { true },
             m_file{}
         {
+            // The previous session's log is kept (kananLog.prev.txt), so a crash's log survives the
+            // game being started again.
+            auto dot = filepath.find_last_of('.');
+
+            if (dot != string::npos && dot > filepath.find_last_of("\\/")) {
+                auto previous = filepath.substr(0, dot) + ".prev" + filepath.substr(dot);
+
+                MoveFileExW(widen(filepath).c_str(), widen(previous).c_str(), MOVEFILE_REPLACE_EXISTING);
+            }
+
             m_file.open(filepath);
 
             if (!m_file.is_open()) {

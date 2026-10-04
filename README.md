@@ -163,6 +163,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 **Performance & System**
 * Auto Set MTU: sets your network MTU when you log in or change channels
 * CPU Scheduling: fixes freezes on Intel CPUs with performance and efficiency cores
+* Crash Diagnostics: logs crashes and saves a crash file (minidump) when the game closes on its own, and warns when Windows' SEHOP setting is about to close the game
 * Disable Nagle: sends network messages right away, for less lag
 * Max Frame Rate: limits the frame rate, with a separate limit while the game is in the background
 * Overlay Detection: warns about overlays like MSI Afterburner/RTSS that can hide Kanan's menu

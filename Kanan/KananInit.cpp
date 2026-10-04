@@ -5,6 +5,7 @@
 #include "Log.hpp"
 #include "Kanan.hpp"
 #include "DisplayScaling.hpp"
+#include "CrashDiagnostics.hpp"
 
 using namespace std;
 using namespace kanan;
@@ -33,6 +34,10 @@ DWORD WINAPI kananInit(LPVOID params) {
     startLog(path + "/kananLog.txt");
 
     log("Welcome to Kanan for Mabinogi.");
+
+    // Before anything else can crash.
+    CrashDiagnostics::installAtStartup(path, mHinstDLL);
+
     log("Creating Kanan object.");
 
     g_kanan = make_unique<Kanan>(path, mHinstDLL);
@@ -51,6 +56,12 @@ extern "C" __declspec(dllexport) int __stdcall RIB_Main(void* provider, unsigned
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
     if (ul_reason_for_call == DLL_PROCESS_ATTACH) {
+        // Loaded by Crash Diagnostics' watcher (rundll32), only for WatchGame: Kanan doesn't start.
+        if (CrashDiagnostics::isWatcherProcess()) {
+            DisableThreadLibraryCalls(hModule);
+            return TRUE;
+        }
+
         // Stay loaded even if Miles frees the plugins it has no use for.
         HMODULE self{};
 

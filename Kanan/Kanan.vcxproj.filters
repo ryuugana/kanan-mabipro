@@ -120,6 +120,9 @@
     <ClCompile Include="EntityHP.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="CrashDiagnostics.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="SkillHotkey.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -405,6 +408,9 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="EntityHP.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="CrashDiagnostics.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="SkillHotkey.hpp">
