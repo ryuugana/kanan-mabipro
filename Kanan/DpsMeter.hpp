@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <vector>
 
 #include "MessageMod.hpp"
 
@@ -26,7 +27,14 @@ namespace kanan {
 
 		std::chrono::time_point<std::chrono::steady_clock> m_startTime;
 		std::chrono::time_point<std::chrono::steady_clock> m_lastTime;
-		UINT64 m_dps;
+		double m_dps; // accumulated damage (used as double so fractional values are allowed)
 		int m_timeout;
+
+		// Samples for plotting DPS history
+		std::vector<float> m_samples;
+		int m_sampleCount;
+		int m_nextSampleIndex;
+		double m_sampleInterval; // seconds between samples
+		std::chrono::time_point<std::chrono::steady_clock> m_lastSampleTime;
 	};
 }
