@@ -55,6 +55,20 @@ namespace kanan {
     using GetWindowMgr = uintptr_t(__cdecl*)();
     static GetWindowMgr g_getWindowMgr{ nullptr };
 
+    // Text drawing of the client's interface (pleione::CWindowMgr), the same calls its name tags
+    // use: the text is drawn into the interface's 2D scene at the tag's layer, so windows cover
+    // it the way they cover names.
+    using StringConstruct = void*(__thiscall*)(void* string, const wchar_t* text);
+    using StringDestruct = void(__thiscall*)(void* string);
+    using MeasureString = void(__thiscall*)(uintptr_t windowMgr, const void* string, uint32_t* width, uint32_t* height, uint32_t flags);
+    using RenderString = void(__thiscall*)(uintptr_t windowMgr, const void* string, int32_t x, int32_t y, float layer,
+        uint32_t color, uint32_t outlineColor, uint32_t outline, uint32_t unknown1, uint32_t unknown2, uintptr_t scene);
+
+    static StringConstruct g_stringConstruct{ nullptr };
+    static StringDestruct g_stringDestruct{ nullptr };
+    static MeasureString g_measureString{ nullptr };
+    static RenderString g_renderString{ nullptr };
+
     namespace windowOffsets {
         constexpr uintptr_t firstWindow = 0x4B4;  // CWindowMgr: first top-level window
         constexpr uintptr_t nextWindow = 0xD4;    // CWindow: next top-level window (0 ends the list)
@@ -323,6 +337,7 @@ namespace kanan {
     struct NameTag {
         float x;
         float y;
+        float layer;
         float life;
         float lifeMax;
         bool isNPC;
@@ -350,6 +365,39 @@ namespace kanan {
         }
 
         return wcstol(text, nullptr, 10);
+    }
+
+    // Colors are 0xAARRGGBB for the client and 0xAABBGGRR for ImGui.
+    static uint32_t toARGB(ImU32 color) {
+        return (color & 0xFF00FF00) | ((color & 0xFF) << 16) | ((color >> 16) & 0xFF);
+    }
+
+    // Draws a line of text centered above the name tag with the client's own text rendering, in the
+    // interface's pixels: SCALE turns the tag's position (and the offset) into them.
+    // Kept free of C++ objects so the SEH guard can protect it.
+    static void drawInGame(const NameTag& tag, float scale, const wchar_t* text, float offsetY, uint32_t color, bool outline) {
+        __try {
+            auto windowMgr = g_getWindowMgr();
+
+            if (windowMgr == 0) {
+                return;
+            }
+
+            alignas(8) uint8_t string[16]{};
+            uint32_t width{}, height{};
+
+            g_stringConstruct(string, text);
+            g_measureString(windowMgr, string, &width, &height, 0);
+
+            auto x = (int32_t)(tag.x * scale) - (int32_t)width / 2;
+            auto y = (int32_t)((tag.y - offsetY) * scale) - (int32_t)height;
+            auto outlineColor = outline ? (color & 0xFF000000) : 0;
+
+            g_renderString(windowMgr, string, x, y, tag.layer, color, outlineColor, outline ? 1 : 0, 0, 0, 0);
+            g_stringDestruct(string);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
     }
 
     // Reads the name tag of a character the same way the client decides to draw it.
@@ -394,6 +442,7 @@ namespace kanan {
 
             out.x = *(int16_t*)(sticker + offsets::stickerScreenX);
             out.y = *(int16_t*)(sticker + offsets::stickerScreenY);
+            out.layer = *(float*)(sticker + offsets::stickerLayer);
             out.life = g_getLife(parameter);
             out.lifeMax = g_getLifeMax(parameter);
             out.isNPC = g_isNPC(character);
@@ -407,6 +456,7 @@ namespace kanan {
 
     EntityHP::EntityHP()
         : m_isEnabled{ false },
+        m_mode{ MODE_OVERLAY },
         m_showPlayers{ true },
         m_showMonsters{ true },
         m_showMax{ true },
@@ -421,6 +471,7 @@ namespace kanan {
         m_textColor{ 1.0f, 1.0f, 1.0f, 1.0f },
         m_boxColor{ 0.0f, 0.0f, 0.0f, 0.6f },
         m_isHooked{ false },
+        m_canDrawInGame{ false },
         m_nameRangeLoad{ 0 },
         m_tagScale{ 1.0f },
         m_interfaceScale{ 1.0f },
@@ -467,6 +518,27 @@ namespace kanan {
 
         if (g_getWindowMgr == nullptr) {
             log("[EntityHP] Failed to find the window manager, labels will not hide behind windows");
+        }
+
+        // pleione::CWindowMgr's text measuring and drawing, used by the name tags themselves.
+        auto esl = GetModuleHandleA("ESL.dll");
+        auto measureString = scan("Pleione.dll", "68 44 01 00 00 B8 ? ? ? ? E8 ? ? ? ? 8B 5D 08 8B 75 0C 8B 7D 10 89 8D B4 FE FF FF");
+        auto renderString = scan("Pleione.dll", "68 58 01 00 00 B8 ? ? ? ? E8 ? ? ? ? 8B 45 08 8B 5D 2C 8B F9 8D 8D 9C FE FF FF");
+
+        if (esl != nullptr && measureString && renderString) {
+            g_stringConstruct = (StringConstruct)GetProcAddress(esl,
+                "??0?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@PB_W@Z");
+            g_stringDestruct = (StringDestruct)GetProcAddress(esl,
+                "??1?$CStringT@_WVunicode_string_trait@esl@@Vunicode_string_implement@2@@esl@@QAE@XZ");
+            g_measureString = (MeasureString)*measureString;
+            g_renderString = (RenderString)*renderString;
+        }
+
+        m_canDrawInGame = g_getWindowMgr != nullptr && g_stringConstruct != nullptr && g_stringDestruct != nullptr &&
+            g_measureString != nullptr && g_renderString != nullptr;
+
+        if (!m_canDrawInGame) {
+            log("[EntityHP] Failed to find the client's text drawing, only the overlay is available");
         }
 
         m_isHooked = addCharacterUpdateCallback([this](uintptr_t character) {
@@ -628,6 +700,15 @@ namespace kanan {
         }
 
         updateScales();
+
+        // In-game labels are drawn by the client, during the character updates.
+        if (m_mode == MODE_IN_GAME && m_canDrawInGame) {
+            scoped_lock<mutex> _{ m_labelsMutex };
+
+            m_labels.clear();
+            m_balloons.clear();
+            return;
+        }
 
         auto& io = ImGui::GetIO();
         auto drawList = ImGui::GetBackgroundDrawList();
@@ -816,14 +897,26 @@ namespace kanan {
             ImGui::TextWrapped("Shows the true HP of characters above their name.");
             ImGui::Spacing();
             ImGui::Checkbox("Enabled##EntityHP", &m_isEnabled);
-            ImGui::TextDisabled("Drawn by Kanan on top of everything, with its own font, size and box.");
+
+            if (m_canDrawInGame) {
+                ImGui::Combo("Display##EntityHP", &m_mode, "Overlay\0In-game\0");
+            }
+
+            auto isOverlay = m_mode == MODE_OVERLAY || !m_canDrawInGame;
+
+            ImGui::TextDisabled(isOverlay ?
+                "Drawn by Kanan on top of everything, with its own font, size and box." :
+                "Drawn by the game with its own font, layered like names:\nwindows cover it and it hides with names.");
 
             ImGui::Checkbox("Players##EntityHP", &m_showPlayers);
             ImGui::Checkbox("NPCs and monsters##EntityHP", &m_showMonsters);
             ImGui::Checkbox("Show max HP##EntityHP", &m_showMax);
             ImGui::SliderInt("Decimals##EntityHP", &m_decimals, 0, 2);
             ImGui::SliderFloat("Height above name##EntityHP", &m_offsetY, -150.0f, 150.0f, "%.0f px");
-            ImGui::SliderFloat("Text size##EntityHP", &m_fontSize, 10.0f, 32.0f, "%.0f");
+
+            if (isOverlay) {
+                ImGui::SliderFloat("Text size##EntityHP", &m_fontSize, 10.0f, 32.0f, "%.0f");
+            }
 
             ImGui::Spacing();
             ImGui::Checkbox("Color by HP (green to red)##EntityHP", &m_colorByHP);
@@ -833,15 +926,17 @@ namespace kanan {
             }
 
             ImGui::ColorEdit4("Text color##EntityHP", &m_textColor.x, ImGuiColorEditFlags_AlphaBar);
-            ImGui::Checkbox("Text shadow##EntityHP", &m_textShadow);
+            ImGui::Checkbox(isOverlay ? "Text shadow##EntityHP" : "Text outline##EntityHP", &m_textShadow);
 
-            ImGui::Spacing();
-            ImGui::Checkbox("Background box##EntityHP", &m_showBox);
+            if (isOverlay) {
+                ImGui::Spacing();
+                ImGui::Checkbox("Background box##EntityHP", &m_showBox);
 
-            if (m_showBox) {
-                ImGui::ColorEdit4("Box color##EntityHP", &m_boxColor.x, ImGuiColorEditFlags_AlphaBar);
-                ImGui::SliderFloat("Box padding##EntityHP", &m_boxPadding, 0.0f, 10.0f, "%.0f px");
-                ImGui::SliderFloat("Box rounding##EntityHP", &m_boxRounding, 0.0f, 10.0f, "%.0f px");
+                if (m_showBox) {
+                    ImGui::ColorEdit4("Box color##EntityHP", &m_boxColor.x, ImGuiColorEditFlags_AlphaBar);
+                    ImGui::SliderFloat("Box padding##EntityHP", &m_boxPadding, 0.0f, 10.0f, "%.0f px");
+                    ImGui::SliderFloat("Box rounding##EntityHP", &m_boxRounding, 0.0f, 10.0f, "%.0f px");
+                }
             }
 
             ImGui::TreePop();
@@ -850,6 +945,7 @@ namespace kanan {
 
     void EntityHP::onConfigLoad(const Config& cfg) {
         m_isEnabled = cfg.get<bool>("EntityHP.Enabled").value_or(false);
+        m_mode = cfg.get<int>("EntityHP.Mode").value_or(MODE_OVERLAY) == MODE_IN_GAME ? MODE_IN_GAME : MODE_OVERLAY;
         m_showPlayers = cfg.get<bool>("EntityHP.Players").value_or(true);
         m_showMonsters = cfg.get<bool>("EntityHP.Monsters").value_or(true);
         m_showMax = cfg.get<bool>("EntityHP.ShowMax").value_or(true);
@@ -869,6 +965,7 @@ namespace kanan {
 
     void EntityHP::onConfigSave(Config& cfg) {
         cfg.set<bool>("EntityHP.Enabled", m_isEnabled);
+        cfg.set<int>("EntityHP.Mode", m_mode);
         cfg.set<bool>("EntityHP.Players", m_showPlayers);
         cfg.set<bool>("EntityHP.Monsters", m_showMonsters);
         cfg.set<bool>("EntityHP.ShowMax", m_showMax);
@@ -891,10 +988,13 @@ namespace kanan {
             return;
         }
 
-        // Any character's chat balloon hides labels, whether or not that character shows HP.
+        auto isInGame = m_mode == MODE_IN_GAME && m_canDrawInGame;
+
+        // Any character's chat balloon hides labels, whether or not that character shows HP. (In-game
+        // labels are layered by the client instead.)
         int16_t balloon[4]{};
 
-        if (readChatBalloon(character, balloon)) {
+        if (!isInGame && readChatBalloon(character, balloon)) {
             scoped_lock<mutex> _{ m_labelsMutex };
 
             m_balloons[character] = Balloon{ (float)balloon[0], (float)balloon[1], (float)balloon[2], (float)balloon[3],
@@ -916,6 +1016,23 @@ namespace kanan {
         NameTag tag{};
 
         if (!readNameTag(character, m_nameRangeLoad, tag) || !(tag.isNPC ? m_showMonsters : m_showPlayers)) {
+            return;
+        }
+
+        // Drawn now, while the client lays out its name tags for this frame.
+        if (isInGame) {
+            char text[64];
+            wchar_t wideText[64]{};
+
+            formatLabel(tag.life, tag.lifeMax, text, sizeof(text));
+
+            for (size_t i = 0; i < sizeof(text) - 1 && text[i] != '\0'; ++i) {
+                wideText[i] = (wchar_t)(unsigned char)text[i];
+            }
+
+            // From the name tags' pixels to the interface's, which the client's text is drawn in.
+            drawInGame(tag, m_tagScale / m_interfaceScale, wideText, m_offsetY, toARGB(labelColor(tag.life, tag.lifeMax)),
+                m_textShadow);
             return;
         }
 
