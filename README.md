@@ -25,7 +25,7 @@ Kanan is loaded by the game's own sound library, which loads every plugin in `sy
 * Kanan writes what it does to `kananLog.txt` in the MabiPro folder. Include that file when reporting a problem.
 
 ## Features
-Every mod is off until you turn it on, except those in the recommended set if you choose to apply it.
+Every mod is off until you turn it on, except Cast On Target, which starts on, and those in the recommended set if you choose to apply it.
 
 **Kanan itself**
 * Mod menu sorted by topic, with a search box
@@ -39,12 +39,13 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 **Interface**
 * Assistant Character Location: shows where your assistant characters were last
 * Clear Dungeon Fog: removes the fog of war from dungeon minimaps
+* Cooking Overlay: shows a cooking ruler in a see-through window, with adjustable size and color
 * Display Names From Far: shows character, guild and item names from much farther away, without fading
 * Dungeon Map Resize: lets you resize the dungeon map
 * Enable Minimap Zoom: lets you zoom the minimap on every map
 * Enable NPC Equip View: lets you view NPCs' equipment
 * Enable Self Right-Click: opens the right-click menu on your own character
-* Entity HP: shows HP numbers over monsters and characters
+* Entity HP: shows HP numbers over monsters and characters, hidden behind open windows and chat bubbles
 * Entity Viewer: a window with the clothing, conditions and other details of characters and other entities
 * Faster Interface Windows: removes the fade and open/close animations of windows like the character and skill windows
 * Font Size: changes the size of TrueType interface text
@@ -57,6 +58,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * No Window Close On Talk: open windows, like your inventory, stay open when you talk to an NPC
 * Party Board To Housing: the party board and party buttons open the housing board instead
 * Remove Blacklist Button: removes the Blacklist button from other players' right-click menu
+* Remove Pet Card Button: removes the Pet Card button from other pets' right-click menu
 * Show Clock Minutes: the in-game clock shows exact minutes instead of rounding down to 10
 * Show Combat Power: shows the combat power and max HP numbers next to character names
 * Show Detailed FPS: shows the detailed frame rate and rendering statistics
@@ -74,7 +76,6 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Show Unknown Skill Requirements: shows the hidden requirements for training skills
 * Show Unknown Titles: shows every title in the title list, including ones you don't know yet
 * Show Unknown Upgrades: shows the requirements of skill ranks you haven't unlocked yet
-* UI Scale: makes the game's interface bigger, with sharp or smooth text
 
 **Graphics & Camera**
 * Block Critical Hit Effects: hides Critical Hit effects
@@ -102,6 +103,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 
 **Combat & Skills**
 * Always Enable Attack with Pet: always lets you attack with your pet
+* Cast On Target: using a skill loads it and heads for your target; using it again uses it there once it's loaded (on by default)
 * Combat Mastery Swap: attacking with no skill loaded loads a skill of your choice instead, like Smash
 * Default Ranged Swap: uses another ranged skill in place of Ranged Attack (Magnum Shot, Arrow Revolver, Support Shot, Mirage Missile, Crash Shot)
 * Delag Skill: reduces skill lag
