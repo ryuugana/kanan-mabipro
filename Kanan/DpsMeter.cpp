@@ -25,8 +25,9 @@ namespace kanan {
 	}
 
 	void DpsMeter::drawWindow() {
+		ImGui::SetNextWindowSize(ImVec2{ 120.0f, 80.0f }, ImGuiCond_FirstUseEver);
 
-		if (!ImGui::Begin("DpsMeter", &m_isEnabled, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoFocusOnAppearing)) {
+		if (!ImGui::Begin("DpsMeter", &m_isEnabled, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoFocusOnAppearing)) {
 			ImGui::End();
 			return;
 		}
