@@ -34,6 +34,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Ensure the 'before' SHA is present for diffs between arbitrary commits
+        fetch-depth: 0
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
@@ -42,18 +45,16 @@ jobs:
       id: check_version
       shell: pwsh
       run: |
-        # Fetch minimal history to ensure the commits are present (best-effort)
+        # Fetch minimal history to ensure the commits are present
         git fetch --no-tags --depth=2 origin ${{ github.ref }} || true
 
         $before = '${{ github.event.before }}'
         $after = '${{ github.sha }}'
 
-        # If $before is empty/zero use just the last commit.
         if ([string]::IsNullOrEmpty($before) -or $before -eq '0000000000000000000000000000000000000000') {
           Write-Host "No valid before SHA; inspecting last commit only."
           $diff = (git show --name-only --pretty="" $after) -join "`n"
         } else {
-          # Ensure the before SHA exists in the fetched history. If not, fall back to checking only $after.
           git cat-file -e $before 2>$null
           if ($LASTEXITCODE -ne 0) {
             Write-Host "Before SHA $before not present in fetched history; inspecting last commit only."
