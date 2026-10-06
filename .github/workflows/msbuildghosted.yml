@@ -26,7 +26,7 @@ env:
   WindowsTargetPlatformVersion: 10.0.26100.0
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -37,6 +37,48 @@ jobs:
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Determine if Kanan/Version.h changed
+      id: check_version
+      shell: pwsh
+      run: |
+        # Fetch minimal history to ensure the commits are present
+        git fetch --no-tags --depth=2 origin ${{ github.ref }} || true
+
+        $before = '${{ github.event.before }}'
+        $after = '${{ github.sha }}'
+
+        if ([string]::IsNullOrEmpty($before) -or $before -eq '0000000000000000000000000000000000000000') {
+          Write-Host "No valid before SHA; inspecting last commit only."
+          $diff = (git show --name-only --pretty="" $after) -join "`n"
+        } else {
+          $diff = (git diff --name-only $before $after) -join "`n"
+        }
+
+        Write-Host "Changed files:`n$diff"
+
+        if ($diff -match 'Kanan/Version.h' -or $diff -match 'Kanan\\Version.h') {
+          echo "changed=true" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "changed=false" >> $env:GITHUB_OUTPUT
+        }
+
+    - name: Get version from Kanan/Version.h
+      id: get_version
+      shell: pwsh
+      run: |
+        $path = Join-Path $PWD "Kanan/Version.h"
+        if (-Not (Test-Path $path)) {
+          echo "version=" >> $env:GITHUB_OUTPUT
+          exit 0
+        }
+        $content = Get-Content -Raw -Path $path
+        if ($content -match 'const\s+int\s+version\s*=\s*(\d+);') {
+          $ver = $Matches[1]
+        } else {
+          $ver = ""
+        }
+        echo "version=$ver" >> $env:GITHUB_OUTPUT
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
@@ -53,15 +95,71 @@ jobs:
         Copy-Item Release\Kanan.asi package\system\mss\
         Copy-Item Release\Patches.json package\
 
-    - name: Upload Kanan
+    - name: Create artifact zips
+      shell: pwsh
+      run: |
+        # Create KananMabiPro.zip from package/ contents (always produce the zip)
+        if (Test-Path package) {
+          Write-Host "Creating KananMabiPro.zip from package/"
+          if (Test-Path KananMabiPro.zip) { Remove-Item KananMabiPro.zip -Force }
+          Compress-Archive -Path package\* -DestinationPath KananMabiPro.zip -Force
+        } else {
+          Write-Host "No package directory; creating empty KananMabiPro.zip"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [IO.Compression.ZipFile]::Open("KananMabiPro.zip","Create").Dispose()
+        }
+
+        # Create KananUpdater.zip containing Release/Update.exe (or an empty zip if missing)
+        if (Test-Path 'Release/Update.exe') {
+          Write-Host "Creating KananUpdater.zip with Release/Update.exe"
+          if (Test-Path KananUpdater.zip) { Remove-Item KananUpdater.zip -Force }
+          Compress-Archive -Path Release\Update.exe -DestinationPath KananUpdater.zip -Force
+        } else {
+          Write-Host "Release/Update.exe not found; creating empty KananUpdater.zip"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [IO.Compression.ZipFile]::Open("KananUpdater.zip","Create").Dispose()
+        }
+
+    - name: Upload Kanan artifact (zip)
       uses: actions/upload-artifact@v4
       with:
         name: KananMabiPro
         path: package/
 
-    - name: Upload Updater
+    - name: Upload Updater artifact (zip)
       uses: actions/upload-artifact@v4
       with:
         name: KananUpdater
         path: |
           Release\Update.exe
+
+    - name: Create GitHub release for version
+      id: create_release
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: Release ${{ steps.get_version.outputs.version }}
+        body: Automated release for version ${{ steps.get_version.outputs.version }}.
+        draft: false
+        prerelease: false
+
+    - name: Upload KananMabiPro.zip to release
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: KananMabiPro.zip
+        asset_name: KananMabiPro.zip
+        asset_content_type: application/zip
+
+    - name: Upload KananUpdater.zip to release
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: KananUpdater.zip
+        asset_name: KananUpdater.zip
+        asset_content_type: application/zip
