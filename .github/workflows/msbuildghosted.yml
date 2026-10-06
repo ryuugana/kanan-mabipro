@@ -151,7 +151,7 @@ jobs:
 
           Automated release for version ${{ steps.get_version.outputs.version }}.
           **Built by Pipeline:** [${{ github.workflow }}#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-        draft: true
+        draft: false
         prerelease: false
 
     - name: Upload KananMabiPro.zip to release
