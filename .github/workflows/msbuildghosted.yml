@@ -21,14 +21,16 @@ env:
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
   # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
   BUILD_CONFIGURATION: Release
-  VCTargetsPath: C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Microsoft\VC\v150
+
+  # Target Windows SDK (compiler) version to use on the hosted runner.
+  WindowsTargetPlatformVersion: 10.0.22621.0
 
 permissions:
   contents: read
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: windows-2022
 
     steps:
     - uses: actions/checkout@v4
@@ -40,7 +42,7 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:WindowsTargetPlatformVersion=${{env.WindowsTargetPlatformVersion}} ${{env.SOLUTION_FILE_PATH}}
 
     # Laid out like the MabiPro folder: extracted there, Kanan.asi goes in system\mss (where the
     # game's sound library loads it from) and Patches.json next to Client.exe.
