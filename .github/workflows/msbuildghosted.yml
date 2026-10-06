@@ -121,8 +121,8 @@ jobs:
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       uses: actions/download-artifact@v4
       with:
-        name: KananMabiPro
-        path: artifacts/KananMabiPro.zip
+        name: KananMabiPro.zip
+        path: KananMabiPro.zip
 
     - name: Ensure KananMabiPro.zip exists
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
@@ -140,8 +140,8 @@ jobs:
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       uses: actions/download-artifact@v4
       with:
-        name: KananUpdater
-        path: artifacts/KananUpdater.zip
+        name: KananUpdater.zip
+        path: KananUpdater.zip
 
     - name: Ensure KananUpdater.zip exists
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
