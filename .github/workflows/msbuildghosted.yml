@@ -18,8 +18,6 @@ env:
   SOLUTION_FILE_PATH: Kanan.sln
 
   # Configuration type to build.
-  # You can convert this to a build matrix if you need coverage of multiple configuration types.
-  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
   BUILD_CONFIGURATION: Release
 
   # Target Windows SDK (compiler) version to use on the hosted runner.
@@ -31,11 +29,12 @@ permissions:
 jobs:
   build:
     runs-on: windows-2025
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4
       with:
-        # Ensure the 'before' SHA is present for diffs between arbitrary commits
         fetch-depth: 0
 
     - name: Add MSBuild to PATH
@@ -45,7 +44,7 @@ jobs:
       id: check_version
       shell: pwsh
       run: |
-        # Fetch minimal history to ensure the commits are present
+        # Fetch minimal history to ensure the commits are present (best-effort)
         git fetch --no-tags --depth=2 origin ${{ github.ref }} || true
 
         $before = '${{ github.event.before }}'
@@ -91,40 +90,23 @@ jobs:
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:WindowsTargetPlatformVersion=${{env.WindowsTargetPlatformVersion}} ${{env.SOLUTION_FILE_PATH}}
-
-    # Laid out like the MabiPro folder: extracted there, Kanan.asi goes in system\mss (where the
-    # game's sound library loads it from) and Patches.json next to Client.exe.
-    - name: Package Kanan
-      shell: powershell
-      run: |
-        New-Item -ItemType Directory -Force package\system\mss | Out-Null
-        Copy-Item Release\Kanan.asi package\system\mss\
-        Copy-Item Release\Patches.json package\
 
     - name: Create artifact zips
       shell: pwsh
       run: |
-        # Create KananMabiPro.zip from package/ contents (always produce the zip)
         if (Test-Path package) {
-          Write-Host "Creating KananMabiPro.zip from package/"
           if (Test-Path KananMabiPro.zip) { Remove-Item KananMabiPro.zip -Force }
           Compress-Archive -Path package\* -DestinationPath KananMabiPro.zip -Force
         } else {
-          Write-Host "No package directory; creating empty KananMabiPro.zip"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           [IO.Compression.ZipFile]::Open("KananMabiPro.zip","Create").Dispose()
         }
 
-        # Create KananUpdater.zip containing Release/Update.exe (or an empty zip if missing)
         if (Test-Path 'Release/Update.exe') {
-          Write-Host "Creating KananUpdater.zip with Release/Update.exe"
           if (Test-Path KananUpdater.zip) { Remove-Item KananUpdater.zip -Force }
           Compress-Archive -Path Release\Update.exe -DestinationPath KananUpdater.zip -Force
         } else {
-          Write-Host "Release/Update.exe not found; creating empty KananUpdater.zip"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           [IO.Compression.ZipFile]::Open("KananUpdater.zip","Create").Dispose()
         }
@@ -146,14 +128,57 @@ jobs:
       id: create_release
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: v${{ steps.get_version.outputs.version }}
         release_name: Release ${{ steps.get_version.outputs.version }}
         body: Automated release for version ${{ steps.get_version.outputs.version }}.
         draft: false
         prerelease: false
+
+    # Download the workflow artifacts (from this run) and attach them to the release.
+    - name: Download KananMabiPro artifact
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: KananMabiPro
+        path: artifacts/KananMabiPro
+
+    - name: Ensure KananMabiPro.zip exists
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      shell: pwsh
+      run: |
+        if (-Not (Test-Path KananMabiPro.zip)) {
+          if (Test-Path artifacts/KananMabiPro/*) {
+            Compress-Archive -Path artifacts/KananMabiPro/* -DestinationPath KananMabiPro.zip -Force
+          } else {
+            throw "KananMabiPro artifact not found after download"
+          }
+        }
+
+    - name: Download KananUpdater artifact
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: KananUpdater
+        path: artifacts/KananUpdater
+
+    - name: Ensure KananUpdater.zip exists
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      shell: pwsh
+      run: |
+        if (-Not (Test-Path KananUpdater.zip)) {
+          if (Test-Path artifacts/KananUpdater/*) {
+            # If artifact already a zip, move it. Otherwise compress.
+            $files = Get-ChildItem artifacts/KananUpdater
+            if ($files.Count -eq 1 -and $files[0].Extension -eq ".zip") {
+              Move-Item $files[0].FullName KananUpdater.zip -Force
+            } else {
+              Compress-Archive -Path artifacts/KananUpdater/* -DestinationPath KananUpdater.zip -Force
+            }
+          } else {
+            throw "KananUpdater artifact not found after download"
+          }
+        }
 
     - name: Upload KananMabiPro.zip to release
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
