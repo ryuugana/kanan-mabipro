@@ -158,6 +158,8 @@ jobs:
     - name: Upload KananMabiPro.zip to release
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: KananMabiPro.zip
@@ -167,6 +169,8 @@ jobs:
     - name: Upload KananUpdater.zip to release
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: KananUpdater.zip
