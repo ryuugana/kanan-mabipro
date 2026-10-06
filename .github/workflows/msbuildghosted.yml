@@ -150,7 +150,7 @@ jobs:
           # For Install instructions click [Download and Install](https://github.com/ryuugana/kanan-mabipro/blob/master/README.md#download)
 
           Automated release for version ${{ steps.get_version.outputs.version }}.
-          **Built by Pipeline:** [\(${ { github.workflow } } #\)${{ github.run_number }}](\(${ { github.server_url } }/\)${{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Built by Pipeline:** [\({{ github.workflow }} #\){{ github.run_number }}](\({{ github.server_url }}/\){{ github.repository }}/actions/runs/${{ github.run_id }})
         draft: true
         prerelease: false
 
