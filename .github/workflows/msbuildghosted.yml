@@ -92,18 +92,42 @@ jobs:
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:WindowsTargetPlatformVersion=${{env.WindowsTargetPlatformVersion}} ${{env.SOLUTION_FILE_PATH}}
 
-    - name: Upload Kanan artifact (zip)
-      uses: actions/upload-artifact@v4
-      with:
-        name: KananMabiPro
-        path: package/
+    - name: Create KananMabiPro.zip
+      id: package_app
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      shell: pwsh
+      run: |
+        if (-Not (Test-Path package)) {
+          Write-Error "package/ directory not found. Build may have failed or output path changed."
+          exit 1
+        }
+        Compress-Archive -Path package/* -DestinationPath KananMabiPro.zip -Force
 
-    - name: Upload Updater artifact (zip)
-      uses: actions/upload-artifact@v4
+    - name: Upload KananMabiPro.zip to artifacts
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/upload-artifact@v7
       with:
-        name: KananUpdater
-        path: |
-          Release\Update.exe
+        path: KananMabiPro.zip
+        archive: false
+
+    - name: Create KananUpdater.zip
+      id: package_updater
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      shell: pwsh
+      run: |
+        $updater = Join-Path $PWD "Release\\Update.exe"
+        if (-Not (Test-Path $updater)) {
+          Write-Error "Release\\Update.exe not found. Updater build output missing."
+          exit 1
+        }
+        Compress-Archive -Path $updater -DestinationPath KananUpdater.zip -Force
+
+    - name: Upload KananUpdater.zip to artifacts
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/upload-artifact@v7
+      with:
+        path: KananUpdater.zip
+        archive: false
 
     - name: Create GitHub release for version
       id: create_release
@@ -115,51 +139,6 @@ jobs:
         body: Automated release for version ${{ steps.get_version.outputs.version }}.
         draft: false
         prerelease: false
-
-    # Download the workflow artifacts (from this run) and attach them to the release.
-    - name: Download KananMabiPro artifact
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
-      uses: actions/download-artifact@v4
-      with:
-        name: KananMabiPro.zip
-        path: KananMabiPro.zip
-
-    - name: Ensure KananMabiPro.zip exists
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
-      shell: pwsh
-      run: |
-        if (-Not (Test-Path KananMabiPro.zip)) {
-          if (Test-Path artifacts/KananMabiPro/*) {
-            Compress-Archive -Path artifacts/KananMabiPro/* -DestinationPath KananMabiPro.zip -Force
-          } else {
-            throw "KananMabiPro artifact not found after download"
-          }
-        }
-
-    - name: Download KananUpdater artifact
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
-      uses: actions/download-artifact@v4
-      with:
-        name: KananUpdater.zip
-        path: KananUpdater.zip
-
-    - name: Ensure KananUpdater.zip exists
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
-      shell: pwsh
-      run: |
-        if (-Not (Test-Path KananUpdater.zip)) {
-          if (Test-Path artifacts/KananUpdater/*) {
-            # If artifact already a zip, move it. Otherwise compress.
-            $files = Get-ChildItem artifacts/KananUpdater
-            if ($files.Count -eq 1 -and $files[0].Extension -eq ".zip") {
-              Move-Item $files[0].FullName KananUpdater.zip -Force
-            } else {
-              Compress-Archive -Path artifacts/KananUpdater/* -DestinationPath KananUpdater.zip -Force
-            }
-          } else {
-            throw "KananUpdater artifact not found after download"
-          }
-        }
 
     - name: Upload KananMabiPro.zip to release
       if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
