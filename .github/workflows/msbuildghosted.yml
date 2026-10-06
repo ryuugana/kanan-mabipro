@@ -103,7 +103,6 @@ jobs:
 
     - name: Create KananMabiPro.zip
       id: package_app
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       shell: pwsh
       run: |
         if (-Not (Test-Path package)) {
@@ -112,16 +111,8 @@ jobs:
         }
         Compress-Archive -Path package/* -DestinationPath KananMabiPro.zip -Force
 
-    - name: Upload KananMabiPro.zip to artifacts
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
-      uses: actions/upload-artifact@v7
-      with:
-        path: KananMabiPro.zip
-        archive: false
-
     - name: Create KananUpdater.zip
       id: package_updater
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       shell: pwsh
       run: |
         $updater = Join-Path $PWD "Release\\Update.exe"
@@ -131,8 +122,13 @@ jobs:
         }
         Compress-Archive -Path $updater -DestinationPath KananUpdater.zip -Force
 
+    - name: Upload KananMabiPro.zip to artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        path: KananMabiPro.zip
+        archive: false
+
     - name: Upload KananUpdater.zip to artifacts
-      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
       uses: actions/upload-artifact@v7
       with:
         path: KananUpdater.zip
