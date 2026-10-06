@@ -73,6 +73,7 @@ jobs:
 
     - name: Get version from Kanan/Version.h
       id: get_version
+      if: steps.check_version.outputs.changed == 'true'
       shell: pwsh
       run: |
         $path = Join-Path $PWD "Kanan/Version.h"
