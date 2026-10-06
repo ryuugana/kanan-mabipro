@@ -348,7 +348,12 @@ namespace kanan {
 		*(reinterpret_cast<__int64*>(raw_data_ + pos)) = htonq(id);
 		pos += 8;
 #if _MSC_VER >= 1400
-		std::copy(op_size.begin(), op_size.end(), stdext::checked_array_iterator<unsigned char*>(raw_data_ + pos, len - pos));
+		// safe_copy
+		size_t remaining = (len > pos) ? (len - pos) : 0;
+		size_t toCopy = std::min(op_size.size(), remaining);
+		if (toCopy > 0) {
+			std::copy(op_size.begin(), op_size.begin() + toCopy, raw_data_ + pos);
+		}
 #else
 		std::copy(op_size.begin(), op_size.end(), raw_data_ + pos);
 #endif
