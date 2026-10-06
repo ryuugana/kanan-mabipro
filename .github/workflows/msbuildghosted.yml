@@ -144,13 +144,13 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ steps.get_version.outputs.version }}
-        name: ${{ steps.get_version.outputs.version }}
+        name: v${{ steps.get_version.outputs.version }}
         generate_release_notes: true
         body: |
           # For Install instructions click [Download and Install](https://github.com/ryuugana/kanan-mabipro/blob/master/README.md#download)
 
           Automated release for version ${{ steps.get_version.outputs.version }}.
-          **Built by Pipeline:** [\({{ github.workflow }} #\){{ github.run_number }}](\({{ github.server_url }}/\){{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Built by Pipeline:** ${{ github.workflow }}#${{ github.run_number }}
         draft: true
         prerelease: false
 
