@@ -18,30 +18,79 @@ env:
   SOLUTION_FILE_PATH: Kanan.sln
 
   # Configuration type to build.
-  # You can convert this to a build matrix if you need coverage of multiple configuration types.
-  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
   BUILD_CONFIGURATION: Release
 
   # Target Windows SDK (compiler) version to use on the hosted runner.
   WindowsTargetPlatformVersion: 10.0.26100.0
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: windows-2025
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.0.2
 
+    - name: Determine if Kanan/Version.h changed
+      id: check_version
+      shell: pwsh
+      run: |
+        # Fetch minimal history to ensure the commits are present (best-effort)
+        git fetch --no-tags --depth=2 origin ${{ github.ref }} || true
+
+        $before = '${{ github.event.before }}'
+        $after = '${{ github.sha }}'
+
+        if ([string]::IsNullOrEmpty($before) -or $before -eq '0000000000000000000000000000000000000000') {
+          Write-Host "No valid before SHA; inspecting last commit only."
+          $diff = (git show --name-only --pretty="" $after) -join "`n"
+        } else {
+          git cat-file -e $before 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Before SHA $before not present in fetched history; inspecting last commit only."
+            $diff = (git show --name-only --pretty="" $after) -join "`n"
+          } else {
+            $diff = (git diff --name-only $before $after) -join "`n"
+          }
+        }
+
+        Write-Host "Changed files:`n$diff"
+
+        if ($diff -match 'Kanan/Version.h' -or $diff -match 'Kanan\\Version.h') {
+          echo "changed=true" >> $env:GITHUB_OUTPUT
+        } else {
+          echo "changed=false" >> $env:GITHUB_OUTPUT
+        }
+
+    - name: Get version from Kanan/Version.h
+      id: get_version
+      if: steps.check_version.outputs.changed == 'true'
+      shell: pwsh
+      run: |
+        $path = Join-Path $PWD "Kanan/Version.h"
+        if (-Not (Test-Path $path)) {
+          echo "version=" >> $env:GITHUB_OUTPUT
+          exit 0
+        }
+        $content = Get-Content -Raw -Path $path
+        if ($content -match 'const\s+int\s+version\s*=\s*(\d+);') {
+          $ver = $Matches[1]
+        } else {
+          $ver = ""
+        }
+        echo "version=$ver" >> $env:GITHUB_OUTPUT
+
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:WindowsTargetPlatformVersion=${{env.WindowsTargetPlatformVersion}} ${{env.SOLUTION_FILE_PATH}}
 
     # Laid out like the MabiPro folder: extracted there, Kanan.asi goes in system\mss (where the
@@ -53,15 +102,72 @@ jobs:
         Copy-Item Release\Kanan.asi package\system\mss\
         Copy-Item Release\Patches.json package\
 
-    - name: Upload Kanan
-      uses: actions/upload-artifact@v4
-      with:
-        name: KananMabiPro
-        path: package/
+    - name: Create KananMabiPro.zip
+      id: package_app
+      shell: pwsh
+      run: |
+        if (-Not (Test-Path package)) {
+          Write-Error "package/ directory not found. Build may have failed or output path changed."
+          exit 1
+        }
+        Compress-Archive -Path package/* -DestinationPath KananMabiPro.zip -Force
 
-    - name: Upload Updater
-      uses: actions/upload-artifact@v4
+    - name: Create KananUpdater.zip
+      id: package_updater
+      shell: pwsh
+      run: |
+        $updater = Join-Path $PWD "Release\\Update.exe"
+        if (-Not (Test-Path $updater)) {
+          Write-Error "Release\\Update.exe not found. Updater build output missing."
+          exit 1
+        }
+        Compress-Archive -Path $updater -DestinationPath KananUpdater.zip -Force
+
+    - name: Upload KananMabiPro.zip to artifacts
+      uses: actions/upload-artifact@v7
       with:
-        name: KananUpdater
-        path: |
-          Release\Update.exe
+        path: KananMabiPro.zip
+        archive: false
+
+    - name: Upload KananUpdater.zip to artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        path: KananUpdater.zip
+        archive: false
+
+    - name: Create GitHub release for version
+      id: create_release
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.get_version.outputs.version }}
+        name: ${{ steps.get_version.outputs.version }}
+        generate_release_notes: true
+        body: |
+          # For Install instructions click [Download and Install](https://github.com/ryuugana/kanan-mabipro/blob/master/README.md#download)
+          * Automated release for version ${{ steps.get_version.outputs.version }}.
+          * **Built by Pipeline:** [${{ github.workflow }}#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        draft: false
+        prerelease: false
+
+    - name: Upload KananMabiPro.zip to release
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: KananMabiPro.zip
+        asset_name: KananMabiPro.zip
+        asset_content_type: application/zip
+
+    - name: Upload KananUpdater.zip to release
+      if: steps.check_version.outputs.changed == 'true' && steps.get_version.outputs.version != ''
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: KananUpdater.zip
+        asset_name: KananUpdater.zip
+        asset_content_type: application/zip
