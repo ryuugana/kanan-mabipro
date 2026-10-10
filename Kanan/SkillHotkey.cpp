@@ -393,7 +393,7 @@ namespace kanan {
         return false;
     }
 
-    // Hold to Charge: a charging skill whose key (or mouse button) is still held after the press that
+    // Hold to Charge: a charging skill whose hotkey is still held after the press that
     // loaded it. Each time a charge is loaded, the next one is loaded, as pressing the key again does,
     // until the skill holds all it can or the key is let go.
     struct Hold {
@@ -739,10 +739,9 @@ namespace kanan {
             else {
                 ImGui::Checkbox("Hold to Charge##SkillHotkey", &g_isHoldToCharge);
                 ImGui::TextWrapped(
-                    "Hold a charging skill's key (or keep the mouse button down on its skill bar button) to keep "
-                    "loading charges, up to as many as it holds: the bolts, Thunder, Fireball, Ice Spear, Water "
-                    "Cannon, Flamer, Sand Burst... Works on its own or with the option above, which then heads "
-                    "for the target once you let go.");
+                    "Hold a charging skill's hotkey to keep loading charges, up to as many as it holds: the bolts, "
+                    "Thunder, Fireball, Ice Spear, Water Cannon, Flamer, Sand Burst... Works on its own or with the "
+                    "option above; with it, press the skill again to use it on your target once it's charged.");
             }
         }
     }
