@@ -9,6 +9,9 @@ namespace kanan {
     // (Windmill and the like) go off in place on a second use once loaded, with no target needed.
     // Skills without a target (Defense, Counter, Healing...) just load as usual.
     //
+    // Hold to Charge (its own checkbox): holding a charging skill's key keeps loading charges, as
+    // pressing it again does, up to the skill's MaxStackNum.
+    //
     // The client already has everything after the decision: message 455h makes the character
     // controller attack the target with the loaded skill (CCharacterController::AttackTarget), the
     // same as a left click, and CCharacter::CommandProcessSkill uses a loaded skill in place.
@@ -18,6 +21,7 @@ namespace kanan {
 
         std::string getName() override { return "Use Skills from Hotkey"; }
 
+        void onFrame() override;
         void onUI() override;
 
         void onConfigLoad(const Config& cfg) override;

@@ -243,7 +243,8 @@ namespace kanan {
         addMod(make_unique<CombatMasterySwap>(), combat, "Combat Mastery Swap",
             "Attacking with no skill loaded loads a skill of your choice instead, like Smash.");
         addMod(make_unique<SkillHotkey>(), combat, "Use Skills from Hotkey",
-            "Using a skill loads it and heads for your target; using it again uses it there once it's loaded.");
+            "Using a skill loads it and heads for your target; using it again uses it there once it's loaded. "
+            "Also Hold to Charge: hold a bolt's key to keep loading charges.");
         addMod(make_unique<ItemSplitQuantity>(), convenience, "Item Split Quantity",
             "The amount the item split window starts at.");
         addMod(make_unique<ModifyFontSize>(), ui, "Font Size", "Changes the size of TrueType interface text.");

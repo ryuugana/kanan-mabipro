@@ -62,6 +62,7 @@ namespace kanan {
     static DescValueFn g_waitLock{ nullptr };
     static DescValueFn g_processLock{ nullptr };
     static DescFlagFn g_isHidden{ nullptr };
+    static DescValueFn g_maxStackNum{ nullptr };
     static StringContentFn g_stringContent{ nullptr };
 
     struct SkillDescInfo {
@@ -70,6 +71,7 @@ namespace kanan {
         uint32_t useType;
         uint32_t waitLock;
         uint32_t processLock;
+        uint32_t maxStacks;         // MaxStackNum: how many charges it can hold (bolts: 5)
         bool hidden;
     };
 
@@ -101,6 +103,7 @@ namespace kanan {
             info.useType = g_useType(desc, nullptr);
             info.waitLock = g_waitLock(desc, nullptr);
             info.processLock = g_processLock(desc, nullptr);
+            info.maxStacks = g_maxStackNum != nullptr ? g_maxStackNum(desc, nullptr) : 1;
             info.hidden = g_isHidden(desc, nullptr);
 
             return true;
@@ -164,6 +167,20 @@ namespace kanan {
         return CAST_TARGET;
     }
 
+    // Whether SKILL charges up: a magic or alchemy attack that holds more than one charge (the bolts,
+    // Thunder, Fireball, Ice Spear, Water Cannon, Flamer, Sand Burst...). Its maximum, or 0.
+    static uint32_t chargeLimit(uint16_t skill) {
+        SkillDescInfo info{};
+
+        if (!readSkillDesc(skill, info) || info.hidden || info.useType != 0 ||
+            (info.type != SKILL_MAGIC && info.type != SKILL_ALCHEMY) || info.maxStacks < 2)
+        {
+            return 0;
+        }
+
+        return info.maxStacks;
+    }
+
     // mint::CMessage passed by value: vtable, reading offset, shared data.
     struct RawMessage {
         uint32_t words[3];
@@ -178,6 +195,10 @@ namespace kanan {
     using SendFn = bool(__fastcall*)(void* vm, void* edx, uint64_t receiver, RawMessage msg);
     using InstanceFn = void*(__cdecl*)();
     using GetProgressFn = uint32_t(__fastcall*)(void* skillMgr, void* edx, uint32_t skill);
+    // core::ISkillMgr::GetSkillAlternativeType(SKILL): the slot SKILL loads in (0 main, 1 alternate);
+    // GetCurrentStackCount(slot): the charges loaded there.
+    using AlternativeTypeFn = uint32_t(__fastcall*)(void* skillMgr, void* edx, uint32_t skill);
+    using StackCountFn = uint8_t(__fastcall*)(void* skillMgr, void* edx, uint32_t slot);
 
     // pleione::CUISkillMgr::UseSkill(u16 skill, u32, CMetaData*, bool): what the skill bar and
     // hotkeys call. __thiscall, returns bool, pops 10h.
@@ -197,6 +218,8 @@ namespace kanan {
     static SendFn g_send{ nullptr };
     static InstanceFn g_instance{ nullptr };
     static GetProgressFn g_getProgress{ nullptr };
+    static AlternativeTypeFn g_alternativeType{ nullptr };
+    static StackCountFn g_stackCount{ nullptr };
 
     // Pleione.dll's TSingleton<CInterfaceMgr>::s_pInstanceBlock: points at the interface manager.
     static uintptr_t* g_interfaceMgr{ nullptr };
@@ -241,11 +264,22 @@ namespace kanan {
         }
     }
     static bool g_isEnabled{ false };
+    static bool g_isHoldToCharge{ false };
 
     // core::ISkillMgr::GetProgress(SKILL): its progress if it's the loaded skill, else 0. SEH-guarded.
     static uint32_t skillProgress(void* skillMgr, uint16_t skill) {
         __try {
             return g_getProgress(skillMgr, nullptr, skill);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            return 0;
+        }
+    }
+
+    // The charges of SKILL loaded now. SEH-guarded.
+    static uint32_t skillStacks(void* skillMgr, uint16_t skill) {
+        __try {
+            return g_stackCount(skillMgr, nullptr, g_alternativeType(skillMgr, nullptr, skill));
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             return 0;
@@ -359,10 +393,144 @@ namespace kanan {
         return false;
     }
 
-    // Each character update (the game thread): sends your character toward the target of the skill a
-    // press just started loading, once it's preparing.
+    // Hold to Charge: a charging skill whose key (or mouse button) is still held after the press that
+    // loaded it. Each time a charge is loaded, the next one is loaded, as pressing the key again does,
+    // until the skill holds all it can or the key is let go.
+    struct Hold {
+        uintptr_t character;
+        void* uiSkillMgr;
+        uint16_t skill;
+        uint32_t a2, a4;            // the press's own UseSkill arguments
+        uint32_t limit;             // the most charges it holds
+        uint8_t keys[8];            // the keys that went down for the press
+        int keyCount;
+        bool sawLoaded;             // a charge has been loaded since the press
+        uint32_t askedAt;           // the charges when the next one was asked for
+        DWORD asked;                // when (0: not asked)
+        DWORD started;
+    };
+
+    static Hold g_hold{};
+
+    // The keys and mouse buttons down as of the last frame drawn (bit per virtual key), so a press can
+    // tell which keys just went down for it.
+    static uint8_t g_keysDown[256 / 8]{};
+
+    static bool isKeyDown(int key) {
+        return (GetAsyncKeyState(key) & 0x8000) != 0;
+    }
+
+    // The game has the keyboard (its window, or one of its own, is in front).
+    static bool gameHasFocus() {
+        DWORD process{ 0 };
+
+        GetWindowThreadProcessId(GetForegroundWindow(), &process);
+
+        return process == GetCurrentProcessId();
+    }
+
+    // A press of SKILL that isn't used right away: if it charges up, remembers the keys that just went
+    // down for it, to keep charging while they're held.
+    static void startHold(void* uiSkillMgr, uint16_t skill, uint32_t a2, uint32_t a4) {
+        g_hold = {};
+
+        auto limit = chargeLimit(skill);
+        auto ownID = limit != 0 ? playerID() : 0;
+        auto local = ownID != 0 ? findObject(ownID) : 0;
+
+        if (local == 0) {
+            return;
+        }
+
+        Hold hold{ local, uiSkillMgr, skill, a2, a4, limit };
+
+        for (int key = 1; key < 256 && hold.keyCount < (int)sizeof(hold.keys); ++key) {
+            if (isKeyDown(key) && (g_keysDown[key / 8] & (1 << (key % 8))) == 0) {
+                hold.keys[hold.keyCount++] = (uint8_t)key;
+            }
+        }
+
+        if (hold.keyCount == 0) {
+            return;
+        }
+
+        hold.started = GetTickCount();
+        g_hold = hold;
+    }
+
+    static bool isHeld() {
+        if (!gameHasFocus()) {
+            return false;
+        }
+
+        for (int i = 0; i < g_hold.keyCount; ++i) {
+            if (isKeyDown(g_hold.keys[i])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Each update of the held skill's character: loads the next charge once one is loaded.
+    static void updateHold(uintptr_t character) {
+        if (g_hold.skill == 0 || character != g_hold.character) {
+            return;
+        }
+
+        if (!isHeld()) {
+            g_hold = {};
+            return;
+        }
+
+        auto skillMgr = (void*)skillMgrOf(character);
+        auto progress = skillMgr != nullptr ? skillProgress(skillMgr, g_hold.skill) : 0;
+        auto now = GetTickCount();
+
+        if (progress != PROGRESS_WAITING) {
+            // Used, cancelled, or never loaded: done.
+            if (progress != PROGRESS_PREPARING && (g_hold.sawLoaded || now - g_hold.started > 3000)) {
+                g_hold = {};
+            }
+
+            return;
+        }
+
+        g_hold.sawLoaded = true;
+
+        auto stacks = skillStacks(skillMgr, g_hold.skill);
+
+        // Full, or the last charge asked for hasn't come yet (the game refused it: give up after a while).
+        if (stacks >= g_hold.limit || (g_hold.asked != 0 && stacks <= g_hold.askedAt && now - g_hold.asked < 2500)) {
+            return;
+        }
+
+        g_hold.asked = now;
+        g_hold.askedAt = stacks;
+
+        // As pressing the skill again does (the game's own UseSkill, not Use Skills from Hotkey's).
+        __try {
+            auto orig = (UseSkillFn)g_useSkillHook->getOriginal();
+
+            orig(g_hold.uiSkillMgr, nullptr, g_hold.skill, g_hold.a2, nullptr, g_hold.a4);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER) {
+            g_hold = {};
+        }
+    }
+
+    // Each character update (the game thread): keeps charging a held skill, and sends your character
+    // toward the target of the skill a press just started loading, once it's preparing (once it's let
+    // go, while it's being held to charge).
     static void onCharacterUpdate(uintptr_t character) {
+        updateHold(character);
+
         if (g_pending.skill == 0 || character != g_pending.character) {
+            return;
+        }
+
+        if (g_hold.skill == g_pending.skill) {
+            g_pending.tick = GetTickCount();
             return;
         }
 
@@ -391,10 +559,29 @@ namespace kanan {
         auto orig = (UseSkillFn)g_useSkillHook->getOriginal();
 
         if (g_isEnabled && castOnTarget((uint16_t)skill)) {
+            g_hold = {};
             return true;
         }
 
+        if (g_isHoldToCharge && g_stackCount != nullptr) {
+            startHold(uiSkillMgr, (uint16_t)skill, a2, a4);
+        }
+
         return orig(uiSkillMgr, edx, skill, a2, meta, a4);
+    }
+
+    void SkillHotkey::onFrame() {
+        // The keys down as of this frame, for the next press to tell which keys went down for it.
+        for (int key = 1; key < 256; ++key) {
+            auto bit = (uint8_t)(1 << (key % 8));
+
+            if (isKeyDown(key)) {
+                g_keysDown[key / 8] |= bit;
+            }
+            else {
+                g_keysDown[key / 8] &= (uint8_t)~bit;
+            }
+        }
     }
 
     SkillHotkey::SkillHotkey()
@@ -436,6 +623,18 @@ namespace kanan {
             g_waitLock = (DescValueFn)GetProcAddress(standard, "?GetWaitLock@SSkillDesc@core@@QBE?BKXZ");
             g_processLock = (DescValueFn)GetProcAddress(standard, "?GetProcessLock@SSkillDesc@core@@QBE?BKXZ");
             g_isHidden = (DescFlagFn)GetProcAddress(standard, "?IsHidden@SSkillDesc@core@@QBE_NXZ");
+            g_maxStackNum = (DescValueFn)GetProcAddress(standard, "?GetMaxStackNum@SSkillDesc@core@@QBEKXZ");
+            g_alternativeType = (AlternativeTypeFn)GetProcAddress(standard,
+                "?GetSkillAlternativeType@ISkillMgr@core@@QBE?BW4ESkillAlternativeType@2@G@Z");
+            g_stackCount = (StackCountFn)GetProcAddress(standard,
+                "?GetCurrentStackCount@ISkillMgr@core@@QBEEW4ESkillAlternativeType@2@@Z");
+        }
+
+        // Hold to Charge needs the charge counts; without them it's unavailable.
+        if (!g_maxStackNum || !g_alternativeType || !g_stackCount) {
+            g_maxStackNum = nullptr;
+            g_stackCount = nullptr;
+            log("[SkillHotkey] Hold to Charge unavailable: the charge counts weren't found");
         }
 
         if (auto esl = GetModuleHandleA("ESL.dll"); esl != nullptr) {
@@ -504,15 +703,31 @@ namespace kanan {
                 "to keep heading there and use it once it's loaded and in range. Skills used on yourself, "
                 "like Windmill, go off in place when used again once loaded. Skills without a target "
                 "(Defense, Counter, Healing...) just load as usual.");
+
+            ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
+
+            if (g_stackCount == nullptr) {
+                ImGui::TextDisabled("Hold to Charge is unavailable: the skill charge counts weren't found.");
+            }
+            else {
+                ImGui::Checkbox("Hold to Charge##SkillHotkey", &g_isHoldToCharge);
+                ImGui::TextWrapped(
+                    "Hold a charging skill's key (or keep the mouse button down on its skill bar button) to keep "
+                    "loading charges, up to as many as it holds: the bolts, Thunder, Fireball, Ice Spear, Water "
+                    "Cannon, Flamer, Sand Burst... Works on its own or with the option above, which then heads "
+                    "for the target once you let go.");
+            }
         }
     }
 
     void SkillHotkey::onConfigLoad(const Config& cfg) {
         // Off unless turned on; a saved setting (on or off) is kept as it is.
         g_isEnabled = cfg.get<bool>("SkillHotkey.Enabled").value_or(false);
+        g_isHoldToCharge = cfg.get<bool>("SkillHotkey.HoldToCharge").value_or(false);
     }
 
     void SkillHotkey::onConfigSave(Config& cfg) {
         cfg.set<bool>("SkillHotkey.Enabled", g_isEnabled);
+        cfg.set<bool>("SkillHotkey.HoldToCharge", g_isHoldToCharge);
     }
 }

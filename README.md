@@ -113,7 +113,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Target Props: Ctrl-targeting can also pick props while in combat mode
 * Target Resting Enemies: lets you target mimics, watermelons, sulfur golems and flying books while they're still resting
 * Tick Timer: shows the timing of the game's regeneration ticks
-* Use Skills from Hotkey: using a skill loads it and heads for your target; using it again uses it there once it's loaded
+* Use Skills from Hotkey: using a skill loads it and heads for your target; using it again uses it there once it's loaded. Its Hold to Charge option (separate checkbox, works on its own): hold a charging skill's key to keep loading charges (bolts, Thunder, Fireball, Ice Spear, Water Cannon, Flamer, Sand Burst...)
 
 **Chat & Messages**
 * Block Critical Text: hides "Critical Hit!!!" from chat
