@@ -25,7 +25,7 @@ Kanan is loaded by the game's own sound library, which loads every plugin in `sy
 * Kanan writes what it does to `kananLog.txt` in the MabiPro folder. Include that file when reporting a problem.
 
 ## Features
-Every mod is off until you turn it on, except Cast On Target, which starts on, and those in the recommended set if you choose to apply it.
+Every mod is off until you turn it on, except those in the recommended set if you choose to apply it.
 
 **Kanan itself**
 * Mod menu sorted by topic, with a search box
@@ -103,7 +103,6 @@ Every mod is off until you turn it on, except Cast On Target, which starts on, a
 
 **Combat & Skills**
 * Always Enable Attack with Pet: always lets you attack with your pet
-* Cast On Target: using a skill loads it and heads for your target; using it again uses it there once it's loaded (on by default)
 * Combat Mastery Swap: attacking with no skill loaded loads a skill of your choice instead, like Smash
 * Default Ranged Swap: uses another ranged skill in place of Ranged Attack (Magnum Shot, Arrow Revolver, Support Shot, Mirage Missile, Crash Shot)
 * Delag Skill: reduces skill lag
@@ -114,6 +113,7 @@ Every mod is off until you turn it on, except Cast On Target, which starts on, a
 * Target Props: Ctrl-targeting can also pick props while in combat mode
 * Target Resting Enemies: lets you target mimics, watermelons, sulfur golems and flying books while they're still resting
 * Tick Timer: shows the timing of the game's regeneration ticks
+* Use Skills from Hotkey: using a skill loads it and heads for your target; using it again uses it there once it's loaded
 
 **Chat & Messages**
 * Block Critical Text: hides "Critical Hit!!!" from chat

@@ -508,17 +508,11 @@ namespace kanan {
     }
 
     void SkillHotkey::onConfigLoad(const Config& cfg) {
-        g_isEnabled = cfg.get<bool>("SkillHotkey.Enabled").value_or(true);
-
-        // Configs from before Cast On Target was on by default saved it as off without the user
-        // choosing that, so turn it on once.
-        if (!cfg.get<bool>("SkillHotkey.DefaultOnApplied").value_or(false)) {
-            g_isEnabled = true;
-        }
+        // Off unless turned on; a saved setting (on or off) is kept as it is.
+        g_isEnabled = cfg.get<bool>("SkillHotkey.Enabled").value_or(false);
     }
 
     void SkillHotkey::onConfigSave(Config& cfg) {
         cfg.set<bool>("SkillHotkey.Enabled", g_isEnabled);
-        cfg.set<bool>("SkillHotkey.DefaultOnApplied", true);
     }
 }

@@ -3,7 +3,7 @@
 #include "Mod.hpp"
 
 namespace kanan {
-    // Cast On Target: using a skill (its hotkey or skill bar button) with a target loads it and heads
+    // Use Skills from Hotkey: using a skill (its hotkey or skill bar button) with a target loads it and heads
     // for the target while it loads; using it again, while loading or once loaded, keeps heading there
     // and uses it once it's ready and in range, just like clicking the target. Skills used on yourself
     // (Windmill and the like) go off in place on a second use once loaded, with no target needed.
@@ -16,7 +16,7 @@ namespace kanan {
     public:
         SkillHotkey();
 
-        std::string getName() override { return "Cast On Target"; }
+        std::string getName() override { return "Use Skills from Hotkey"; }
 
         void onUI() override;
 

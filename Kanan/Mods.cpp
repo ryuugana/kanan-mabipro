@@ -242,7 +242,7 @@ namespace kanan {
         addMod(make_unique<AutoSetMTU>(), system, "Auto Set MTU", "Sets your network MTU when you log in or change channels.");
         addMod(make_unique<CombatMasterySwap>(), combat, "Combat Mastery Swap",
             "Attacking with no skill loaded loads a skill of your choice instead, like Smash.");
-        addMod(make_unique<SkillHotkey>(), combat, "Cast On Target",
+        addMod(make_unique<SkillHotkey>(), combat, "Use Skills from Hotkey",
             "Using a skill loads it and heads for your target; using it again uses it there once it's loaded.");
         addMod(make_unique<ItemSplitQuantity>(), convenience, "Item Split Quantity",
             "The amount the item split window starts at.");
