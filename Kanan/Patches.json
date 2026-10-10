@@ -38,6 +38,11 @@
         "location": "Pleione.dll",
         "pattern": "0F 84 ? ? ? ? 80 7E 05 01",
         "patch": "90 E9"
+      },
+      {
+        "location": "Pleione.dll",
+        "pattern": "75 18 80 7E ? ? 75 12",
+        "patch": "90 90 90 90 90 90 90 90"
       }
     ]
   },
