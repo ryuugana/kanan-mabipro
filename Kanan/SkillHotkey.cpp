@@ -442,7 +442,6 @@ namespace kanan {
         auto ownID = limit != 0 ? playerID() : 0;
         auto local = ownID != 0 ? findObject(ownID) : 0;
 
-
         if (local == 0) {
             return;
         }
@@ -460,7 +459,8 @@ namespace kanan {
                 continue;
             }
 
-            auto since = g_keyDownSince[key] != 0 ? g_keyDownSince[key] : now;
+            // (Never later than now: a time seen this very millisecond is "just now".)
+            auto since = g_keyDownSince[key] != 0 && (int32_t)(now - g_keyDownSince[key]) >= 0 ? g_keyDownSince[key] : now;
 
             if (now - since <= PRESS_WINDOW && (pressed == 0 || since - pressedAt < 0x80000000u)) {
                 pressed = key;
@@ -492,6 +492,18 @@ namespace kanan {
         }
 
         return false;
+    }
+
+    // Hold to Charge with Use Skills from Hotkey: a press of a charging skill that's loaded but not full
+    // adds charges (held: keeps adding) rather than using it on the target; once full, a press uses it.
+    static bool keepsCharging(uint16_t skill) {
+        auto limit = chargeLimit(skill);
+        auto ownID = limit != 0 ? playerID() : 0;
+        auto local = ownID != 0 ? findObject(ownID) : 0;
+        auto skillMgr = local != 0 ? (void*)skillMgrOf(local) : nullptr;
+
+        return skillMgr != nullptr && skillProgress(skillMgr, skill) == PROGRESS_WAITING &&
+            skillStacks(skillMgr, skill) < limit;
     }
 
     // Each update of the held skill's character: loads the next charge once one is loaded.
@@ -584,8 +596,9 @@ namespace kanan {
 
     static bool __fastcall hookedUseSkill(void* uiSkillMgr, void* edx, uint32_t skill, uint32_t a2, void* meta, uint32_t a4) {
         auto orig = (UseSkillFn)g_useSkillHook->getOriginal();
+        auto charging = g_isHoldToCharge && g_stackCount != nullptr && keepsCharging((uint16_t)skill);
 
-        if (g_isEnabled && castOnTarget((uint16_t)skill)) {
+        if (g_isEnabled && !charging && castOnTarget((uint16_t)skill)) {
             g_hold = {};
             return true;
         }
@@ -606,7 +619,7 @@ namespace kanan {
                 g_keyDownSince[key] = 0;
             }
             else if (g_keyDownSince[key] == 0) {
-                g_keyDownSince[key] = now | 1;  // never 0 while down
+                g_keyDownSince[key] = now != 0 ? now : 1;  // never 0 while down
             }
         }
     }
@@ -741,7 +754,8 @@ namespace kanan {
                 ImGui::TextWrapped(
                     "Hold a charging skill's hotkey to keep loading charges, up to as many as it holds: the bolts, "
                     "Thunder, Fireball, Ice Spear, Water Cannon, Flamer, Sand Burst... Works on its own or with the "
-                    "option above; with it, press the skill again to use it on your target once it's charged.");
+                    "option above; with it, pressing a loaded skill adds charges until it's full, and pressing it "
+                    "once it's full uses it on your target.");
             }
         }
     }
