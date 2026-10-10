@@ -412,9 +412,13 @@ namespace kanan {
 
     static Hold g_hold{};
 
-    // The keys and mouse buttons down as of the last frame drawn (bit per virtual key), so a press can
+    // When each key or mouse button was first seen down (0: up), checked each frame, so a press can
     // tell which keys just went down for it.
-    static uint8_t g_keysDown[256 / 8]{};
+    static DWORD g_keyDownSince[256]{};
+
+    // The key that used the skill: the one held that went down last, if within this long (the game can
+    // act on a press well after it, as while the last skill is still going off).
+    constexpr DWORD PRESS_WINDOW = 3000;
 
     static bool isKeyDown(int key) {
         return (GetAsyncKeyState(key) & 0x8000) != 0;
@@ -438,16 +442,34 @@ namespace kanan {
         auto ownID = limit != 0 ? playerID() : 0;
         auto local = ownID != 0 ? findObject(ownID) : 0;
 
+
         if (local == 0) {
             return;
         }
 
         Hold hold{ local, uiSkillMgr, skill, a2, a4, limit };
+        auto now = GetTickCount();
 
-        for (int key = 1; key < 256 && hold.keyCount < (int)sizeof(hold.keys); ++key) {
-            if (isKeyDown(key) && (g_keysDown[key / 8] & (1 << (key % 8))) == 0) {
-                hold.keys[hold.keyCount++] = (uint8_t)key;
+        // The held key that went down last (one not seen yet this frame counts as just now): not one
+        // held all along, like a movement key.
+        int pressed = 0;
+        DWORD pressedAt = 0;
+
+        for (int key = 1; key < 256; ++key) {
+            if (!isKeyDown(key)) {
+                continue;
             }
+
+            auto since = g_keyDownSince[key] != 0 ? g_keyDownSince[key] : now;
+
+            if (now - since <= PRESS_WINDOW && (pressed == 0 || since - pressedAt < 0x80000000u)) {
+                pressed = key;
+                pressedAt = since;
+            }
+        }
+
+        if (pressed != 0) {
+            hold.keys[hold.keyCount++] = (uint8_t)pressed;
         }
 
         if (hold.keyCount == 0) {
@@ -503,6 +525,11 @@ namespace kanan {
         // Full, or the last charge asked for hasn't come yet (the game refused it: give up after a while).
         if (stacks >= g_hold.limit || (g_hold.asked != 0 && stacks <= g_hold.askedAt && now - g_hold.asked < 2500)) {
             return;
+        }
+
+        // Held to charge, not tapped: Use Skills from Hotkey doesn't head for the target afterwards.
+        if (g_pending.skill == g_hold.skill) {
+            g_pending = {};
         }
 
         g_hold.asked = now;
@@ -571,15 +598,15 @@ namespace kanan {
     }
 
     void SkillHotkey::onFrame() {
-        // The keys down as of this frame, for the next press to tell which keys went down for it.
-        for (int key = 1; key < 256; ++key) {
-            auto bit = (uint8_t)(1 << (key % 8));
+        // When each key went down, for the next press to tell which keys went down for it.
+        auto now = GetTickCount();
 
-            if (isKeyDown(key)) {
-                g_keysDown[key / 8] |= bit;
+        for (int key = 1; key < 256; ++key) {
+            if (!isKeyDown(key)) {
+                g_keyDownSince[key] = 0;
             }
-            else {
-                g_keysDown[key / 8] &= (uint8_t)~bit;
+            else if (g_keyDownSince[key] == 0) {
+                g_keyDownSince[key] = now | 1;  // never 0 while down
             }
         }
     }
