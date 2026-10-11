@@ -60,7 +60,7 @@ namespace kanan {
 			data.str = "omega.mabi.pro";
 			data.len = (int)strlen("omega.mabi.pro") + 1;
 			break;
-#ifdef TEST
+#ifdef TEST_DEBUG
 		case 3:
 			// For testing only
 			data.str = "192.168.100.1";

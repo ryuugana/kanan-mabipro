@@ -207,7 +207,7 @@ namespace kanan {
             });
         }
 
-#ifdef TEST
+#ifdef TEST_DEBUG
         // There is only one node left (the slowest one)
         addMessageMod(make_unique<ChooseLoginNode>(), debug, "Choose Node", "Chooses the login server node.");
         addMessageMod(make_unique<MaintLogin>(), debug, "Maintenance Login", "Logs in during maintenance.");

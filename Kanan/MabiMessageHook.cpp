@@ -76,6 +76,15 @@ namespace kanan {
 	typedef LPVOID(__cdecl* vmGetInstanceSignature)(UINT64 charId);
 	typedef DWORD(__thiscall* mintPostSignature)(LPVOID mintPointer);
 	typedef DWORD(__thiscall* pleioneSendSignature)(LPVOID cmessage);
+	// Plain 12-byte view of a mint::CMessage, so one can be copied/passed by value.
+	struct RawCMessage {
+		void* vftable;
+		unsigned long state;
+		void* payload;
+	};
+	typedef void*(__thiscall* cmessageCtorSignature)(RawCMessage* self, void* buffer, unsigned long size);
+	typedef unsigned long long(__thiscall* cmessageGetReceiverIdSignature)(RawCMessage* self);
+	typedef bool(__thiscall* vmSendSignature)(LPVOID vm, UINT64 receiverId, RawCMessage msg);
 	
 	typedef unsigned long(__thiscall* WriteToNetworkBuffer)(LPVOID cmsg, void* param_1, unsigned long param_2);
 
@@ -86,11 +95,16 @@ namespace kanan {
 	vmGetInstanceSignature vmGetInstance = NULL;
 	mintPostSignature mintPost = NULL;
 	pleioneSendSignature pleioneSend = NULL;
+	vmSendSignature mintVmSend = NULL;
 
 	LPVOID SavedRecvPointer = NULL;
 	LPVOID SavedSendPointer = NULL;
 	LONG ReadFromNetworkBufferHookContinueAddress;
-	LONG RunHookContinueAddress;
+	LONG PleioneNetworkHookContinueAddress;
+	LONG PleioneSendHookContinueAddress;
+
+	// The live network connection object, captured from pleioneSend's `this` (ECX).
+	LPVOID g_senderContext = NULL;
 	BOOL InsideHookHandler = FALSE;
 
 	//
@@ -114,10 +128,21 @@ namespace kanan {
 		}
 	}
 
-	void __stdcall RunHookHandler() {
+	// Runs from CPleione::Run each frame (main thread), which is the same thread the
+	// real Mint recv/send paths. Draining the inject queues here
+	// means Recv/Send are always called in a valid message context, and we no
+	// longer need a live message just to pump the queues.
+	// Records the connection object (pleioneSend's `this`) so kanan::Send can
+	// transmit through it.
+	void __stdcall PleioneSendHookHandler(LPVOID sender) {
+		g_senderContext = sender;
+	}
+
+	void __stdcall PleioneNetworkHookHandler() {
 		if (!InsideHookHandler) {
 			InsideHookHandler = TRUE;
 			InjectRecvQueue();
+			InjectSendQueue();
 			InsideHookHandler = FALSE;
 		}
 	}
@@ -174,17 +199,34 @@ namespace kanan {
 	}
 
 
-	__declspec(naked) void RunHookTrap() {
+	// Runs once per frame from CPleione::Run (main thread).
+	__declspec(naked) void PleioneNetworkHookTrap() {
 		__asm {
 			PUSHAD
-			call    RunHookHandler
+			call    PleioneNetworkHookHandler
 			POPAD
 
-			push esi
-			mov esi,ecx
-			mov ecx, [esi+04]
+			// Replay the overwritten prologue bytes:  push 0x4C ; mov eax, 0x63D028D0
+			push    0x4C
+			mov     eax, 0x63D028D0
 
-			jmp     RunHookContinueAddress
+			jmp     PleioneNetworkHookContinueAddress
+		}
+	}
+
+	// pleioneSend is __thiscall, so the connection object is in ECX on entry.
+	__declspec(naked) void PleioneSendHookTrap() {
+		__asm {
+			PUSHAD
+			PUSH ECX
+			call    PleioneSendHookHandler
+			POPAD
+
+			// Replay the overwritten prologue bytes:  push 0x4 ; mov eax, 0x63D116B3
+			push    0x4
+			mov     eax, 0x63D116B3
+
+			jmp     PleioneSendHookContinueAddress
 		}
 	}
 
@@ -223,6 +265,7 @@ namespace kanan {
 					}
 			}
 		}
+
 		InjectRecvQueue();
 		InjectSendQueue();
 	}
@@ -277,12 +320,16 @@ namespace kanan {
 		return Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong + hookOffset), WriteToNetworkBufferHookTrap,7);
 	}
 
+	// Hooks the top of the per-frame CPleione update (0x6381E8AC, RVA 0x1E8AC). It
+	// runs once per frame on the main thread BEFORE the network tick, so the drain
+	// does not re-enter the live socket/message processing (pumping from inside
+	// it, e.g. at 0x63CF3C40, corrupted state and faulted).
 	BOOL MabiMessageHook::PatchRun() {
-		DWORD RunFunctionAddress = (mintAddress + 0x66a9b);
+		DWORD RunFunctionAddress = (pleioneAddress + 0x1E8AC);
 		LONG RunFunctionAddressLong = *(LONG*)(void*)(&RunFunctionAddress);
-		RunHookContinueAddress = RunFunctionAddressLong + 6;
+		PleioneNetworkHookContinueAddress = RunFunctionAddressLong + 7;
 
-		return Hookjmp((void*)(RunFunctionAddressLong), RunHookTrap, 6);
+		return Hookjmp((void*)(RunFunctionAddressLong), PleioneNetworkHookTrap, 7);
 	}
 
 	void MabiMessageHook::FindMessageFunctions() {
@@ -321,6 +368,16 @@ namespace kanan {
 		LONG pleioneSendFunctionAddressLong = *(LONG*)(void*)(&pleioneSendFunctionAddress);
 
 		pleioneSend = (pleioneSendSignature)pleioneSendFunctionAddressLong;
+
+		// Detour pleioneSend so its `this` (the connection object) is recorded.
+		PleioneSendHookContinueAddress = pleioneSendFunctionAddressLong + 7;
+		Hookjmp((void*)(pleioneSendFunctionAddressLong), PleioneSendHookTrap, 7);
+
+		// typedef bool(__thiscall* vmSendSignature)(UINT64 receiverId, LPVOID msg);
+		DWORD mintVmSendFunctionAddress = (mintAddress + 0x65c96);
+		LONG mintVmSendFunctionAddressLong = *(LONG*)(void*)(&mintVmSendFunctionAddress);
+
+		mintVmSend = (vmSendSignature)mintVmSendFunctionAddressLong;
 	}
 
 	void AddToRecvQ(MabiMessage mabiMessage)
@@ -333,57 +390,65 @@ namespace kanan {
 		mabiMessagesS.push_back(mabiMessage);
 	}
 
-	__declspec(naked) int Recv(BYTE* buffer, unsigned int size)
+	// Build a CMessage from the raw packet and hand it to the VM (vmGetInstance ->
+	// CVirtualMachine::Post), mirroring how the game delivers received messages.
+	// A real C++ function (not naked) so the calling convention matches its cdecl
+	// declaration (the naked stubs ended in RET 8, which double-cleaned the stack)
+	// and so that exceptions are contained.
+	int Recv(BYTE* buffer, unsigned int size)
 	{
-		__asm
-		{
-			PUSHAD
-			SUB        ESP, 0xc
-			MOV        ECX, ESP
-			MOV        EAX, dword ptr[ESP + 0x34]
-			OR         EAX, 0x80000000
+		if (mintMessageConstructor == NULL || mintGetReceiverId == NULL ||
+			vmGetInstance == NULL || mintPost == NULL) {
+			return 0;
+		}
 
-			PUSH       EAX
-			PUSH       dword ptr[ESP + 0x34]
-			CALL       mintMessageConstructor
+		BOOL wasInside = InsideHookHandler;
+		InsideHookHandler = TRUE;
 
-			MOV        ECX, ESP
-			CALL       mintGetReceiverId
+		try {
+			RawCMessage msg;
+			((cmessageCtorSignature)mintMessageConstructor)(&msg, buffer, size);
+			unsigned long long receiverId = ((cmessageGetReceiverIdSignature)mintGetReceiverId)(&msg);
+			void* vm = vmGetInstance(receiverId);
 
-			PUSH       EDX
-			PUSH       EAX
-			CALL       vmGetInstance
-
-			MOV        ECX, EAX
-			CALL       mintPost
-
-			MOV        dword ptr[ESP + 0x1c], EAX
-			POPAD
-			RET        0x8
+			InsideHookHandler = wasInside;
+			return ((bool(__thiscall*)(LPVOID, UINT64, RawCMessage))mintPost)(vm, receiverId, msg) ? 1 : 0;
+		}
+		catch (...) {
+			log("kanan: injection threw a C++ exception (ignored).");
+			InsideHookHandler = wasInside;
+			return 0;
 		}
 	}
 
-	__declspec(naked) int Send(BYTE* buffer, unsigned int size)
+	// Sent through the VM (vmGetInstance -> CVirtualMachine::Send), exactly like the
+	// game does. This is a real C++ function rather than naked asm so that a C++
+	// exception thrown inside the VM send path is caught here instead of unwinding
+	// through a naked frame (which aborts the CRT).
+	// Transmit through the live network connection. The connection object is
+	// captured from pleioneSend's `this` (see PleioneSendHookTrap); pleioneSend
+	// serializes the message and writes it to the socket.
+	int Send(BYTE* buffer, unsigned int size)
 	{
-		__asm
-		{
-			PUSHAD
-			SUB        ESP, 0xc
-			MOV        ECX, ESP
-			MOV        EAX, dword ptr[ESP + 0x34]
-			OR         EAX, 0x80000000
+		if (mintMessageConstructor == NULL || pleioneSend == NULL || g_senderContext == NULL) {
+			return 0;
+		}
 
-			PUSH       EAX
-			PUSH       dword ptr[ESP + 0x34]
-			CALL       mintMessageConstructor
+		BOOL wasInside = InsideHookHandler;
+		InsideHookHandler = TRUE;
 
-			MOV        EAX, [ESI]
-			MOV        ECX, ESI
-			CALL       pleioneSend
+		try {
+			RawCMessage msg;
+			((cmessageCtorSignature)mintMessageConstructor)(&msg, buffer, size);
 
-			MOV        dword ptr[ESP + 0x1c], EAX
-			POPAD
-			RET        0x8
+			bool ok = ((bool(__thiscall*)(LPVOID, RawCMessage))pleioneSend)(g_senderContext, msg);
+			InsideHookHandler = wasInside;
+			return ok ? 1 : 0;
+		}
+		catch (...) {
+			InsideHookHandler = wasInside;
+			log("kanan: injection threw a C++ exception (ignored).");
+			return 0;
 		}
 	}
 }

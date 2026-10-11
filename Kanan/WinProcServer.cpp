@@ -4,6 +4,8 @@
 #include "Log.hpp"
 
 namespace kanan {
+    extern "C" int Recv(unsigned char* buffer, unsigned int size);
+    extern "C" int Send(unsigned char* buffer, unsigned int size);
         LRESULT CALLBACK WinProcServer::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             WinProcServer* pThis = nullptr;
 
@@ -54,7 +56,7 @@ namespace kanan {
 
                         msg.size = static_cast<LONG>(cds->cbData);
 
-                        AddToSendQ(msg);
+                        Send(msg.buffer, static_cast<unsigned int>(msg.size));
                     }
                 }
                 else if (command == Sign::Recv && m_isConnected) {
@@ -66,7 +68,7 @@ namespace kanan {
 
                         msg.size = static_cast<LONG>(cds->cbData);
 
-                        AddToRecvQ(msg);
+                        Recv(msg.buffer, static_cast<unsigned int>(msg.size));
                     }
                 }
                 return TRUE;

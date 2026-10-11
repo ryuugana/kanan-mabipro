@@ -59,7 +59,7 @@ void EntityWindow::Draw(bool* p_open, std::vector<std::shared_ptr<IEntity>>& ent
     ImGui::SameLine();
     ImGui::Checkbox("Pet", &m_pet);
     ImGui::SameLine();
-#ifdef TEST
+#ifdef TEST_DEBUG
     ImGui::Checkbox("NPC", &m_npc);
     ImGui::SameLine();
 #endif
@@ -233,7 +233,7 @@ void EntityWindow::RenderTable(const std::vector<std::shared_ptr<IEntity>>& enti
                 continue;
             else if (!m_pet && entity.get()->GetEntityType() == "Pet")
                 continue;
-#ifdef TEST
+#ifdef TEST_DEBUG
             else if (!m_npc && entity.get()->GetEntityType() == "NPC")
                 continue;
 #else
