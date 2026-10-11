@@ -100,7 +100,6 @@ namespace kanan {
 	LPVOID SavedRecvPointer = NULL;
 	LPVOID SavedSendPointer = NULL;
 	LONG ReadFromNetworkBufferHookContinueAddress;
-	LONG PleioneNetworkHookContinueAddress;
 	LONG PleioneSendHookContinueAddress;
 
 	// The live network connection object, captured from pleioneSend's `this` (ECX).
@@ -128,23 +127,9 @@ namespace kanan {
 		}
 	}
 
-	// Runs from CPleione::Run each frame (main thread), which is the same thread the
-	// real Mint recv/send paths. Draining the inject queues here
-	// means Recv/Send are always called in a valid message context, and we no
-	// longer need a live message just to pump the queues.
-	// Records the connection object (pleioneSend's `this`) so kanan::Send can
-	// transmit through it.
+	// Runs from CPleione::Run each frame (main thread)
 	void __stdcall PleioneSendHookHandler(LPVOID sender) {
 		g_senderContext = sender;
-	}
-
-	void __stdcall PleioneNetworkHookHandler() {
-		if (!InsideHookHandler) {
-			InsideHookHandler = TRUE;
-			InjectRecvQueue();
-			InjectSendQueue();
-			InsideHookHandler = FALSE;
-		}
 	}
 
 	//
@@ -195,22 +180,6 @@ namespace kanan {
 			pop     ebx
 			leave
 			ret     0x8
-		}
-	}
-
-
-	// Runs once per frame from CPleione::Run (main thread).
-	__declspec(naked) void PleioneNetworkHookTrap() {
-		__asm {
-			PUSHAD
-			call    PleioneNetworkHookHandler
-			POPAD
-
-			// Replay the overwritten prologue bytes:  push 0x4C ; mov eax, 0x63D028D0
-			push    0x4C
-			mov     eax, 0x63D028D0
-
-			jmp     PleioneNetworkHookContinueAddress
 		}
 	}
 
@@ -320,16 +289,16 @@ namespace kanan {
 		return Hookjmp((void*)(WriteToNetworkBufferFunctionAddressLong + hookOffset), WriteToNetworkBufferHookTrap,7);
 	}
 
-	// Hooks the top of the per-frame CPleione update (0x6381E8AC, RVA 0x1E8AC). It
-	// runs once per frame on the main thread BEFORE the network tick, so the drain
-	// does not re-enter the live socket/message processing (pumping from inside
-	// it, e.g. at 0x63CF3C40, corrupted state and faulted).
+	// Hooks the top of the per-frame CPleione update (0x6381E8AC, RVA 0x1E8AC).
 	BOOL MabiMessageHook::PatchRun() {
-		DWORD RunFunctionAddress = (pleioneAddress + 0x1E8AC);
-		LONG RunFunctionAddressLong = *(LONG*)(void*)(&RunFunctionAddress);
-		PleioneNetworkHookContinueAddress = RunFunctionAddressLong + 7;
+		// typedef void(__thiscall* pleioneSendSignature)(LPVOID mintPointer);
+		DWORD pleioneSendFunctionAddress = (pleioneAddress + 0x4F988);
+		LONG pleioneSendFunctionAddressLong = *(LONG*)(void*)(&pleioneSendFunctionAddress);
+		pleioneSend = (pleioneSendSignature)pleioneSendFunctionAddressLong;
 
-		return Hookjmp((void*)(RunFunctionAddressLong), PleioneNetworkHookTrap, 7);
+		// Detour pleioneSend so its `this` (the connection object) is recorded.
+		PleioneSendHookContinueAddress = pleioneSendFunctionAddressLong + 7;
+		return Hookjmp((void*)(pleioneSendFunctionAddressLong), PleioneSendHookTrap, 7);
 	}
 
 	void MabiMessageHook::FindMessageFunctions() {
@@ -363,16 +332,6 @@ namespace kanan {
 
 		mintPost = (mintPostSignature)mintPostFunctionAddressLong;
 
-		// typedef void(__thiscall* pleioneSendSignature)(LPVOID mintPointer);
-		DWORD pleioneSendFunctionAddress = (pleioneAddress + 0x4F988);
-		LONG pleioneSendFunctionAddressLong = *(LONG*)(void*)(&pleioneSendFunctionAddress);
-
-		pleioneSend = (pleioneSendSignature)pleioneSendFunctionAddressLong;
-
-		// Detour pleioneSend so its `this` (the connection object) is recorded.
-		PleioneSendHookContinueAddress = pleioneSendFunctionAddressLong + 7;
-		Hookjmp((void*)(pleioneSendFunctionAddressLong), PleioneSendHookTrap, 7);
-
 		// typedef bool(__thiscall* vmSendSignature)(UINT64 receiverId, LPVOID msg);
 		DWORD mintVmSendFunctionAddress = (mintAddress + 0x65c96);
 		LONG mintVmSendFunctionAddressLong = *(LONG*)(void*)(&mintVmSendFunctionAddress);
@@ -390,11 +349,6 @@ namespace kanan {
 		mabiMessagesS.push_back(mabiMessage);
 	}
 
-	// Build a CMessage from the raw packet and hand it to the VM (vmGetInstance ->
-	// CVirtualMachine::Post), mirroring how the game delivers received messages.
-	// A real C++ function (not naked) so the calling convention matches its cdecl
-	// declaration (the naked stubs ended in RET 8, which double-cleaned the stack)
-	// and so that exceptions are contained.
 	int Recv(BYTE* buffer, unsigned int size)
 	{
 		if (mintMessageConstructor == NULL || mintGetReceiverId == NULL ||
@@ -421,13 +375,6 @@ namespace kanan {
 		}
 	}
 
-	// Sent through the VM (vmGetInstance -> CVirtualMachine::Send), exactly like the
-	// game does. This is a real C++ function rather than naked asm so that a C++
-	// exception thrown inside the VM send path is caught here instead of unwinding
-	// through a naked frame (which aborts the CRT).
-	// Transmit through the live network connection. The connection object is
-	// captured from pleioneSend's `this` (see PleioneSendHookTrap); pleioneSend
-	// serializes the message and writes it to the socket.
 	int Send(BYTE* buffer, unsigned int size)
 	{
 		if (mintMessageConstructor == NULL || pleioneSend == NULL || g_senderContext == NULL) {
