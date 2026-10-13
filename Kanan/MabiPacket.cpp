@@ -114,7 +114,8 @@ namespace kanan {
 	void CMabiPacket::SetElement(const PacketData* popd, unsigned int n) {
 		PacketData data;
 
-		if (popd == NULL)
+		// Only an element the packet has (a request in a form we don't expect can have fewer).
+		if (popd == NULL || n >= vect_pkt_data_.size())
 			return;
 
 		data = popd[0];
@@ -122,6 +123,10 @@ namespace kanan {
 			data.str = new char[data.len];
 			memcpy(data.str, popd[0].str, data.len);
 		}
+
+		// The element replaced may own its string.
+		if (vect_pkt_data_[n].type == 6 || vect_pkt_data_[n].type == 7)
+			delete[] vect_pkt_data_[n].str;
 
 		vect_pkt_data_[n] = data;
 }
