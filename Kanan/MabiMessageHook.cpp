@@ -333,6 +333,14 @@ namespace kanan {
 		mabiMessagesS.push_back(mabiMessage);
 	}
 
+	// Recv and Send are cdecl (as declared above): the caller removes the two arguments, so both
+	// return with a plain RET. Returning with RET 8 as well left the caller's stack 8 bytes off for
+	// every queued message, which built without a frame pointer (the v143 compiler) returned to a
+	// wrong address and crashed (Auto Accept Mount Requests sends its reply through this queue).
+	//
+	// Each builds a mint::CMessage in 12 bytes reserved on the stack, which the game function it
+	// hands it to takes by value and removes.
+
 	__declspec(naked) int Recv(BYTE* buffer, unsigned int size)
 	{
 		__asm
@@ -350,16 +358,19 @@ namespace kanan {
 			MOV        ECX, ESP
 			CALL       mintGetReceiverId
 
+			// The receiver id, left on the stack as CVirtualMachine::Post's first argument (GetInstance
+			// takes none).
 			PUSH       EDX
 			PUSH       EAX
 			CALL       vmGetInstance
 
+			// CVirtualMachine::Post(receiver id, message): removes the id and the message (20 bytes).
 			MOV        ECX, EAX
 			CALL       mintPost
 
 			MOV        dword ptr[ESP + 0x1c], EAX
 			POPAD
-			RET        0x8
+			RET
 		}
 	}
 
@@ -377,13 +388,13 @@ namespace kanan {
 			PUSH       dword ptr[ESP + 0x34]
 			CALL       mintMessageConstructor
 
-			MOV        EAX, [ESI]
-			MOV        ECX, ESI
+			// The game's send (Pleione +0x4F988) takes the message by value and removes it (12 bytes);
+			// it doesn't use ECX.
 			CALL       pleioneSend
 
 			MOV        dword ptr[ESP + 0x1c], EAX
 			POPAD
-			RET        0x8
+			RET
 		}
 	}
 }
