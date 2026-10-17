@@ -3,6 +3,7 @@
 #include <atomic>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <Windows.h>
 
@@ -128,6 +129,25 @@ namespace kanan {
         void drawUpdateMessage();
         void drawDefaultMods();
         void Drawmetrics();
+
+        // Config profiles
+        std::string m_configsDirPath;
+        std::string m_selectedProfileFile;
+        std::vector<std::string> m_configProfiles; // includes "Default" at index 0
+        int m_selectedConfigIndex;
+        char m_newConfigName[64]{};
+        std::string m_configStatusMsg;
+
+        // Pending delete index for confirmation popup (-1 = none)
+        int m_pendingDeleteIndex;
+
+        // If true, apply the persisted selected profile when it's safe (deferred until loadConfig)
+        bool m_pendingApplySelectedProfile;
+
+        void refreshConfigProfiles();
+        void selectConfig(int index);
+        void persistSelectedProfile();
+        void loadPersistedProfile();
 
         enum mp3_status_fix {
             no_mp3_found,

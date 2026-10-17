@@ -14,6 +14,7 @@
 #include <Shlwapi.h>
 #include <String.hpp>
 #include <Utility.hpp>
+#include <fstream>
 
 #include "FontData.hpp"
 #include "GoldFormat.hpp"
@@ -70,9 +71,28 @@ namespace kanan {
         m_areModsLoaded{ false },
         m_wnd{ nullptr },
         m_modWindowEnabled{ false },
-        m_isUIOpenByDefault{ true }
+        m_isUIOpenByDefault{ true },
+        m_configsDirPath{ m_path + "/KananConfigs" },
+        m_selectedProfileFile{ m_configsDirPath + "/selected.txt" },
+        m_configProfiles{},
+        m_selectedConfigIndex{ 0 },
+        m_configStatusMsg{},
+        m_pendingDeleteIndex{ -1 },
+        m_pendingApplySelectedProfile{ false }
     {
         log("Entering Kanan constructor.");
+
+        // Ensure configs dir exists
+        try {
+            std::error_code ec;
+            std::filesystem::create_directories(m_configsDirPath, ec);
+            if (ec) {
+                log("Failed to ensure configs directory exists: %s", ec.message().c_str());
+            }
+        }
+        catch (...) {
+            log("Exception while creating configs directory");
+        }
 
         //
         // Hook D3D9 and set the callbacks.
@@ -102,6 +122,9 @@ namespace kanan {
         //
         initializeMods();
 
+        // Initialize profile list and restore last-selected profile if present
+        refreshConfigProfiles();
+        loadPersistedProfile();
 
         //metrics settings
 
@@ -130,6 +153,130 @@ namespace kanan {
         frameTimePlot.AddMetric(&frameTimeMetric);
 
         log("Leaving Kanan constructor.");
+    }
+
+    void Kanan::refreshConfigProfiles() {
+        m_configProfiles.clear();
+        // "Default" corresponds to root config.txt
+        m_configProfiles.push_back("Default");
+
+        std::string selectedStem;
+        try {
+            selectedStem = std::filesystem::path(m_selectedProfileFile).stem().string();
+        }
+        catch (...) {
+            selectedStem.clear();
+        }
+
+        try {
+            std::error_code ec;
+            if (!std::filesystem::exists(m_configsDirPath, ec)) {
+                std::filesystem::create_directories(m_configsDirPath, ec);
+            }
+
+            std::vector<std::string> profiles;
+            for (const auto& entry : std::filesystem::directory_iterator(m_configsDirPath, ec)) {
+                if (ec) {
+                    continue;
+                }
+                if (!entry.is_regular_file()) {
+                    continue;
+                }
+                auto p = entry.path();
+                if (p.extension() == ".txt") {
+                    auto name = p.stem().string();
+                    // Skip Default.txt and the persisted-selected file (e.g. selected.txt)
+                    if (name.empty() || name == "Default" || (!selectedStem.empty() && name == selectedStem)) {
+                        continue;
+                    }
+                    profiles.push_back(name);
+                }
+            }
+
+            // Sort for predictable ordering
+            std::sort(profiles.begin(), profiles.end(), [](const std::string& a, const std::string& b) {
+                return _stricmp(a.c_str(), b.c_str()) < 0;
+            });
+
+            // Append to main list
+            for (const auto& n : profiles) {
+                m_configProfiles.push_back(n);
+            }
+        }
+        catch (...) {
+            // ignore; keep at least Default
+        }
+
+        // Ensure selected index is valid
+        if (m_selectedConfigIndex < 0 || m_selectedConfigIndex >= (int)m_configProfiles.size()) {
+            m_selectedConfigIndex = 0;
+        }
+    }
+
+    void Kanan::persistSelectedProfile() {
+        try {
+            std::ofstream ofs(m_selectedProfileFile, std::ios::trunc);
+            if (ofs && m_selectedConfigIndex >= 0 && m_selectedConfigIndex < (int)m_configProfiles.size()) {
+                ofs << m_configProfiles[m_selectedConfigIndex];
+            }
+        }
+        catch (...) {
+            // ignore errors
+        }
+    }
+
+    void Kanan::loadPersistedProfile() {
+        try {
+            std::ifstream ifs(m_selectedProfileFile);
+            if (!ifs) {
+                return;
+            }
+            std::string name;
+            std::getline(ifs, name);
+            if (name.empty()) return;
+
+            // refresh profiles to ensure up-to-date
+            refreshConfigProfiles();
+
+            for (int i = 0; i < (int)m_configProfiles.size(); ++i) {
+                if (m_configProfiles[i] == name) {
+                    // Defer applying the persisted profile until loadConfig() runs
+                    m_selectedConfigIndex = i;
+                    m_pendingApplySelectedProfile = true;
+                    m_configStatusMsg = "Will apply persisted profile: " + name;
+                    return;
+                }
+            }
+        }
+        catch (...) {
+            // ignore
+        }
+    }
+
+    void Kanan::selectConfig(int index) {
+        if (index < 0 || index >= (int)m_configProfiles.size()) {
+            m_configStatusMsg = "Invalid profile selection";
+            return;
+        }
+
+        m_selectedConfigIndex = index;
+        const auto& name = m_configProfiles[index];
+
+        // Default -> use the root config.txt
+        if (index == 0) {
+            m_modConfigPath = m_path + "/config.txt";
+            m_configStatusMsg = "Selected Default (config.txt)";
+            persistSelectedProfile();
+            loadConfig();
+            return;
+        }
+
+        // Use the profile file directly (do not overwrite config.txt)
+        auto profilePath = std::filesystem::path(m_configsDirPath) / (name + ".txt");
+        m_modConfigPath = profilePath.string();
+        m_configStatusMsg = "Selected profile: " + name;
+        persistSelectedProfile();
+        loadConfig();
     }
 
     void Kanan::initializeMods() {
@@ -295,12 +442,6 @@ namespace kanan {
             // Make sure the config for all the mods gets loaded.
             if (!m_areModsLoaded) {
                 loadConfig();
-            }
-
-            // Once a session: if the files can't be moved now, trying every frame won't help.
-            if (!m_isMp3Fixed && !m_isMp3Tried) {
-                m_isMp3Tried = true;
-                fixMabiProMp3();
             }
 
             if (m_isNewVersion.exchange(false) && m_isNotifyUpdate) {
@@ -600,6 +741,29 @@ namespace kanan {
     }
 
     void Kanan::loadConfig() {
+        // If a persisted profile was requested earlier (before Kanan/window was ready),
+        // apply it now by setting the active config path to the profile file (no copy).
+        if (m_pendingApplySelectedProfile) {
+            m_pendingApplySelectedProfile = false;
+            if (m_selectedConfigIndex > 0 && m_selectedConfigIndex < (int)m_configProfiles.size()) {
+                auto name = m_configProfiles[m_selectedConfigIndex];
+                auto profilePath = std::filesystem::path(m_configsDirPath) / (name + ".txt");
+                if (std::filesystem::exists(profilePath)) {
+                    m_modConfigPath = profilePath.string();
+                    m_configStatusMsg = "Applied persisted profile: " + name;
+                }
+                else {
+                    // fall back to Default
+                    m_modConfigPath = m_path + "/config.txt";
+                    m_configStatusMsg = "Persisted profile missing, using Default";
+                }
+            }
+            else {
+                m_modConfigPath = m_path + "/config.txt";
+            }
+            persistSelectedProfile();
+        }
+
         log("Loading config %s", m_modConfigPath.c_str());
 
         struct stat buf;
@@ -693,6 +857,26 @@ namespace kanan {
 
         if (!cfg.save(m_modConfigPath)) {
             log("Failed to save the config %s", m_modConfigPath.c_str());
+        }
+        else {
+            // If a profile is selected (not Default), also update the profile file
+            if (m_selectedConfigIndex > 0 && m_selectedConfigIndex < (int)m_configProfiles.size()) {
+                auto name = m_configProfiles[m_selectedConfigIndex];
+                auto dest = std::filesystem::path(m_configsDirPath) / (name + ".txt");
+                std::error_code ec;
+                try {
+                    std::filesystem::copy_file(m_modConfigPath, dest, std::filesystem::copy_options::overwrite_existing, ec);
+                    if (!ec) {
+                        log("Updated profile %s", name.c_str());
+                    }
+                    else {
+                        log("Failed to update profile %s: %s", name.c_str(), ec.message().c_str());
+                    }
+                }
+                catch (...) {
+                    log("Exception while updating profile %s", name.c_str());
+                }
+            }
         }
 
         log("Config saving done.");
@@ -805,6 +989,7 @@ namespace kanan {
         // 
         // Rest of the UI
         //
+
         ImGui::TextWrapped(
             "Input to the game is blocked while interacting with this UI. \n\n"
             "Press the %s key to toggle this UI. \n"
@@ -820,9 +1005,197 @@ namespace kanan {
         }
         ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
-
         if (ImGui::CollapsingHeader("Kanan Settings")) {
-            if (ImGui::TreeNode("Kanan Hotkeys")) {
+            // Config profiles UI
+            if (ImGui::TreeNode("Config Profiles")) {
+                // Build items array
+                std::vector<const char*> items;
+                items.reserve(m_configProfiles.size());
+                for (const auto& s : m_configProfiles) items.push_back(s.c_str());
+
+                int prev = m_selectedConfigIndex;
+                if (!items.empty()) {
+                    // Use full width for the combo so it doesn't squeeze other widgets
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::Combo("Active Config", &m_selectedConfigIndex, items.data(), (int)items.size());
+                    if (m_selectedConfigIndex != prev) {
+                        selectConfig(m_selectedConfigIndex);
+                    }
+                }
+                else {
+                    ImGui::TextDisabled("No profiles available");
+                }
+
+                ImGui::Spacing();
+
+                if (!m_configStatusMsg.empty()) {
+                    ImGui::TextWrapped("%s", m_configStatusMsg.c_str());
+                }
+
+                ImGui::Spacing();
+
+                ImGui::TextWrapped("Create a new profile from the active configuration.");
+
+                // Make the input take the full width
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputText("New profile name", m_newConfigName, sizeof(m_newConfigName));
+
+                // Place Add button on its own row and full-width for predictable layout
+                if (ImGui::Button("Add", ImVec2(-FLT_MIN, 0))) {
+                    std::string name = m_newConfigName;
+                    // trim
+                    name.erase(name.begin(), std::find_if(name.begin(), name.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+                    name.erase(std::find_if(name.rbegin(), name.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), name.end());
+
+                    if (name.empty()) {
+                        m_configStatusMsg = "Profile name cannot be empty";
+                    }
+                    else {
+                        // ensure no invalid characters for filename
+                        bool invalid = false;
+                        for (char c : name) {
+                            if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+                                invalid = true;
+                                break;
+                            }
+                        }
+                        if (invalid) {
+                            m_configStatusMsg = "Profile name contains invalid characters";
+                        }
+                        else {
+                            auto dest = std::filesystem::path(m_configsDirPath) / (name + ".txt");
+                            std::error_code ec;
+                            bool ok = false;
+                            try {
+                                // copy active config file (m_modConfigPath) if exists, else create empty
+                                if (std::filesystem::exists(m_modConfigPath, ec)) {
+                                    std::filesystem::copy_file(m_modConfigPath, dest, std::filesystem::copy_options::overwrite_existing, ec);
+                                    ok = !ec;
+                                }
+                                else {
+                                    std::ofstream ofs(dest.string(), std::ios::trunc);
+                                    ok = !!ofs;
+                                }
+                            }
+                            catch (const std::exception& e) {
+                                log("Failed to create profile %s: %s", name.c_str(), e.what());
+                                ok = false;
+                            }
+
+                            if (ok) {
+                                refreshConfigProfiles();
+                                // select the new profile
+                                for (int i = 0; i < (int)m_configProfiles.size(); ++i) {
+                                    if (m_configProfiles[i] == name) {
+                                        selectConfig(i);
+                                        break;
+                                    }
+                                }
+                                m_configStatusMsg = "Profile created: " + name;
+                                memset(m_newConfigName, 0, sizeof(m_newConfigName));
+                            }
+                            else {
+                                m_configStatusMsg = "Failed to create profile";
+                            }
+                        }
+                    }
+                }
+
+                ImGui::Spacing();
+
+                // Draw Delete and Save buttons side-by-side with safe widths
+                ImGui::BeginDisabled(m_selectedConfigIndex < 1);
+                float avail = ImGui::GetContentRegionAvail().x;
+                float gap = 8.0f;
+                float half = (avail - gap) * 0.5f;
+
+                if (ImGui::Button("Delete", ImVec2(half, 0))) {
+                    // open confirmation modal
+                    m_pendingDeleteIndex = m_selectedConfigIndex;
+                    ImGui::OpenPopup("Confirm Delete Profile");
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Save to profile", ImVec2(half, 0))) {
+                    // copy current active config.txt into profile file
+                    std::string name = m_configProfiles[m_selectedConfigIndex];
+                    auto dest = std::filesystem::path(m_configsDirPath) / (name + ".txt");
+                    std::error_code ec;
+                    bool ok = false;
+                    try {
+                        if (std::filesystem::exists(m_modConfigPath, ec)) {
+                            std::filesystem::copy_file(m_modConfigPath, dest, std::filesystem::copy_options::overwrite_existing, ec);
+                            ok = !ec;
+                        }
+                        else {
+                            std::ofstream ofs(dest.string(), std::ios::trunc);
+                            ok = !!ofs;
+                        }
+                    }
+                    catch (...) {
+                        ok = false;
+                    }
+                    m_configStatusMsg = ok ? std::string("Saved to profile: ") + name : "Failed saving to profile";
+                }
+                ImGui::EndDisabled();
+
+                // Confirmation popup
+                if (ImGui::BeginPopupModal("Confirm Delete Profile", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+                    if (m_pendingDeleteIndex >= 0 && m_pendingDeleteIndex < (int)m_configProfiles.size()) {
+                        auto name = m_configProfiles[m_pendingDeleteIndex];
+                        ImGui::TextWrapped("Are you sure you want to delete the profile \"%s\"?", name.c_str());
+                        ImGui::Spacing();
+                        if (ImGui::Button("Yes", ImVec2(120, 0))) {
+                            auto path = std::filesystem::path(m_configsDirPath) / (name + ".txt");
+                            std::error_code ec;
+                            bool ok = false;
+                            try {
+                                ok = std::filesystem::remove(path, ec);
+                            }
+                            catch (...) {
+                                ok = false;
+                            }
+                            if (ok) {
+                                m_configStatusMsg = "Deleted profile: " + name;
+                                // If deleted profile was selected in persisted file, remove selection
+                                if (m_selectedConfigIndex == m_pendingDeleteIndex) {
+                                    selectConfig(0); // fallback to Default
+                                }
+                                else {
+                                    // refresh list and keep selection consistent
+                                    refreshConfigProfiles();
+                                    if (m_selectedConfigIndex >= (int)m_configProfiles.size()) {
+                                        selectConfig(0);
+                                    }
+                                }
+                                // persist change
+                                persistSelectedProfile();
+                            }
+                            else {
+                                m_configStatusMsg = "Failed to delete profile";
+                            }
+                            m_pendingDeleteIndex = -1;
+                            ImGui::CloseCurrentPopup();
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("No", ImVec2(120, 0))) {
+                            m_pendingDeleteIndex = -1;
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    else {
+                        ImGui::TextWrapped("Invalid profile selected.");
+                        if (ImGui::Button("Close")) {
+                            m_pendingDeleteIndex = -1;
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                    ImGui::EndPopup();
+                }
+
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNode("Hotkeys")) {
                 ImGui::TextWrapped("Press Esc Key to delete a hotkey\n\nHotkey combos such as Ctrl+G are not supported");
                 ImGui::Spacing();
                 ImGui::Separator();
@@ -830,7 +1203,8 @@ namespace kanan {
                 m_housingKey.Display("Open Housing Board", ImVec2(ImGui::GetContentRegionAvail().x - 25, 25));
                 ImGui::TreePop();
             }
-            if (ImGui::TreeNode("Kanan Font Size")) {
+
+            if (ImGui::TreeNode("Font Size")) {
                 ImGui::TextWrapped("Set the font size for all Kanan windows");
                 ImGui::Spacing();
                 ImGui::TextWrapped("Some mod windows may need to be toggled to adjust to the new font size.");
@@ -883,7 +1257,6 @@ namespace kanan {
         ImGui::End();
     }
 
-    // Every mod, by section, with a search box that finds mods by their name, description and section.
     void Kanan::drawMods() {
         ImGui::Spacing();
         ImGui::SetNextItemWidth(-FLT_MIN);
