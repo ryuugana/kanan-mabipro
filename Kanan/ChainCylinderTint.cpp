@@ -205,11 +205,11 @@ namespace kanan {
         auto shouldTint = m_isEnabled && state.chainCylinderOn;
         auto tint = tintRawColor();
 
-        if (shouldTint && (!color.isTinted || color.gameColor != tint)) {
+        if (shouldTint && (!color.isTinted || color.tintColor != tint)) {
             setColor(state.renderEntry, tint);
             m_tintedCount += color.isTinted ? 0 : 1;
             color.isTinted = true;
-            color.gameColor = tint;
+            color.tintColor = tint;
         }
         else if (!shouldTint && color.isTinted) {
             setColor(state.renderEntry, color.gameColor);
@@ -231,6 +231,6 @@ namespace kanan {
 
         color.gameColor = rawColor;
 
-        self->setColor(renderEntry, color.isTinted ? color.gameColor : rawColor);
+        self->setColor(renderEntry, color.isTinted ? color.tintColor : rawColor);
     }
 }
