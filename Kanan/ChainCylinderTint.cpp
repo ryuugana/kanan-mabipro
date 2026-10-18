@@ -1,4 +1,4 @@
-﻿#include <cstring>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -91,16 +91,16 @@ namespace kanan {
         "\t<CharacterConditionList>\r\n"
         "\t\t<CharacterCondition ConditionID=\"162\" Type=\"0\" Priority=\"0\" ConditionEngName=\"Chain Cylinder\" "
         "ConditionLocalName=\"Chain Cylinder\" ImageFile=\"data/gfx/image/gui_condition_chain_cylinder.dds\" "
-        "PositionX=\"0\" PositionY=\"0\" DurationType=\"1\" DefaultDurationTime=\"0\" Color=\"00000000\" />\r\n"
+        "PositionX=\"1\" PositionY=\"0\" DurationType=\"1\" DefaultDurationTime=\"0\" Color=\"00000000\" />\r\n"
         "\t</CharacterConditionList>\r\n"
         "</CharacterCondition>";
 
     constexpr auto iconFile = "data/gfx/image/gui_condition_chain_cylinder.dds";
     // The Chain Cylinder skill's icon: skillinfo SkillID 35015, cell (0, 0) of 32x32 cells.
     // Adjust skillIconX / skillIconY if the skill icon cell is different.
-    constexpr auto skillIconFile = L"data/gfx/image/gui_icon_skill_000.dds";
-    constexpr uint32_t skillIconX = 2 * 32;
-    constexpr uint32_t skillIconY = 7 * 32;
+    constexpr auto skillIconFile = L"data/gfx/image/gui_icon_skill_001.dds";
+    constexpr uint32_t skillIconX = 4 * 32;
+    constexpr uint32_t skillIconY = 12 * 32;
     // Condition icons are 16x16 cells of a 256x128 A1R5G5B5 image.
     constexpr uint32_t iconWidth = 256;
     constexpr uint32_t iconHeight = 128;
@@ -686,3 +686,4 @@ namespace kanan {
         self->setColor(renderEntry, color.isTinted ? color.tintColor : rawColor);
     }
 }
+
