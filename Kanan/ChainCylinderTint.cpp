@@ -526,16 +526,20 @@ namespace kanan {
             return;
         }
 
-        ImGui::TextWrapped("Tints characters that have Chain Cylinder (35015) enabled with a custom color.");
-        ImGui::Spacing();
-        ImGui::Checkbox("Enabled##ChainCylinderTint", &m_isEnabled);
-        ImGui::ColorEdit3("Color##ChainCylinderTint", &m_color.x);
-        ImGui::SliderFloat("Strength##ChainCylinderTint", &m_strength, 0.0f, 1.0f, "%.2f");
-
-        if (m_isConditionLoaded) {
+        if (ImGui::TreeNode(getName().c_str())) {
+            ImGui::TextWrapped("Tints characters that have Chain Cylinder (35015) enabled with a custom color.");
             ImGui::Spacing();
-            ImGui::Checkbox("Show Chain Cylinder condition##ChainCylinderTint", &m_showCondition);
-            ImGui::TextDisabled("Shows the Chain Cylinder condition icon with the other condition icons while active.");
+            ImGui::Checkbox("Enabled##ChainCylinderTint", &m_isEnabled);
+            ImGui::ColorEdit3("Color##ChainCylinderTint", &m_color.x);
+            ImGui::SliderFloat("Strength##ChainCylinderTint", &m_strength, 0.0f, 1.0f, "%.2f");
+
+            if (m_isConditionLoaded) {
+                ImGui::Spacing();
+                ImGui::Checkbox("Show Chain Cylinder condition##ChainCylinderTint", &m_showCondition);
+                ImGui::TextDisabled("Shows the Chain Cylinder condition icon with the other condition icons while active.");
+            }
+
+			ImGui::TreePop();
         }
     }
 

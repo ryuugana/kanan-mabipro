@@ -24,7 +24,7 @@ namespace kanan {
         ChainCylinderTint();
         virtual ~ChainCylinderTint();
 
-        std::string getName() override { return "Chain Cylinder Tint"; }
+        std::string getName() override { return "Chain Cylinder Condition"; }
 
         void onUI() override;
 
