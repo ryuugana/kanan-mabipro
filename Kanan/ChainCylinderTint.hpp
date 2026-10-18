@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <Windows.h>
 #include <imgui.h>
@@ -41,8 +42,10 @@ namespace kanan {
         bool m_isEnabled;
         ImVec4 m_color;
         float m_strength;
+        bool m_showCondition;
 
         bool m_isReady;
+        bool m_isConditionLoaded;
         std::mutex m_mutex;
         // Keyed by the character's render entry, which owns the color.
         std::unordered_map<uintptr_t, CharacterColor> m_characters;
@@ -50,11 +53,14 @@ namespace kanan {
         size_t m_tintedCount{ 0 };
         // Hooked render entry vtables and the original color setter of each.
         std::unordered_map<uintptr_t, uintptr_t> m_originalSetColor;
+        // Render entries whose condition icons show the Chain Cylinder condition.
+        std::unordered_set<uintptr_t> m_conditionShown;
 
         uint32_t tintRawColor() const;
         bool hookVtable(uintptr_t vtable);
         void setColor(uintptr_t renderEntry, uint32_t rawColor);
         void onCharacterUpdate(uintptr_t character);
+        void updateCondition(uintptr_t character, uintptr_t renderEntry, bool chainCylinderOn);
 
         static void __fastcall hookedSetColor(uintptr_t renderEntry, uintptr_t edx, uint32_t rawColor);
     };
