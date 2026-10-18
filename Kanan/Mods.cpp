@@ -30,6 +30,7 @@
 #include "EntityHP.hpp"
 #include "SkillHotkey.hpp"
 #include "MeditationTint.hpp"
+#include "ChainCylinderTint.hpp"
 #include "UIScale.hpp"
 #include "FieldOfView.hpp"
 #include "StatusUI.hpp"
@@ -237,6 +238,8 @@ namespace kanan {
         addMod(make_unique<EntityHP>(), ui, "Entity HP", "Shows HP numbers over monsters and characters.");
         addMod(make_unique<MeditationTint>(), ui, "Meditation Tint",
             "Tints characters that are meditating and shows a Meditation condition icon.");
+        addMod(make_unique<ChainCylinderTint>(), ui, "Chain Cylinder Tint",
+            "Tints characters that have Chain Cylinder enabled.");
         //addMod(make_unique<UIScale>(), ui, "UI Scale", "Makes the game's interface bigger, with sharp or smooth text.");
         //addMod(make_unique<StatusUI>());
         addMod(make_unique<AutoSetMTU>(), system, "Auto Set MTU", "Sets your network MTU when you log in or change channels.");
