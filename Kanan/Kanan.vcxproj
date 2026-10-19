@@ -227,6 +227,7 @@
     <ClCompile Include="PatchMod.cpp" />
     <ClCompile Include="RangedAttackSwap.cpp" />
     <ClCompile Include="SecondaryPassword.cpp" />
+    <ClCompile Include="SelectiveNakedMode.cpp" />
     <ClCompile Include="StatusUI.cpp" />
     <ClCompile Include="TickTracker.cpp" />
     <ClCompile Include="TTFFontSize.cpp" />
@@ -344,6 +345,7 @@
     <ClInclude Include="PatchMod.hpp" />
     <ClInclude Include="RangedAttackSwap.hpp" />
     <ClInclude Include="SecondaryPassword.hpp" />
+    <ClInclude Include="SelectiveNakedMode.hpp" />
     <ClInclude Include="StatusUI.hpp" />
     <ClInclude Include="TTFFontSize.hpp" />
     <ClInclude Include="UseDataFolder.hpp" />

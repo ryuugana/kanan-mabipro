@@ -717,18 +717,6 @@
     ]
   },
   {
-    "name": "Enable Naked Mode",
-    "desc": "Draws characters without their clothes and heads.",
-    "category": "Fun",
-    "patches": [
-      {
-        "location": "Pleione.dll",
-        "pattern": "74 11 8B 4E 04 E8 ? ? ? ? 8B C8 5E",
-        "patch": "EB"
-      }
-    ]
-  },
-  {
     "name": "Enable Self Right-Click",
     "desc": "Allows opening the right-click menu on your own character.",
     "category": "Interface",

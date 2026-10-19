@@ -243,6 +243,9 @@
     <ClCompile Include="SecondaryPassword.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="SelectiveNakedMode.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="StatusUI.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -540,6 +543,9 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="SecondaryPassword.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectiveNakedMode.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="FontData.hpp">
