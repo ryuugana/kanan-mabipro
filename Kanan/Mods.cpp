@@ -59,6 +59,7 @@
 #include "TimeAlarm.hpp"
 #include "UserCommands.hpp"
 #include "MabiTrackers.hpp"
+#include "MabiWiki.hpp"
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
 #include "FontStyle.hpp"
@@ -256,6 +257,8 @@ namespace kanan {
         addMod(make_unique<TimeAlarm>(), convenience, "Time Alarm", "Alarms at in-game times, like transformation time.");
         addMod(make_unique<MabiTrackers>(), convenience, "Erinn Tracker",
             "The weather forecast for every region, where the moon gates lead, today's shadow missions, and the schedules of Price, Rua, Fleta and Tarlach, with countdowns, opened in your browser.");
+        addMod(make_unique<MabiWiki>(), convenience, "Mabinogi Wiki",
+            "Opens the wiki of the game's items, enchants, skills and more (MabiWiki_Standalone.html in your Mabinogi folder) in your browser; works offline.");
         addMod(make_unique<CpuScheduling>(), system, "CPU Scheduling",
             "Fixes freezes on Intel CPUs with performance and efficiency cores; power throttling.");
         addMod(make_unique<ThreadPriority>(), system, "Thread Priority",
