@@ -122,7 +122,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Block Pet Status Messages: hides your pet's status messages
 * Block Spam: hides spam messages from chat
 * Block System Spam: hides many system and some combat chat lines, including EXP gained
-* Chat Commands: adds chat commands such as .help, .price, .rua, .fleta and .tarlach for where those NPCs are and when that changes, .weather for the weather where you are and what comes next, .sm for today's shadow missions, and .tracker to open the Erinn Tracker
+* Chat Commands: adds chat commands such as .help, .price, .rua, .fleta and .tarlach for where those NPCs are and when that changes, .weather for the weather where you are and what comes next, .sm for today's shadow missions, .tracker to open the Erinn Tracker, and .wiki to open the Mabinogi Wiki
 * Chat Mods: adds the time to chat lines, saves chat to a log file and shows it in a window, and copies the messages that scroll across the screen into chat (field bosses, auctions)
 * Disable Pet Summon Messages: hides the messages when a pet is summoned
 * Disable Skill Rank Up Message: hides the skill rank up message
@@ -142,6 +142,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Fast Nao: Nao appears right away when you revive
 * Instant Conversation: NPC conversations show their text at once instead of letter by letter
 * Item Split Quantity: the amount the item split window starts at
+* Mabinogi Wiki: opens MabiWiki_Standalone.html from the game folder in your browser (the Mabinogi Wiki button at the top of Kanan's window, or type .wiki with Chat Commands on). The wiki comes with the release: an offline wiki of the game's items, enchants, upgrades, set effects, skills, monsters, pets, NPCs, quests and regions, made from your game's own files the first time you open it, with a 3D viewer. MabiWiki_Hostable is the same wiki as a folder to put on a website (see MabiWiki_README.txt)
 * Move While Talking: lets you walk around while talking to an NPC
 * Nao Counter: counts Nao Soul Stone revives
 * No Channel Move Denial: removes the check that stops you from changing channels in some situations

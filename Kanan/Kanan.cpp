@@ -21,6 +21,8 @@
 #include "Log.hpp"
 #include "Kanan.hpp"
 #include "MabiMessageHook.hpp"
+#include "MabiTrackers.hpp"
+#include "MabiWiki.hpp"
 #include "../Kanan/metrics_gui/metrics_gui.h"
 #include "Hotkey.hpp"
 #include "HttpCore.hpp"
@@ -947,6 +949,35 @@ namespace kanan {
         housing();
     }
 
+    // Buttons for the pages Kanan opens in the browser: the Mabinogi Wiki and the Erinn Tracker (as
+    // .wiki and .tracker in chat; the wiki button opens MabiWiki_Standalone.html). Both pages
+    // are in the mods list too, with more about them.
+    void Kanan::drawPageButtons() {
+        auto wiki = MabiWiki::instance();
+        auto tracker = MabiTrackers::instance();
+        auto& style = ImGui::GetStyle();
+        auto half = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x) / 2;
+        std::wstring message{};
+
+        if (ImGui::Button("Mabinogi Wiki", ImVec2(half, 32))) {
+            m_pagesStatus = wiki == nullptr ? "The Mabinogi Wiki is not available."
+                : wiki->open(message) ? "Opened the Mabinogi Wiki in your browser." : narrow(message);
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Erinn Tracker", ImVec2(half, 32))) {
+            m_pagesStatus = tracker == nullptr ? "The Erinn Tracker is not available."
+                : tracker->open(message) ? "Opened the Erinn Tracker in your browser." : narrow(message);
+        }
+
+        auto& status = m_pagesStatus;
+
+        if (!status.empty()) {
+            ImGui::TextWrapped("%s", status.c_str());
+        }
+    }
+
     void Kanan::drawUI() {
         ImGui::SetNextWindowSize(ImVec2{ 500, 700.0f }, ImGuiCond_FirstUseEver);
 
@@ -1003,6 +1034,8 @@ namespace kanan {
         if (ImGui::Button("Housing Board", ImVec2(ImGui::GetContentRegionAvail().x, 50))) {
             housingBoard();
         }
+        ImGui::Spacing();
+        drawPageButtons();
         ImGui::Dummy(ImVec2{ 10.0f, 10.0f });
 
         if (ImGui::CollapsingHeader("Kanan Settings")) {

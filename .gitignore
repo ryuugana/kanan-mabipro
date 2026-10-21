@@ -8,3 +8,7 @@ build/
 *.orig
 *.user
 *.aps
+
+# The Mabinogi Wiki data written next to Kanan/MabiWiki/index.html while testing it
+Kanan/MabiWiki/data/
+__pycache__/

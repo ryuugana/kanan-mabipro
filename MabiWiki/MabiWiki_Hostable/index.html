@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mabinogi Wiki</title>
+<link rel="stylesheet" href="app.css">
+<script>try{var t=new URLSearchParams(location.search).get('theme')||localStorage.getItem('wiki-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<div id="app"><div class="boot">Loading the wiki…</div></div>
+<!-- The wiki for hosting (README.txt, DEVELOPING.md). First the game's files (data/, made from the
+     game's own files: opened from disk with no data/, this page sets it up), then what they don't
+     say (sources.js), the source that builds the wiki from them (datasource.js) and the app
+     (app.js). Script tags, not fetch, so the page works opened straight from disk.
+     MABIWIKI_BASE: data/ and lib/ are next to this page. MABIWIKI_HOSTED: a copy for hosting.
+     data/site.js: whether the copy has the 3D models. data/game-data.js loads its parts itself.
+     datasource.js and app.js are type="text/plain" data-run: lib/boot.js runs them once the data
+     is in place, and sets the data up when it isn't (loading lib/packs.js, images.js, sinks.js and
+     prepare.js only then). -->
+<script>window.MABIWIKI_BASE = "./"; window.MABIWIKI_HOSTED = true;</script>
+<script src="data/site.js"></script>
+<script src="data/game-data.js"></script>
+<script src="data/item-icons.js"></script>
+<script src="data/skill-icons.js"></script>
+<script src="data/npc-images.js"></script>
+<script src="data/maps.js"></script>
+<script src="sources.js"></script>
+<script type="text/plain" data-run src="datasource.js"></script>
+<script type="text/plain" data-run src="app.js"></script>
+<script src="lib/boot.js"></script>
+</body>
+</html>

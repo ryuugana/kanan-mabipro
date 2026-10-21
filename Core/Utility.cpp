@@ -100,6 +100,13 @@ namespace kanan {
             mz_zip_archive_file_stat fileStat;
             if (mz_zip_reader_file_stat(&zipArchive, i, &fileStat)) {
                 std::string outputPath = outputDir + "/" + fileStat.m_filename;
+                // Folders the zip has (MabiWiki_Hostable\lib) are made here, as extracting doesn't.
+                std::error_code ec;
+                if (fileStat.m_is_directory) {
+                    std::filesystem::create_directories(outputPath, ec);
+                    continue;
+                }
+                std::filesystem::create_directories(std::filesystem::path(outputPath).parent_path(), ec);
                 if (!mz_zip_reader_extract_to_file(&zipArchive, i, outputPath.c_str(), 0)) {
                     return false;
                 }
