@@ -52,7 +52,7 @@ jobs:
         if ('${{ github.event_name }}' -eq 'pull_request') {
             $diff = (git diff --name-only origin/${{ github.base_ref }} HEAD) -join "`n"
         } else {
-            $diff = (git diff --name-only HEAD^ HEAD) -join "`n"
+            exit 0
         }
 
         Write-Host "Changed files:`n$diff"
