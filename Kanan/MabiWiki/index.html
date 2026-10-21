@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mabinogi Wiki</title>
+<link rel="stylesheet" href="app.css">
+<script>try{var t=new URLSearchParams(location.search).get('theme')||localStorage.getItem('wiki-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+<div id="app"><div class="boot">Loading the wiki…</div></div>
+<!-- The game's files (data/), then what they don't say (sources.js), the source that builds the
+     wiki from them (datasource.js) and the app (app.js). Script tags, not fetch, so the page works
+     opened straight from disk. The single-file copies of this page put app.css and the scripts in
+     it and point the data scripts into MabiWiki/data/; here they're separate for working on them. -->
+<script src="data/game-data.js"></script>
+<script src="data/item-icons.js"></script>
+<script src="data/skill-icons.js"></script>
+<script src="data/npc-images.js"></script>
+<script src="data/maps.js"></script>
+<script src="sources.js"></script>
+<script src="datasource.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

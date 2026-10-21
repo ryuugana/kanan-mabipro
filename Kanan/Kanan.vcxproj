@@ -209,6 +209,7 @@
     <ClCompile Include="TargetProps.cpp" />
     <ClCompile Include="TimeAlarm.cpp" />
     <ClCompile Include="MabiTrackers.cpp" />
+    <ClCompile Include="MabiWiki.cpp" />
     <ClCompile Include="UserCommands.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
@@ -307,6 +308,7 @@
     <ClInclude Include="TargetProps.hpp" />
     <ClInclude Include="TimeAlarm.hpp" />
     <ClInclude Include="MabiTrackers.hpp" />
+    <ClInclude Include="MabiWiki.hpp" />
     <ClInclude Include="UserCommands.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
     <ClInclude Include="UIScaleXbr.h" />
