@@ -30,6 +30,19 @@
     ]
   },
   {
+    "name": "Disable Full Screen Toggle",
+    "desc": "Will not enter or leave full screen when pressing alt+enter or the Full Screen button",
+    "category": "Graphics & Camera",
+    "patches": [
+      {
+        "location": "Renderer2.dll",
+        "offset": 7,
+        "pattern": "56 8B F1 80 7E 68 00 74 20",
+        "patch": "EB"
+      }
+    ]
+  },
+  {
     "name": "Disable Auto Camera",
     "desc": "Great for tower cylinder, might have unknown issues in others",
     "category": "Graphics & Camera",
