@@ -30,6 +30,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 **Kanan itself**
 * Mod menu sorted by topic, with a search box
 * Recommended settings for new players
+* Custom profiles you can save and load
 * Rebindable menu key, and a key to open the housing board
 * Adjustable font size for Kanan's windows
 * Mod windows you can move without opening the menu
@@ -38,6 +39,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 
 **Interface**
 * Assistant Character Location: shows where your assistant characters were last
+* Chain Cylinder Condition: shows the Chain Cylinder condition icon or tints the character when it's active
 * Clear Dungeon Fog: removes the fog of war from dungeon minimaps
 * Cooking Overlay: shows a cooking ruler in a see-through window, with adjustable size and color
 * Display Names From Far: shows character, guild and item names from much farther away, without fading
@@ -53,7 +55,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Gold Format: shows gold with commas (46,500), periods (46.500), short (46.5k) or money letters (46k500)
 * Keep Pet Window Open: keeps the pet window open after summoning a pet
 * Large Clock Text: shows the in-game clock in large text
-* Meditation Tint: tints characters that are meditating, and can show a Meditation condition icon
+* Meditation Condition: tints characters that are meditating, and can show a Meditation condition icon
 * Name Coloring: colors character names by type (player, NPC, pet, enemy)
 * No Window Close On Talk: open windows, like your inventory, stay open when you talk to an NPC
 * Party Board To Housing: the party board and party buttons open the housing board instead
@@ -84,6 +86,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Disable Character Alpha Transparency: characters don't turn see-through when you zoom in close
 * Disable Cloud Render: stops clouds from being drawn
 * Disable Flashy Dyes: shows flashy dyes on worn equipment as their plain color
+* Disable Full Screen Toggle: prevents the game from switching to full screen mode
 * Disable Gray Fog: removes the gray distance fog
 * Disable Inventory Flashy: shows flashy items in your inventory and on the ground as their plain color
 * Disable Lights: turns off most light props, for more FPS in places like Emain Macha
