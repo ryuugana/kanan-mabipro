@@ -94,6 +94,7 @@ jobs:
         New-Item -ItemType Directory -Force package\system\mss | Out-Null
         Copy-Item Release\Kanan.asi package\system\mss\
         Copy-Item Release\Patches.json package\
+        Copy-Item Release\MabiWiki_Standalone.html package\
 
     - name: Create KananMabiPro.zip
       id: package_app
