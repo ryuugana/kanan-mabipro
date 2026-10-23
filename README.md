@@ -142,7 +142,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Fast Nao: Nao appears right away when you revive
 * Instant Conversation: NPC conversations show their text at once instead of letter by letter
 * Item Split Quantity: the amount the item split window starts at
-* Mabinogi Wiki: opens MabiWiki_Standalone.html from the game folder in your browser (the Mabinogi Wiki button at the top of Kanan's window, or type .wiki with Chat Commands on). The wiki comes with the release: an offline wiki of the game's items, enchants, upgrades, set effects, skills, monsters, pets, NPCs, quests and regions, made from your game's own files the first time you open it, with a 3D viewer. MabiWiki_Hostable is the same wiki as a folder to put on a website (see MabiWiki_README.txt)
+* Mabinogi Wiki: opens MabiWiki_Standalone.html from the game folder in your browser (the Mabinogi Wiki button at the top of Kanan's window, or type .wiki with Chat Commands on). The wiki comes with the release: an offline wiki of the game's items, enchants, upgrades, set effects, skills, monsters, pets, NPCs, quests and regions, made from your game's own files the first time you open it, with a 3D viewer. MabiWiki_Hostable, the same wiki as a folder to put on a website, is a separate download
 * Move While Talking: lets you walk around while talking to an NPC
 * Nao Counter: counts Nao Soul Stone revives
 * No Channel Move Denial: removes the check that stops you from changing channels in some situations

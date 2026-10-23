@@ -1,7 +1,11 @@
-/* Mabinogi Wiki: 3D item and monster viewer.
+/* Mabinogi Wiki: 3D item, monster and prop viewer.
  *
  *   MabiWikiViewer.open(containerElement, itemId, options) -> { close(), setDyes([hex, hex, hex]) }
  *   MabiWikiViewer.openRace(containerElement, raceId, options) -> { close(), setDyes([hex, hex, hex]) }
+ *   MabiWikiViewer.openProp(containerElement, classIds, options) -> { close() }
+ *
+ * openProp shows a prop (db/propdb.xml class: tree, rock, herb patch, building) as region3d.js's
+ * walker draws it: the first of the class ids with a model.
  *
  * openRace shows a db/race.xml race (monster, NPC, pet): DefaultMesh on its Framework skeleton,
  * plus what FirstCreateStript's additemex puts on it, in the bind pose or the first frame of its
@@ -396,16 +400,18 @@
 
   function byBase(packs) {
     return packs.once('bases', () => {
-      const pmg = new Map(), dds = new Map(), frm = new Map();
+      const pmg = new Map(), dds = new Map(), frm = new Map(), set = new Map();
       for (const n of packs.entries.keys()) {
         // Models and skeletons: gfx/char/, and gfx/scene/ (prop races: crystals, barriers, the
-        // Manekineko); a gfx/char/ file wins a name both have (findPmg, findRaceFile).
+        // Manekineko); a gfx/char/ file wins a name both have (findPmg, findRaceFile). Props' .set
+        // files (propModel).
         const model = n.startsWith('gfx/char/') || n.startsWith('gfx/scene/');
         if (model && n.endsWith('.pmg')) push(pmg, n.slice(n.lastIndexOf('/') + 1, -4), n);
         else if (n.startsWith('material/') && n.endsWith('.dds')) push(dds, n.slice(n.lastIndexOf('/') + 1, -4), n);
         else if (model && n.endsWith('.frm')) push(frm, n.slice(n.lastIndexOf('/') + 1, -4), n);
+        else if (model && n.endsWith('.set')) push(set, n.slice(n.lastIndexOf('/') + 1, -4), n);
       }
-      return { pmg, dds, frm };
+      return { pmg, dds, frm, set };
     });
   }
   const push = (m, k, v) => { const a = m.get(k); if (a) a.push(v); else m.set(k, [v]); };
@@ -1169,6 +1175,226 @@
   }
 
   // ======================================================================================
+  // Props (trees, rocks, herb patches, buildings): shared with region3d.js's walker
+  // ======================================================================================
+
+  // db/propdb.xml's classes: class id -> { name (its model's file name), buried, block, event }.
+  // event: its ClassPath starts with the Korean for "event": seasonal decorations (Halloween, Christmas lights, festival
+  // flags) that stay in the area files all year but only show while their event runs.
+  async function propClasses(packs) {
+    return packs.once('propclasses', async () => {
+      const text = (root.GAME_DATA && root.GAME_DATA.files && root.GAME_DATA.files['db/propdb.xml']) || await packs.text('db/propdb.xml') || '';
+      const out = new Map();
+      for (const m of text.matchAll(/<PropClass\b([^>]*)>/g)) {
+        const a = {};
+        for (const k of m[1].matchAll(/(\w+)="([^"]*)"/g)) a[k[1]] = k[2];
+        if (a.ClassID) out.set(+a.ClassID, { name: (a.ClassName || '').toLowerCase(), buried: a.IsBuried === 'true', block: a.IsTerrainBlock === 'true', event: /^\/?이벤트/.test(a.ClassPath || '') });
+      }
+      return out;
+    });
+  }
+
+  // A prop's skeletons, from its .set (CSettingClass, version 2.2): each state's framework is a .frm
+  // ("pf!") right after the class name and the state name (UTF-16). { state: bones (parseFrm) }.
+  function setSkeletons(d) {
+    const out = {};
+    if (!d) return out;
+    const u16 = (at) => d[at] | (d[at + 1] << 8);
+    for (let at = 0; (at = indexOf(d, PF, at)) >= 0; at += 3) {
+      // The state name: the UTF-16 string ending just before (its 0 character at at-2).
+      let s = at - 2;
+      while (s >= 2 && u16(s - 2)) s -= 2;
+      const state = new TextDecoder('utf-16le').decode(d.subarray(s, at - 2)).toLowerCase();
+      out[state || 'single'] = parseFrm(d.subarray(at));
+    }
+    return out;
+  }
+  const PF = [0x70, 0x66, 0x21, 0x00];
+  function indexOf(d, pat, from) {
+    outer: for (let i = from; i + pat.length <= d.length; i++) {
+      for (let k = 0; k < pat.length; k++) if (d[i + k] !== pat[k]) continue outer;
+      return i;
+    }
+    return -1;
+  }
+
+  // The models a prop's .set gives each state. Its first part lists, after each state's name
+  // (UTF-16), the state's objects as "<model>_<bone>__" (ASCII, 208 bytes each: herbs' "normal"
+  // state has scene_prop_herb_before_bone01__, its "empty" one scene_prop_herb_after_bone01__);
+  // the model is the longest .pmg name (pmg: bases.pmg) that starts the object's name. The
+  // skeletons' part after it names states too, with no objects. { state: [model names] } in the
+  // file's order, so the first state (the prop's own, before anything happens to it) comes first.
+  function setModels(d, pmg) {
+    const out = {};
+    if (!d) return out;
+    const s = new TextDecoder('latin1').decode(d), marks = [];
+    for (const m of s.matchAll(/((?:[A-Za-z0-9_]\0){3,})\0\0/g)) marks.push([m.index, 'state', m[1].replace(/\0/g, '').toLowerCase()]);
+    for (const m of s.matchAll(/([A-Za-z0-9_+.-]{4,})__\0/g)) marks.push([m.index, 'object', m[1].toLowerCase()]);
+    marks.sort((a, b) => a[0] - b[0]);
+    let state = null;
+    for (const [, kind, name] of marks) {
+      if (kind === 'state') { state = name; continue; }
+      if (!state) continue;
+      for (let i = name.lastIndexOf('_'); i > 0; i = name.lastIndexOf('_', i - 1)) {
+        const base = name.slice(0, i);
+        if (pmg.has(base)) {
+          const list = out[state] || (out[state] = []);
+          if (!list.includes(base)) list.push(base);
+          break;
+        }
+      }
+    }
+    return out;
+  }
+
+  // A prop's model in a state: data/gfx/scene/**/<class name>.pmg on its .set's framework for that
+  // state (each part at BoneWorld(bone) x its matrix, as characters are placed), else without a
+  // skeleton. Props whose model changes with their state (herbs, ore, mushrooms, wells: before and
+  // after they're gathered or used) have no model of the class's name: their .set names each
+  // state's models (setModels), drawn together on that state's framework (gfx/scene/ first, then
+  // gfx/char/: the undersea mythril ore's). No state ('single'): the .set's first. Shared by every
+  // prop of that class and state.
+  async function propModel(packs, cls, out, state) {
+    state = (state || 'single').toLowerCase();
+    return packs.once('propmodel:' + cls.name + ':' + state, async () => {
+      const bases = out.bases;
+      const scene = (list) => (list || []).filter((p) => p.startsWith('gfx/scene/')).sort();
+      const sceneFirst = (list) => (list || []).slice().sort((a, b) => (!a.startsWith('gfx/scene/')) - (!b.startsWith('gfx/scene/')) || cmp(a, b));
+      for (const p of scene(bases.pmg.get(cls.name))) {
+        const setPath = p.slice(0, -4) + '.set';
+        const skels = packs.has(setPath) ? setSkeletons(await packs.read(setPath)) : {};
+        const skel = skels[state] || skels.single || Object.values(skels)[0] || null;
+        if (skel) skel.path = setPath;
+        const m = await convertMesh(packs, p, skel && skel.size ? skel : null, out);
+        if (m && m.meshes.length) return m;
+      }
+      for (const setPath of sceneFirst(bases.set.get(cls.name))) {
+        const d = await packs.read(setPath), models = setModels(d, bases.pmg), states = Object.keys(models);
+        const st = models[state] ? state : states[0];
+        if (!st) continue;
+        const skels = setSkeletons(d);
+        const skel = skels[st] || skels.single || Object.values(skels)[0] || null;
+        if (skel) skel.path = setPath;
+        // Each model from the .set's own folder when it has one there.
+        const dir = setPath.slice(0, setPath.lastIndexOf('/') + 1);
+        const all = { file: null, meshes: [], hidden: 0, skeleton: skel && skel.path || null };
+        for (const name of models[st]) {
+          const paths = sceneFirst(bases.pmg.get(name));
+          const p = paths.find((q) => q.startsWith(dir) && !q.slice(dir.length).includes('/')) || paths[0];
+          const m = p && await convertMesh(packs, p, skel && skel.size ? skel : null, out);
+          if (!m) continue;
+          all.file = all.file || p;
+          all.meshes.push(...m.meshes);
+          all.hidden += m.hidden;
+        }
+        if (all.meshes.length) return all;
+      }
+      return null;
+    });
+  }
+
+  // A prop page's model: the first of its class ids (db/propdb.xml ClassID) that has one, in its
+  // first state. { id, name, file, meshes, hidden, textures, texinfo, dyes: [] }; meshes empty when
+  // none of them has a model; null when none of them is a class.
+  async function convertProp(packs, ids) {
+    const classes = await propClasses(packs);
+    const out = { textures: {}, texinfo: {}, bases: byBase(packs), mats: await materials(packs) };
+    let found = null;
+    for (const id of [].concat(ids).map((i) => parseInt(i, 10))) {
+      const cls = classes.get(id);
+      if (!cls || !cls.name) continue;
+      if (!found) found = { id: String(id), name: cls.name };
+      const m = await propModel(packs, cls, out, null);
+      // Not kept for another visit (the viewer holds what it shows).
+      packs.memo.delete('propmodel:' + cls.name + ':single');
+      if (m && m.meshes.some((x) => x.tris)) { found = { id: String(id), name: cls.name, ...m }; break; }
+    }
+    if (!found) return null;
+    return { meshes: [], hidden: 0, ...found, textures: out.textures, texinfo: out.texinfo, dyes: [] };
+  }
+
+  // A prop part's material, as the walker and the prop viewer draw it. Nearly every prop's material
+  // doesn't take the main light (rs.mainLight false): no scene lighting at all, the vertex colors are
+  // the light (baked into the model). The part's color is its vertex color times (the prop's color
+  // + 1) / 512 (CRC_Mesh::ColorOverride: white halves it, the 0x80 grey most props carry quarters
+  // it), passed per prop as the instance color. The render state's first stage mixes it with the
+  // texture (D3DTOP_*: ADDSIGNED texture + color - 0.5, MODULATE2X / 4X twice / four times their
+  // product); the second stage scales that by the material's gloss map (x4 or x2, read by the way
+  // the surface faces the light: Gloss, or the view: Sphere), which is where the lit and the shaded
+  // sides come from. A second stage on the shadow map counts as unshadowed (x1).
+  // { mat, unlit }: unlit materials take the instance color (partColor).
+  const STAGE_OPS = { ADDSIGNED: 0, MODULATE2X: 1, MODULATE: 2, SELECTARG1: 3, MODULATE4X: 4, ADD: 5, SELECTARG2: 6 };
+  function propMaterial(T, rs, map, gloss) {
+    if (!(rs && !rs.mainLight)) {
+      // Lit parts (the ground pieces under buildings, terrain blocks: they take the main light like
+      // the ground) carry white vertex colors where the ground's points carry 0x80: white is their
+      // neutral, so the color is used as it is, not doubled (doubled, they drew twice as bright as
+      // the ground around them).
+      const mat = new T.MeshLambertMaterial({ map, vertexColors: true, side: T.DoubleSide, alphaTest: rs && rs.alphatest != null ? rs.alphatest : 0.5 });
+      if (rs && rs.blend && !(rs.blend[0] === 'ONE' && rs.blend[1] === 'ZERO')) applyRS(T, mat, rs);
+      // The lit ground pieces (terrain blocks): their texture's alpha is a gloss mask for the
+      // specular stage (MODULATEALPHA_ADDCOLOR), not see-through; the alpha is the vertex's.
+      if (rs && rs.op1 === 'MODULATEALPHA_ADDCOLOR') mat.alphaTest = 0;
+      return { mat, unlit: false };
+    }
+    const op = rs.op in STAGE_OPS ? STAGE_OPS[rs.op] : 1;
+    // The alpha is the texture's unless the state's alpha takes the vertex alpha.
+    const texAlpha = !rs.vertexAlpha;
+    gloss = rs.gloss ? gloss : null;
+    const glossMode = gloss && (rs.op1 === 'MODULATE4X' || rs.op1 === 'MODULATE2X') ? (/sphere/i.test(rs.tc1) ? 1 : /gloss/i.test(rs.tc1) ? 2 : 0) : 0;
+    const glossScale = rs.op1 === 'MODULATE4X' ? '4.0' : '2.0';
+    const mat = new T.MeshLambertMaterial({ map, vertexColors: true, side: T.DoubleSide });
+    mat.defines = { MW_OP: map ? op : 6 };
+    if (glossMode) mat.defines.MW_GLOSS = glossMode;
+    mat.customProgramCacheKey = () => 'mwr' + (map ? op : 6) + (texAlpha ? 't' : '') + glossMode + glossScale;
+    mat.onBeforeCompile = (s) => {
+      if (glossMode) s.uniforms.mwGloss = { value: gloss };
+      s.fragmentShader = (glossMode ? 'uniform sampler2D mwGloss;\n' : '') + s.fragmentShader;
+      s.fragmentShader = s.fragmentShader
+        .replace('#include <color_fragment>', '#if defined( USE_COLOR_ALPHA )\n vec3 mwD = vColor.rgb;' + (texAlpha ? '' : ' diffuseColor.a *= vColor.a;') + '\n#else\n vec3 mwD = vec3( 0.5 );\n#endif')
+        .replace('#include <normal_fragment_begin>', 'float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;\nvec3 normal = normalize( vNormal );\nvec3 nonPerturbedNormal = normal;')
+        .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec4 mwTex = texture2D( map, vMapUv );\n diffuseColor.a *= mwTex.a;\n#endif')
+        .replace('#include <opaque_fragment>', [
+          'vec3 mwC = mwD;',
+          '#ifdef USE_MAP',
+          '#if MW_OP == 0', ' mwC = clamp( mwTex.rgb + mwD - 0.5, 0.0, 1.0 );',
+          '#elif MW_OP == 1', ' mwC = clamp( 2.0 * mwTex.rgb * mwD, 0.0, 1.0 );',
+          '#elif MW_OP == 2', ' mwC = mwTex.rgb * mwD;',
+          '#elif MW_OP == 3', ' mwC = mwTex.rgb;',
+          '#elif MW_OP == 4', ' mwC = clamp( 4.0 * mwTex.rgb * mwD, 0.0, 1.0 );',
+          '#elif MW_OP == 5', ' mwC = clamp( mwTex.rgb + mwD, 0.0, 1.0 );',
+          '#endif', '#endif',
+          '#ifdef MW_GLOSS',
+          '#if MW_GLOSS == 1',
+          ' vec2 mwG = vec2( 0.51 + 0.49 * normal.x, 0.51 - 0.49 * normal.y );',
+          '#else',
+          // The world normal (the drawn space mirrors the game's y, so the light's z turns).
+          ' vec3 mwN = normalize( ( vec4( normal, 0.0 ) * viewMatrix ).xyz );',
+          ' vec2 mwG = vec2( 0.0, 0.5 + 0.49 * dot( mwN, normalize( vec3( -0.5, -1.0, 0.559 ) ) ) );',
+          '#endif',
+          ' mwC = clamp( ' + glossScale + ' * texture2D( mwGloss, mwG ).rgb * mwC, 0.0, 1.0 );',
+          '#endif',
+          'outgoingLight = mwC;',
+          '#include <opaque_fragment>'].join('\n'));
+    };
+    applyRS(T, mat, rs);
+    // Mirror floors (blend ONE, SRCALPHA: a castle hall's polished floor): the game draws the room
+    // mirrored underneath first and adds it, darkened by the floor's alpha, to the floor's color.
+    // With no mirrored room drawn, what is behind is the sky (or nothing): the floor stands alone.
+    if (rs.blend && rs.blend[0] === 'ONE' && rs.blend[1] === 'SRCALPHA') {
+      mat.transparent = false; mat.blending = T.NormalBlending; mat.depthWrite = true;
+    }
+    return { mat, unlit: true };
+  }
+  // The prop color a part takes: its color map's digit N picks the prop's Nth color (b1 to b9);
+  // none, white. As (color + 1) / 512 per channel.
+  function partColor(colormap, colors) {
+    const m = /(\d)/.exec(colormap || ''), n = m ? +m[1] : 0;
+    const c = n >= 1 && n <= 9 && colors && colors[n - 1] != null ? colors[n - 1] : 0xffffff;
+    return [(((c >>> 16) & 255) + 1) / 512, (((c >>> 8) & 255) + 1) / 512, ((c & 255) + 1) / 512];
+  }
+
+  // ======================================================================================
   // Access to the packs: a folder the user picks, kept in IndexedDB
   // ======================================================================================
 
@@ -1275,8 +1501,9 @@
   // ======================================================================================
   // A hosted copy's setup with 3D: the model files it reads (HostedPacks)
   // ======================================================================================
-  // models: [{ kind: 'item' | 'race', id, row }], what the wiki's pages show. Each goes through the
-  // converters (a race through its poses too) as the viewer would, noting the files read. Those,
+  // models: [{ kind: 'item' | 'race' | 'prop', id, row, ids (a prop's class ids) }], what the wiki's
+  // pages show. Each goes through the converters (a race through its poses too, a prop through its
+  // class ids until one has a model, db/propdb.xml included) as the viewer would, noting the files read. Those,
   // plus every skeleton and material define (looked up by name: what the converters find among
   // them must stay the same), go under dir (the site's MabiWiki/models/ folder, a
   // FileSystemDirectoryHandle, or a zipWriter where the browser can't write to a folder) with
@@ -1291,6 +1518,7 @@
       const m = models[i];
       try {
         if (m.kind === 'item') await convertItem(rec, m.id, m.row);
+        else if (m.kind === 'prop') await convertProp(rec, m.ids || [m.id]);
         else {
           const model = await convertRace(rec, m.id, m.row, {});
           if (model) await racePoses(rec, model);
@@ -1409,7 +1637,6 @@
 .mwv-bar button{cursor:pointer}
 .mwv-dye{display:inline-flex;gap:4px;align-items:center}
 .mwv-dye input[type=color]{width:30px;height:24px;padding:0;border:1px solid var(--line,#d0d4da);border-radius:4px;background:none;cursor:pointer}
-.mwv-sw{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.25);padding:0!important;cursor:pointer}
 .mwv-view{position:relative;flex:1;min-height:300px;border:1px solid var(--line,#d0d4da);border-radius:8px;overflow:hidden;background:var(--bg2,#eceef2)}
 .mwv-view canvas{display:block;position:absolute;inset:0;width:100%;height:100%;cursor:grab}
 .mwv-info{position:absolute;left:8px;bottom:6px;font-size:11px;color:var(--muted,#778);pointer-events:none}
@@ -1421,6 +1648,14 @@
 .mwv-view canvas:focus-visible{outline:2px solid var(--accent,#4f6bed);outline-offset:-2px}
 .mwv-ico{width:16px;height:16px;flex:none;display:block}
 .mwv-bar .mwv-fs{display:inline-flex;align-items:center;gap:5px}
+.mwv-opts{position:absolute;left:12px;bottom:12px;z-index:2;display:flex;gap:8px;align-items:center;padding:4px 6px 4px 10px;border-radius:10px;border:1px solid var(--line,#d0d4da);background:color-mix(in srgb,var(--surface,#fff) 92%,transparent);font-size:12.5px;white-space:nowrap;max-width:calc(100% - 120px)}
+.mwv-opts label{display:inline-flex;gap:6px;align-items:center}
+.mwv-opts select,.mwv-opts button{font:inherit;color:inherit;background:var(--surface-2,#fff);border:1px solid var(--line,#d0d4da);border-radius:6px;padding:2px 8px;cursor:pointer}
+.mwv-opts button:hover,.mwv-opts select:hover{border-color:var(--accent,#4f6bed)}
+.mwv-opts .mwv-fs{display:inline-flex;align-items:center;gap:5px}
+.mwv-view .mwv-info{bottom:54px;left:14px}
+.mwv-full .mwv-hint{bottom:76px}
+@media (max-width:560px){.mwv-opts .mwv-txt,.mwv-opts .mwv-fs span{display:none}.mwv-opts{max-width:none}}
 .mwv-nav{position:absolute;right:12px;bottom:12px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px}
 .mwv-zoom{display:flex;flex-direction:column;border:1px solid var(--line,#d0d4da);border-radius:8px;overflow:hidden}
 .mwv-pad{display:grid;grid-template-columns:repeat(3,28px);grid-template-rows:repeat(3,28px);gap:2px}
@@ -1501,6 +1736,20 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
       missing: 'This monster isn\'t in your game\'s files.',
       empty: (model) => (!model.parts.some((p) => p.visible && p.tris) ? 'This monster has no 3D model.' : null),
       make: (T, model, ui, packs) => new RaceViewer(T, model, ui, options, packs),
+    });
+  }
+
+  // A prop (tree, rock, herb patch, building): the first of classIds (db/propdb.xml ClassIDs, or
+  // one) with a model (convertProp). options: colors (the prop's colors b1-b9 as 0xRRGGBB; the
+  // 0x80 grey most placed props carry by default), yaw, pitch, zoom, spin. Returns { close() }.
+  function openProp(container, classIds, options) {
+    options = options || {};
+    return mount(container, options, {
+      what: 'props',
+      load: (packs) => convertProp(packs, classIds),
+      missing: 'This prop isn\'t in your game\'s files.',
+      empty: (model) => (!model.meshes.some((m) => m.tris) ? 'This prop has no 3D model.' : null),
+      make: (T, model, ui) => new PropViewer(T, model, ui, options),
     });
   }
 
@@ -1588,6 +1837,60 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
     };
   }
 
+  // ---------- frame rate ----------
+  // The 3D views (these and region3d.js's walker) draw at most the reader's chosen number of frames a
+  // second, kept in this browser: 60 by default, smooth and easy on the graphics card on fast
+  // screens. 0 is "Monitor rate": a frame every time the screen refreshes, which is as often as a
+  // browser ever draws (165 a second on a 165 Hz screen), so it's never truly uncapped.
+  const FPS_KEY = 'wiki-3d-fps';
+  const FPS_CHOICES = [[30, '30 fps'], [60, '60 fps'], [0, 'Monitor rate']];
+  const fpsPickers = new Set();
+  let fpsCap = (() => {
+    try {
+      const v = localStorage.getItem(FPS_KEY);
+      if (v != null && FPS_CHOICES.some((c) => String(c[0]) === v)) return +v;
+    } catch (e) { /* no storage (a private window): the default */ }
+    return 60;
+  })();
+  const frameRate = {
+    get: () => fpsCap,
+    set(v) {
+      fpsCap = +v;
+      try { localStorage.setItem(FPS_KEY, String(fpsCap)); } catch (e) { /* kept for this visit only */ }
+      fpsPickers.forEach((sel) => { sel.value = fpsCap; });
+    },
+    // A "Frame rate" picker for a view's toolbar, kept in step with the other open views'. Call
+    // release() when the view closes.
+    picker() {
+      const sel = el('select', { title: '30 or 60 frames a second spare the graphics card; Monitor rate draws as often as your monitor refreshes' });
+      FPS_CHOICES.forEach(([v, label]) => sel.add(new Option(label, v)));
+      sel.value = fpsCap;
+      sel.onchange = () => frameRate.set(sel.value);
+      fpsPickers.add(sel);
+      return { label: el('label', null, el('span', { class: 'mwv-txt' }, 'Frame rate'), sel), release: () => fpsPickers.delete(sel) };
+    },
+    // Calls draw(seconds since the last drawn frame, 0 the first time) at most at the chosen rate,
+    // until stop(). Frames are kept to a steady cadence (each due one interval after the last was
+    // due), so 60 on a 165 Hz screen averages 60 instead of rounding down to every third refresh;
+    // 1 ms of slack lets a frame that comes a hair early count.
+    loop(draw) {
+      let id = 0, due = -1, prev = -1, stopped = false;
+      const tick = (t) => {
+        if (stopped) return;
+        id = requestAnimationFrame(tick);
+        const gap = fpsCap ? 1000 / fpsCap : 0;
+        if (gap && due >= 0 && t < due - 1) return;
+        // Fell behind (the tab was hidden, a slow frame): start the cadence again from now.
+        due = gap && due >= 0 && t - due < gap ? due + gap : t + gap;
+        const dt = prev < 0 ? 0 : Math.min(0.1, (t - prev) / 1000);
+        prev = t;
+        draw(dt);
+      };
+      id = requestAnimationFrame(tick);
+      return { stop() { stopped = true; cancelAnimationFrame(id); } };
+    },
+  };
+
   class Viewer {
     constructor(T, model, ui, opts) {
       this.T = T; this.model = model; this.ui = ui; this.opts = opts;
@@ -1617,14 +1920,18 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
       this.resizeObserver.observe(ui.view);
       this.resize();
       this.build(true);
-      const loop = () => {
-        this.frame = requestAnimationFrame(loop);
-        if (this.spin && this.spin.checked && this.root) this.root.rotation.y += 0.01;
+      // Nothing is drawn while the view is scrolled out of sight (the page keeps it running).
+      this.onScreen = true;
+      this.visibility = new IntersectionObserver((seen) => { this.onScreen = seen[seen.length - 1].isIntersecting; });
+      this.visibility.observe(ui.view);
+      // "Turn" spins the model 0.6 radians a second (a turn in about 10 seconds), whatever the frame rate.
+      this.frames = frameRate.loop((dt) => {
+        if (!this.onScreen) return;
+        if (this.spin && this.spin.checked && this.root) this.root.rotation.y += 0.6 * dt;
         this.controls.update();
         this.clampTarget();
         this.renderer.render(this.scene, this.camera);
-      };
-      loop();
+      });
     }
 
     // The view controls over OrbitControls (drag rotates, right/Shift-drag and two fingers move,
@@ -1643,7 +1950,10 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
       this.fsBtn = el('button', { type: 'button', class: 'mwv-fs' });
       this.fsBtn.onclick = () => this.setFull(!this.full);
       this.fsLabel();
-      ui.bar.append(this.fsBtn);
+      // The view's own settings sit in its bottom-left corner, apart from the model's in the toolbar
+      // (buildBar), so neither runs onto a second line.
+      this.fps = frameRate.picker();
+      ui.view.append(el('div', { class: 'mwv-opts', role: 'group', 'aria-label': 'View settings' }, this.fps.label, this.fsBtn));
       const btn = (cls, label, name, fn) => {
         const b = el('button', { type: 'button', class: 'mwv-nb mwv-' + cls, title: label, 'aria-label': label });
         b.innerHTML = icon(name);
@@ -1833,7 +2143,7 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
 
     variant() { return this.model.variants[+this.variantSel.value] || this.model.variants[0]; }
 
-    // Dye pickers for the slots the shown model uses, each with its color map's presets.
+    // Dye pickers for the slots the shown model uses.
     fillDyes(visible) {
       const used = new Map();
       visible.forEach((m) => {
@@ -1848,14 +2158,7 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
         const input = el('input', { type: 'color', value: this.dyes[s - 1], title: 'Dye ' + s + ': ' + [...used.get(s)].join(', ') });
         input.oninput = () => { this.dyes[s - 1] = input.value; this.applyDyes(); };
         this.pickers[s] = input;
-        const presets = (this.model.dyes[s - 1] || {}).presets || [];
-        const sw = presets.slice(0, 6).map((c) => {
-          const b = el('button', { class: 'mwv-sw', title: c, type: 'button' });
-          b.style.background = c;
-          b.onclick = () => { this.dyes[s - 1] = c; input.value = c; this.applyDyes(); };
-          return b;
-        });
-        box.append(el('span', { class: 'mwv-dye' }, 'Dye ' + s, input, ...sw), ' ');
+        box.append(el('span', { class: 'mwv-dye' }, 'Dye ' + s, input), ' ');
       });
       if (used.size) {
         box.append(el('button', { type: 'button', text: 'Reset', title: 'The item\'s own colors',
@@ -2060,7 +2363,9 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
       this.setFull(false);
       document.removeEventListener('fullscreenchange', this.onFsChange);
       document.removeEventListener('webkitfullscreenchange', this.onFsChange);
-      cancelAnimationFrame(this.frame);
+      this.frames.stop();
+      this.fps.release();
+      this.visibility.disconnect();
       this.resizeObserver.disconnect();
       this.controls.dispose();
       if (this.root) this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
@@ -2225,6 +2530,84 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
     dispose() { this.disposed = true; super.dispose(); }
   }
 
+  // A prop, drawn as region3d.js's walker draws it (propMaterial; one placement, at the prop's
+  // colors). No dyes; Turn in the toolbar. Standing props are framed a little wider than items (a
+  // well's or a tree's base comes nearer the camera than its middle); flat ones (herb patches, ore
+  // spots, farm plots) are seen more from above, so they don't show edge on, and closer.
+  class PropViewer extends Viewer {
+    constructor(T, model, ui, opts) {
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      for (const m of model.meshes) for (let i = 0; i < m.pos.length; i += 3) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], m.pos[i + k]); hi[k] = Math.max(hi[k], m.pos[i + k]); }
+      const flat = hi[1] - lo[1] < 0.35 * Math.max(hi[0] - lo[0], hi[2] - lo[2]);
+      opts = { ...opts, pitch: opts.pitch != null ? opts.pitch : flat ? 40 : 18, zoom: opts.zoom != null ? opts.zoom : flat ? 0.85 : 1.2 };
+      super(T, model, ui, opts);
+    }
+
+    buildBar() {
+      const { ui, opts } = this;
+      ui.bar.innerHTML = '';
+      this.spin = el('input', { type: 'checkbox' });
+      if (opts.spin) this.spin.checked = true;
+      ui.bar.append(el('label', null, this.spin, 'Turn'));
+    }
+
+    fillDyes() {}
+    setDyes() {}
+    applyDyes() {}
+
+    // Mipmapped, as in the walker: props' textures tile, and a tree seen whole shrinks its leaves.
+    texture(name) {
+      const T = this.T, img = this.model.textures[name];
+      if (!img) return null;
+      if (!this.textures.has(name)) {
+        const t = new T.DataTexture(img.px, img.w, img.h);
+        t.wrapS = t.wrapT = T.RepeatWrapping;
+        t.magFilter = T.LinearFilter; t.minFilter = T.LinearMipmapLinearFilter; t.generateMipmaps = true;
+        t.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+        t.flipY = false;
+        t.needsUpdate = true;
+        this.textures.set(name, t);
+      }
+      return this.textures.get(name);
+    }
+
+    build(frame) {
+      const T = this.T, model = this.model;
+      if (this.root) {
+        this.scene.remove(this.root);
+        this.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      }
+      const root = this.root = new T.Group();
+      root.scale.set(1, 1, -1); // D3D left-handed -> three.js right-handed (mirror Z)
+      const colors = this.opts.colors || Array(9).fill(0x808080);
+      let tris = 0, parts = 0;
+      for (const m of model.meshes) {
+        if (!m.tris) continue;
+        const g = new T.BufferGeometry();
+        g.setAttribute('position', new T.BufferAttribute(m.pos, 3));
+        g.setAttribute('normal', new T.BufferAttribute(m.nrm, 3));
+        g.setAttribute('uv', new T.BufferAttribute(m.uv, 2));
+        g.setAttribute('color', new T.BufferAttribute(m.col, 4, true));
+        g.setIndex(new T.BufferAttribute(m.idx, 1));
+        const info = model.texinfo[m.texture], rs = info && info.rs;
+        const { mat, unlit } = propMaterial(T, rs, this.texture(m.texture), rs && rs.gloss ? this.texture('gloss:' + rs.gloss) : null);
+        // One placement (an instanced mesh, as the walker's), so the prop's color reaches the part
+        // the way it does there (the instance color).
+        const o = new T.InstancedMesh(g, mat, 1);
+        o.setMatrixAt(0, new T.Matrix4());
+        if (unlit) o.instanceColor = new T.InstancedBufferAttribute(Float32Array.from(partColor(m.colormap, colors)), 3);
+        o.computeBoundingBox();
+        o.computeBoundingSphere();
+        o.name = m.name;
+        root.add(o);
+        tris += m.tris; parts++;
+      }
+      this.scene.add(root);
+      this.ui.info.textContent = parts + ' parts, ' + tris + ' triangles' + hiddenNote(model.hidden);
+      if (frame) this.frameCamera(root);
+    }
+  }
+
   // D3D9 render state (material/_define) -> three.js material settings.
   function applyRS(T, mat, rs) {
     if (!rs) return;
@@ -2249,6 +2632,7 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
   root.MabiWikiViewer = {
     open,
     openRace,
+    openProp,
     usePackFiles,
     usePacks,
     // For the export page: whether the game's files are open ('ready', 'allow', 'choose'), the kept
@@ -2260,10 +2644,11 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
     access: { state: accessState, kept: () => idbGet('folder').catch(() => null), useFolder, packs: () => packsPromise, allow: allowKept, choose: chooseFolder,
       canChoose: () => !!root.showDirectoryPicker, useFiles: usePackFiles },
     exportModels,
+    frameRate, // the frame rate the 3D views draw at (region3d.js uses it too)
     zip: (prefix) => P().zipWriter(prefix), // exportModels' dir where the browser can't write to a folder
     ready: packsLib, // packs.js loaded
     core: { get Packs() { return P().Packs; }, get HostedPacks() { return packClasses().HostedPacks; }, mtLowBytes, parsePmg, parseFrm, decodeDds, convertItem, findRow, slotOf, summarizeRenderState,
       convertRace, raceRow, parseRaceScript, parseSkeleton, parseAni, poseMatrices, posePart, poseModel, loadPose, racePoses, motionIndex, findMotion,
-      convertMesh, byBase, materials, texture, applyRS, ensureThree, asText },
+      convertMesh, byBase, materials, texture, applyRS, ensureThree, asText, propClasses, setSkeletons, propModel, convertProp, propMaterial, partColor },
   };
 })(typeof window !== 'undefined' ? window : globalThis);

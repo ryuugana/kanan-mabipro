@@ -249,6 +249,10 @@
         if (p.block) continue;
         const ox = area.x0 + x * PLANE, oy = area.y0 + y * PLANE;
         // Auto: all cells alike (CountTileSet_Auto: 16 cells with no corner marked, or 16 with all four).
+        // p.a holds the plane's 8 x 8 corner marks, row by row ([r][c] at r * 8 + c): cell (i, j) owns
+        // the 2 x 2 block at rows 2i and 2i + 1, columns 2j and 2j + 1, so with e = [2i][2j] its marks
+        // are e ([2i][2j]), e + 1 ([2i][2j+1]), e + 8 ([2i+1][2j]) and e + 9 ([2i+1][2j+1]). The same
+        // e is used below for the tiling (the [..][..] names in the comment above the PATTERN table).
         let all = 0, none = 0;
         for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
           const e = 2 * i * 8 + 2 * j, n = p.a[e] + p.a[e + 1] + p.a[e + 8] + p.a[e + 9];
@@ -364,65 +368,11 @@
     return [...packs.entries.keys()].filter((n) => n.startsWith(dir) && n.endsWith('.area') && !n.slice(dir.length).includes('/')).sort();
   }
 
-  // db/propdb.xml's classes: class id -> { name (its model's file name), buried, block, event }.
-  // event: its ClassPath starts with the Korean for "event": seasonal decorations (Halloween, Christmas lights, festival
-  // flags) that stay in the area files all year but only show while their event runs.
-  async function propClasses(packs) {
-    return packs.once('propclasses', async () => {
-      const text = (root.GAME_DATA && root.GAME_DATA.files && root.GAME_DATA.files['db/propdb.xml']) || await packs.text('db/propdb.xml') || '';
-      const out = new Map();
-      for (const m of text.matchAll(/<PropClass\b([^>]*)>/g)) {
-        const a = {};
-        for (const k of m[1].matchAll(/(\w+)="([^"]*)"/g)) a[k[1]] = k[2];
-        if (a.ClassID) out.set(+a.ClassID, { name: (a.ClassName || '').toLowerCase(), buried: a.IsBuried === 'true', block: a.IsTerrainBlock === 'true', event: /^\/?\uC774\uBCA4\uD2B8/.test(a.ClassPath || '') });
-      }
-      return out;
-    });
-  }
-
-  // A prop's skeletons, from its .set (CSettingClass, version 2.2): each state's framework is a .frm
-  // ("pf!") right after the class name and the state name (UTF-16). { state: bones (parseFrm) }.
-  function setSkeletons(d) {
-    const out = {};
-    if (!d) return out;
-    const u16 = (at) => d[at] | (d[at + 1] << 8);
-    for (let at = 0; (at = indexOf(d, PF, at)) >= 0; at += 3) {
-      // The state name: the UTF-16 string ending just before (its 0 character at at-2).
-      let s = at - 2;
-      while (s >= 2 && u16(s - 2)) s -= 2;
-      const state = new TextDecoder('utf-16le').decode(d.subarray(s, at - 2)).toLowerCase();
-      out[state || 'single'] = V().core.parseFrm(d.subarray(at));
-    }
-    return out;
-  }
-  const PF = [0x70, 0x66, 0x21, 0x00];
-  function indexOf(d, pat, from) {
-    outer: for (let i = from; i + pat.length <= d.length; i++) {
-      for (let k = 0; k < pat.length; k++) if (d[i + k] !== pat[k]) continue outer;
-      return i;
-    }
-    return -1;
-  }
-
-  // A prop's model in a state: data/gfx/scene/**/<class name>.pmg on its .set's framework for that
-  // state (each part at BoneWorld(bone) x its matrix, as characters are placed), else without a
-  // skeleton. Shared by every prop of that class and state.
-  async function propModel(packs, cls, out, state) {
-    state = (state || 'single').toLowerCase();
-    return packs.once('propmodel:' + cls.name + ':' + state, async () => {
-      const bases = out.bases;
-      const list = (bases.pmg.get(cls.name) || []).filter((p) => p.startsWith('gfx/scene/'));
-      for (const p of list.sort()) {
-        const setPath = p.slice(0, -4) + '.set';
-        const skels = packs.has(setPath) ? setSkeletons(await packs.read(setPath)) : {};
-        const skel = skels[state] || skels.single || Object.values(skels)[0] || null;
-        if (skel) skel.path = setPath;
-        const m = await V().core.convertMesh(packs, p, skel && skel.size ? skel : null, out);
-        if (m && m.meshes.length) return m;
-      }
-      return null;
-    });
-  }
+  // db/propdb.xml's classes, a prop's skeletons (its .set) and its model in a state: viewer3d.js's
+  // (the prop pages' viewer reads them the same way).
+  const propClasses = (packs) => V().core.propClasses(packs);
+  const setSkeletons = (d) => V().core.setSkeletons(d);
+  const propModel = (packs, cls, out, state) => V().core.propModel(packs, cls, out, state);
 
   // A region folder's id: the u32 at byte 8 of its .rgn, else null.
   async function regionIdOf(packs, folder) {
@@ -478,9 +428,13 @@
 .mwr-hud b{font-size:15px}
 .mwr-hud .k{display:inline-block;min-width:16px;padding:0 5px;margin:0 1px;border-radius:4px;background:rgba(255,255,255,.18);text-align:center;font-size:12px}
 .mwr-pos{position:absolute;left:14px;bottom:12px;padding:5px 10px;border-radius:8px;background:rgba(10,14,20,.55);font-size:12px;pointer-events:none;font-variant-numeric:tabular-nums}
-.mwr-close{position:absolute;z-index:2;right:14px;top:12px;font:inherit;color:#fff;background:rgba(10,14,20,.6);border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:6px 12px;cursor:pointer}
-.mwr-close:hover{background:rgba(10,14,20,.8)}
-.mwr-close:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.mwr-top{position:absolute;z-index:2;right:14px;top:12px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;align-items:center}
+.mwr-close,.mwr-top select{font:inherit;color:#fff;background:rgba(10,14,20,.6);border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:6px 12px;cursor:pointer}
+.mwr-top label{display:inline-flex;gap:6px;align-items:center;padding:0 2px 0 10px;border-radius:8px;background:rgba(10,14,20,.45)}
+.mwr-top select{padding:5px 8px}
+.mwr-top option{color:#000}
+.mwr-close:hover,.mwr-top select:hover{background:rgba(10,14,20,.8)}
+.mwr-close:focus-visible,.mwr-top select:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .mwr-msg{position:absolute;z-index:1;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(10,14,20,.72);font-size:15px}
 .mwr-msg p{margin:0;max-width:460px}
 .mwr-msg small{opacity:.75}
@@ -507,7 +461,10 @@ html.mwr-lock,html.mwr-lock body{overflow:hidden!important}
     const pos = el('div', { class: 'mwr-pos' });
     const msg = el('div', { class: 'mwr-msg' });
     const close = el('button', { type: 'button', class: 'mwr-close', text: 'Close (Esc)' });
-    box.append(hud, pos, el('div', { class: 'mwr-cross' }), close, msg);
+    // Top right: the frame rate picker (once the 3D code is loaded, in start) and Close.
+    const top = el('div', { class: 'mwr-top' }, close);
+    let fps = null;
+    box.append(hud, pos, el('div', { class: 'mwr-cross' }), top, msg);
     document.body.append(box);
     document.documentElement.classList.add('mwr-lock');
     hud.innerHTML = `<b>${esc(options.title || region)}</b><br>Drag to look around, click a spot to go there. ` +
@@ -526,6 +483,7 @@ html.mwr-lock,html.mwr-lock body{overflow:hidden!important}
       closed = true;
       if (view) view.dispose();
       view = null;
+      if (fps) fps.release();
       box.remove();
       document.documentElement.classList.remove('mwr-lock');
       document.removeEventListener('keydown', onKey, true);
@@ -583,6 +541,7 @@ html.mwr-lock,html.mwr-lock body{overflow:hidden!important}
         const T = await V().core.ensureThree();
         const packs = await V().access.packs();
         if (closed) return;
+        if (!fps) { fps = V().frameRate.picker(); top.prepend(fps.label); }
         view = new RegionView(T, box, packs, region, options, {
           progress: (f, text) => { bar.firstChild.style.width = Math.round(f * 100) + '%'; if (text) msg.querySelector('p').textContent = text; },
           ready: () => { msg.style.display = 'none'; },
@@ -614,72 +573,9 @@ html.mwr-lock,html.mwr-lock body{overflow:hidden!important}
     };
     return mat;
   }
-  // A prop part drawn as the game draws it when its material doesn't take the main light (nearly
-  // every prop): no scene lighting at all, the vertex colors are the light (baked into the model).
-  // The part's color is its vertex color times (the prop's color + 1) / 512 (CRC_Mesh::ColorOverride:
-  // white halves it, the 0x80 grey most props carry quarters it), passed per prop as the instance
-  // color. The render state's first stage mixes it with the texture (D3DTOP_*: ADDSIGNED texture +
-  // color - 0.5, MODULATE2X / 4X twice / four times their product); the second stage scales that by
-  // the material's gloss map (x4 or x2, read by the way the surface faces the light: Gloss, or the
-  // view: Sphere), which is where the lit and the shaded sides come from. A second stage on the
-  // shadow map counts as unshadowed (x1).
-  const STAGE_OPS = { ADDSIGNED: 0, MODULATE2X: 1, MODULATE: 2, SELECTARG1: 3, MODULATE4X: 4, ADD: 5, SELECTARG2: 6 };
-  function unlitProp(T, map, rs, gloss) {
-    const op = rs.op in STAGE_OPS ? STAGE_OPS[rs.op] : 1;
-    // The alpha is the texture's unless the state's alpha takes the vertex alpha.
-    const texAlpha = !rs.vertexAlpha;
-    const glossMode = gloss && (rs.op1 === 'MODULATE4X' || rs.op1 === 'MODULATE2X') ? (/sphere/i.test(rs.tc1) ? 1 : /gloss/i.test(rs.tc1) ? 2 : 0) : 0;
-    const glossScale = rs.op1 === 'MODULATE4X' ? '4.0' : '2.0';
-    const mat = new T.MeshLambertMaterial({ map, vertexColors: true, side: T.DoubleSide });
-    mat.defines = { MW_OP: map ? op : 6 };
-    if (glossMode) mat.defines.MW_GLOSS = glossMode;
-    mat.customProgramCacheKey = () => 'mwr' + (map ? op : 6) + (texAlpha ? 't' : '') + glossMode + glossScale;
-    mat.onBeforeCompile = (s) => {
-      if (glossMode) s.uniforms.mwGloss = { value: gloss };
-      s.fragmentShader = (glossMode ? 'uniform sampler2D mwGloss;\n' : '') + s.fragmentShader;
-      s.fragmentShader = s.fragmentShader
-        .replace('#include <color_fragment>', '#if defined( USE_COLOR_ALPHA )\n vec3 mwD = vColor.rgb;' + (texAlpha ? '' : ' diffuseColor.a *= vColor.a;') + '\n#else\n vec3 mwD = vec3( 0.5 );\n#endif')
-        .replace('#include <normal_fragment_begin>', 'float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;\nvec3 normal = normalize( vNormal );\nvec3 nonPerturbedNormal = normal;')
-        .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec4 mwTex = texture2D( map, vMapUv );\n diffuseColor.a *= mwTex.a;\n#endif')
-        .replace('#include <opaque_fragment>', [
-          'vec3 mwC = mwD;',
-          '#ifdef USE_MAP',
-          '#if MW_OP == 0', ' mwC = clamp( mwTex.rgb + mwD - 0.5, 0.0, 1.0 );',
-          '#elif MW_OP == 1', ' mwC = clamp( 2.0 * mwTex.rgb * mwD, 0.0, 1.0 );',
-          '#elif MW_OP == 2', ' mwC = mwTex.rgb * mwD;',
-          '#elif MW_OP == 3', ' mwC = mwTex.rgb;',
-          '#elif MW_OP == 4', ' mwC = clamp( 4.0 * mwTex.rgb * mwD, 0.0, 1.0 );',
-          '#elif MW_OP == 5', ' mwC = clamp( mwTex.rgb + mwD, 0.0, 1.0 );',
-          '#endif', '#endif',
-          '#ifdef MW_GLOSS',
-          '#if MW_GLOSS == 1',
-          ' vec2 mwG = vec2( 0.51 + 0.49 * normal.x, 0.51 - 0.49 * normal.y );',
-          '#else',
-          // The world normal (the drawn space mirrors the game's y, so the light's z turns).
-          ' vec3 mwN = normalize( ( vec4( normal, 0.0 ) * viewMatrix ).xyz );',
-          ' vec2 mwG = vec2( 0.0, 0.5 + 0.49 * dot( mwN, normalize( vec3( -0.5, -1.0, 0.559 ) ) ) );',
-          '#endif',
-          ' mwC = clamp( ' + glossScale + ' * texture2D( mwGloss, mwG ).rgb * mwC, 0.0, 1.0 );',
-          '#endif',
-          'outgoingLight = mwC;',
-          '#include <opaque_fragment>'].join('\n'));
-    };
-    V().core.applyRS(T, mat, rs);
-    // Mirror floors (blend ONE, SRCALPHA: a castle hall's polished floor): the game draws the room
-    // mirrored underneath first and adds it, darkened by the floor's alpha, to the floor's color.
-    // With no mirrored room drawn, what is behind is the sky (or nothing): the floor stands alone.
-    if (rs.blend && rs.blend[0] === 'ONE' && rs.blend[1] === 'SRCALPHA') {
-      mat.transparent = false; mat.blending = T.NormalBlending; mat.depthWrite = true;
-    }
-    return mat;
-  }
-  // The prop color a part takes: its color map's digit N picks the prop's Nth color (b1 to b9);
-  // none, white. As (color + 1) / 512 per channel.
-  function partColor(colormap, colors) {
-    const m = /(\d)/.exec(colormap || ''), n = m ? +m[1] : 0;
-    const c = n >= 1 && n <= 9 && colors && colors[n - 1] != null ? colors[n - 1] : 0xffffff;
-    return [(((c >>> 16) & 255) + 1) / 512, (((c >>> 8) & 255) + 1) / 512, ((c & 255) + 1) / 512];
-  }
+  // A prop part's material and the prop color a part takes: viewer3d.js's propMaterial and partColor.
+  const partColor = (colormap, colors) => V().core.partColor(colormap, colors);
+
   // A vertex attribute the CPU doesn't need once it is on the GPU (normals, UVs, colors).
   function dropAfterUpload(a) {
     return a.onUpload(function () { this.array = null; });
@@ -722,15 +618,12 @@ html.mwr-lock,html.mwr-lock body{overflow:hidden!important}
       this.resizeObs = new ResizeObserver(() => this.resize());
       this.resizeObs.observe(box);
       this.resize();
-      let last = performance.now();
-      const loop = (t) => {
+      // At the reader's frame rate (viewer3d.js frameRate: 60 a second unless they chose otherwise).
+      this.frames = V().frameRate.loop((dt) => {
         if (this.disposed) return;
-        this.frame = requestAnimationFrame(loop);
-        const dt = Math.min(0.1, (t - last) / 1000); last = t;
         this.step(dt);
         this.renderer.render(this.scene, this.camera);
-      };
-      this.frame = requestAnimationFrame(loop);
+      });
     }
 
     resize() {
@@ -1204,22 +1097,8 @@ html.mwr-lock,html.mwr-lock body{overflow:hidden!important}
         g.setIndex(new T.BufferAttribute(m.idx, 1));
         const info = out.texinfo[m.texture], rs = info && info.rs;
         const map = this.propTexture(m.texture, out.textures[m.texture]);
-        const unlit = !!(rs && !rs.mainLight);
-        let mat;
-        if (unlit) {
-          const gname = rs.gloss ? 'gloss:' + rs.gloss : '';
-          mat = unlitProp(T, map, rs, gname ? this.propTexture(gname, out.textures[gname]) : null);
-        } else {
-          // Lit parts (the ground pieces under buildings, terrain blocks: they take the main light like
-          // the ground) carry white vertex colors where the ground's points carry 0x80: white is their
-          // neutral, so the color is used as it is, not doubled (doubled, they drew twice as bright as
-          // the ground around them).
-          mat = new T.MeshLambertMaterial({ map, vertexColors: true, side: T.DoubleSide, alphaTest: rs && rs.alphatest != null ? rs.alphatest : 0.5 });
-          if (rs && rs.blend && !(rs.blend[0] === 'ONE' && rs.blend[1] === 'ZERO')) { V().core.applyRS(T, mat, rs); }
-          // The lit ground pieces (terrain blocks): their texture's alpha is a gloss mask for the
-          // specular stage (MODULATEALPHA_ADDCOLOR), not see-through; the alpha is the vertex's.
-          if (rs && rs.op1 === 'MODULATEALPHA_ADDCOLOR') mat.alphaTest = 0;
-        }
+        const gname = rs && rs.gloss ? 'gloss:' + rs.gloss : '';
+        const { mat, unlit } = V().core.propMaterial(T, rs, map, gname ? this.propTexture(gname, out.textures[gname]) : null);
         const o = new T.InstancedMesh(g, mat, mats.length);
         o.name = m.texture || '';
         mats.forEach((M, i) => o.setMatrixAt(i, M));
@@ -1255,7 +1134,7 @@ html.mwr-lock,html.mwr-lock body{overflow:hidden!important}
 
     dispose() {
       this.disposed = true;
-      cancelAnimationFrame(this.frame);
+      this.frames.stop();
       if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
       document.removeEventListener('pointerlockchange', this.onLock);
       document.removeEventListener('mousemove', this.onMove);

@@ -68,6 +68,7 @@
     home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     bag: '<path d="M5 8h14l-1 13H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+    swap: '<path d="M4 8h15l-4-4"/><path d="M20 16H5l4 4"/>',
     sword: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/>',
     hammer: '<path d="m14 10-9.5 9.5a2.1 2.1 0 0 1-3-3L11 7"/><path d="M12.5 5.5 15 3l6 6-2.5 2.5z"/><path d="m11 7 3 3"/>',
     shop: '<path d="M3 9 4.5 4h15L21 9"/><path d="M3 9h18v1.5a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0V9z"/><path d="M5 13.5V21h14v-7.5"/><path d="M10 21v-4h4v4"/>',
@@ -221,6 +222,17 @@
           t: r[0], id: String(r[1]), name: r[2] || '', alt: r[3] || '', icon: r[4] || null, sub: r[5] || '', tags: r[6] || '', fx: r[7] || '',
           n: (r[2] || '').toLowerCase(), a: (r[3] || '').toLowerCase(), g: ((r[6] || '') + ' ' + (r[5] || '') + ' ' + (r[7] || '')).toLowerCase(),
         }));
+        // The lists and their sidebar categories are found too ("shadow missions"): each links where the
+        // sidebar does, its place (the list, the categories above it) and its count beside it.
+        const listRow = (t, name, h, sub, path) => ({ t, id: '', cat: true, h, name, alt: '', icon: null, sub, tags: '', fx: '', n: name.toLowerCase(), a: '', g: path.toLowerCase() });
+        for (const [t, d] of Object.entries(S.meta.types || {})) {
+          S.search.push(listRow(t, d.title, listHref(t), `All ${fmtNum(d.count || 0)}`, d.title));
+          for (const c of Object.values(S.catT[t] || {})) {
+            if (c.page || !c.title) continue;
+            const above = ancestors(t, c.key).slice(0, -1).map(x => x.title);
+            S.search.push(listRow(t, c.title, catHref(t, c), [d.title, ...above].join(' › ') + ` · ${fmtNum(c.count || 0)}`, [d.title, ...above].join(' ')));
+          }
+        }
         return S.search;
       });
     }
@@ -397,6 +409,8 @@
     if (typeof v === 'object') {
       // A cell that folds: {fold: summary text, body: value}, shut at first.
       if ('fold' in v) return `<details class="vfold"><summary>${esc(v.fold)}</summary><div class="vfoldbody">${val(v.body)}</div></details>`;
+      // Steps in order, numbered and spaced apart, then any lines under them: {steps: [a, b], after: value}.
+      if (Array.isArray(v.steps)) return `<ol class="vsteps">${v.steps.map(s => `<li>${val(s)}</li>`).join('')}</ol>${v.after != null ? val(v.after) : ''}`;
       // One entry per line, an array's values joined by `sep`: {lines: [[a, b], c], sep: ' + '};
       // rule: a line between them (choices rather than notes).
       if (Array.isArray(v.lines)) {
@@ -409,17 +423,20 @@
       }
       if ('text' in v) {
         const t = esc(v.text).replace(/\n/g, '<br>');
-        return (v.tone ? `<span class="tone-${esc(v.tone)}">${t}</span>` : t) + (v.tag ? `<span class="vtag">${esc(v.tag)}</span>` : '');
+        return (v.tone ? `<span class="tone-${esc(v.tone)}">${t}</span>` : t) + (v.tag ? vtag(v.tag) : '');
       }
       return esc(JSON.stringify(v));
     }
     return esc(v).replace(/\n/g, '<br>');
   }
+  // A small tag after a value ("Hidden", "Secret").
+  const vtag = tag => `<span class="vtag">${esc(tag)}</span>`;
   function plain(v) {
     if (v === null || v === undefined) return '';
     if (Array.isArray(v)) return v.map(plain).join(', ');
     if (isLink(v) || isGo(v)) return String(v.label != null ? v.label : (v.id != null ? v.id : ''));
     if (typeof v === 'object') {
+      if (Array.isArray(v.steps)) return v.steps.map(plain).join('; ') + (v.after != null ? '; ' + plain(v.after) : '');
       if (Array.isArray(v.lines)) return v.lines.map(l => (Array.isArray(l) ? l.map(plain).join(v.sep != null ? v.sep : ', ') : plain(l))).join('; ');
       if ('fold' in v) return String(v.fold);
       return v.text != null ? String(v.text) : '';
@@ -701,43 +718,127 @@
   }
 
   const FACET_NONE = '__none';
+  // A list page's state, read from its address (and written back to it with the same names):
+  // query (q) is what's in the filter box; keywords (k, "|"-separated) are the ones kept by
+  // pressing Enter there, each narrowing the list further; page (p) counts from 1; sortKey (s) is
+  // the column sorted by ('' for the list's own order) and sortDesc (d=1) whether it runs highest
+  // or Z first; layout (v) is 'table' or 'grid'; facetValues (f_<filter>) holds each filter's choice.
+  function readListState(q, t, d, facets) {
+    const state = { query: q.get('q') || '', keywords: (q.get('k') || '').split('|').map(s => s.trim()).filter(Boolean), page: +(q.get('p') || 1),
+      sortKey: q.get('s') || '', sortDesc: q.get('d') === '1', layout: q.get('v') || store.get('view-' + t, d.view || 'table'), facetValues: {} };
+    // A filter's choice comes from the address, else what was last picked
+    // for this list (kept in the browser), so it stays on across categories.
+    for (const fc of facets) {
+      const v = q.has('f_' + fc.key) ? q.get('f_' + fc.key) : store.get('facet-' + t + '-' + fc.key, '');
+      if (v) state.facetValues[fc.key] = v;
+    }
+    return state;
+  }
+  // The address of a list page in this state. The layout is only written when the page was opened
+  // with one in its address; otherwise the one kept in the browser goes on applying.
+  function listStateHref(t, cat, q, state) {
+    const p = {};
+    if (cat) p.cat = cat;
+    if (state.keywords.length) p.k = state.keywords.join('|');
+    if (state.query) p.q = state.query;
+    if (state.page > 1) p.p = state.page;
+    if (state.sortKey) { p.s = state.sortKey; if (state.sortDesc) p.d = 1; }
+    for (const k in state.facetValues) if (state.facetValues[k]) p['f_' + k] = state.facetValues[k];
+    if (q.get('v')) p.v = state.layout;
+    return listHref(t, p);
+  }
+  // A click on a column's header steps through three sorts: the first click sorts by the column in
+  // its natural direction (descFirst: highest first for ranged and ranked columns, else lowest or
+  // A to Z first), the second reverses it, and the third takes the sort off (the list's own order).
+  function cycleSort(state, key, descFirst) {
+    if (state.sortKey !== key) { state.sortKey = key; state.sortDesc = descFirst; }
+    else if (state.sortDesc === descFirst) state.sortDesc = !descFirst;
+    else { state.sortKey = ''; state.sortDesc = false; }
+  }
+  // The tabs over a list: the category's own children; a category without any shows its siblings
+  // instead, with itself marked (on).
+  function listTabs(t, cat) {
+    const kidsOf = k => (S.catKids[t] || {})[k] || [];
+    let tabs = kidsOf(cat), on = '';
+    if (cat && !tabs.length) {
+      const c = (S.catT[t] || {})[cat];
+      tabs = kidsOf(c && c.parent && (S.catT[t] || {})[c.parent] ? c.parent : '');
+      on = cat;
+    }
+    return { tabs, on };
+  }
+  // The rows with every word typed or kept somewhere in their search text, and matching every
+  // filter's choice: at least its number for a minimum, else that value (or, for a list value, one
+  // of them), or no value at all for "none".
+  function filterListRows(base, state, facets) {
+    const words = state.keywords.concat(state.query).join(' ').toLowerCase().split(/\s+/).filter(Boolean);
+    let rows = words.length ? base.filter(r => words.every(k => r._h.includes(k))) : base;
+    for (const fc of facets) {
+      const k = fc.key, v = state.facetValues[k];
+      if (!v) continue;
+      if (fc.kind === 'min') {
+        const n = parseFloat(v);
+        if (Number.isFinite(n)) rows = rows.filter(r => { const x = sortVal(r[k]); return typeof x === 'number' && x >= n; });
+      } else rows = rows.filter(r => v === FACET_NONE ? (r[k] == null || r[k] === '' || (Array.isArray(r[k]) && !r[k].length))
+        : Array.isArray(r[k]) ? r[k].map(String).includes(v) : String(r[k]) === v);
+    }
+    return rows;
+  }
+  // The rows in the sort's order, by name, ID (as a number when it is one), category title, a
+  // column's own sort value, a meter's step on its scale, or the value; rows without one go last
+  // either way. Unsorted, they stay in the list's own order.
+  function sortListRows(rows, state, cols, t) {
+    if (!state.sortKey) return rows;
+    const k = state.sortKey, dir = state.sortDesc ? -1 : 1, c = cols.find(x => x.key === k);
+    const key = k === 'name' ? r => (r.name || '').toLowerCase()
+      : k === 'id' ? r => (isNaN(+r.id) ? r.id : +r.id)
+      : k === 'cat' ? r => catTitle(t, r._c[0] || '').toLowerCase()
+      : c && c.sort ? r => sortVal(r[c.sort])
+      : c && Array.isArray(c.meter) ? r => { const i = c.meter.indexOf(plain(r[k])); return i < 0 ? '' : i; }
+      : r => sortVal(r[k]);
+    const blank = v => v === '' || v === null || v === undefined;
+    return rows.map(r => [key(r), r]).sort((a, b) => (blank(a[0]) - blank(b[0])) || cmp(a[0], b[0]) * dir || 0).map(x => x[1]);
+  }
+  // A filter dropdown's choices, each [value, rows with it, label]: the declared options keep their
+  // order and labels; other values in the list follow, most rows first; then "none" if it has one.
+  function facetOptions(fc, base) {
+    const n = new Map();
+    let none = 0;
+    // A list value (an enchant's effects) counts under each of its values.
+    for (const r of base) {
+      const v = r[fc.key];
+      if (v == null || v === '' || (Array.isArray(v) && !v.length)) none++;
+      else for (const x of Array.isArray(v) ? v : [v]) n.set(String(x), (n.get(String(x)) || 0) + 1);
+    }
+    const opts = (fc.options || []).map(([v, label]) => [v, n.get(v) || 0, label]);
+    for (const [v, c] of [...n.entries()].sort((a, b) => b[1] - a[1])) if (!opts.some(o => o[0] === v)) opts.push([v, c, v]);
+    if (fc.none) opts.push([FACET_NONE, none, fc.none]);
+    return opts;
+  }
+  // A type's list (or one of its categories): the tabs, the filter box and filters, the table or
+  // grid of rows, and the pager. Every change is kept in the address, so a reload or a shared link
+  // opens the same list.
   function listPage(view, t, q) {
     const d = S.meta.types[t];
     const cat = q.get('cat') || '';
     const cols = perCat(t, cat, d.catColumns, d.columns).filter(c => c && c.key);
     const facets = perCat(t, cat, d.catFilters, d.filters).filter(f => f && f.key);
-    // q: what's in the filter box; keys: keywords kept by pressing Enter there (k, "|"-separated),
-    // each narrowing the list further.
-    const st = { q: q.get('q') || '', keys: (q.get('k') || '').split('|').map(s => s.trim()).filter(Boolean), p: +(q.get('p') || 1), s: q.get('s') || '', d: q.get('d') === '1',
-      v: q.get('v') || store.get('view-' + t, d.view || 'table'), f: {} };
-    // A filter's choice comes from the address, else what was last picked
-    // for this list (kept in the browser), so it stays on across categories.
-    for (const fc of facets) {
-      const v = q.has('f_' + fc.key) ? q.get('f_' + fc.key) : store.get('facet-' + t + '-' + fc.key, '');
-      if (v) st.f[fc.key] = v;
-    }
+    const state = readListState(q, t, d, facets);
     setTitle(cat ? catTitle(t, cat) : d.title);
     const anc = ancestors(t, cat);
-    const kidsOf = k => (S.catKids[t] || {})[k] || [];
-    // The category's own children; a category without any shows its siblings instead.
-    let tabs = kidsOf(cat), tabOn = '';
-    if (cat && !tabs.length) {
-      const c = (S.catT[t] || {})[cat];
-      tabs = kidsOf(c && c.parent && (S.catT[t] || {})[c.parent] ? c.parent : '');
-      tabOn = cat;
-    }
+    const { tabs, on: tabOn } = listTabs(t, cat);
     const minF = facets.filter(fc => fc.kind === 'min'), selF = facets.filter(fc => fc.kind !== 'min');
     view.innerHTML = `
       ${crumbs([[d.title, cat ? listHref(t) : null], ...anc.map((c, i) => [c.title, i < anc.length - 1 ? listHref(t, { cat: c.key }) : null])])}
       <div class="lhead"><div class="t"><h1>${esc(cat ? catTitle(t, cat) : d.title)}</h1><p id="lcount">Loading…</p></div></div>
       ${tabs.length > 1 || (tabs.length && !tabOn) ? `<div class="subcats">${tabs.slice(0, 60).map(c => `<a class="${c.key === tabOn ? 'on' : ''}" href="${catHref(t, c)}"${c.key === tabOn ? ' aria-current="page"' : ''}>${esc(c.title)}<span class="n">${fmtNum(c.count)}</span></a>`).join('')}</div>` : ''}
       <div class="toolbar">
-        <label class="filter">${svg('search')}<input id="lq" type="search" placeholder="${st.keys.length ? 'Narrow down…' : `Filter ${esc((cat ? catTitle(t, cat) : d.title).toLowerCase())}…`}" value="${esc(st.q)}" autocomplete="off" aria-label="Filter" title="Press Enter to keep a keyword and narrow down with another"></label>
+        <label class="filter">${svg('search')}<input id="lq" type="search" placeholder="${state.keywords.length ? 'Narrow down…' : `Filter ${esc((cat ? catTitle(t, cat) : d.title).toLowerCase())}…`}" value="${esc(state.query)}" autocomplete="off" aria-label="Filter" title="Press Enter to keep a keyword and narrow down with another"></label>
         ${selF.map(fc => `<label class="facet" data-fk="${esc(fc.key)}"${fc.hint ? ` title="${esc(fc.hint)}"` : ''}><span>${esc(fc.title)}</span><b class="fv">${esc(fc.any || 'Any')}</b>${svg('down')}<select class="fsel" data-fk="${esc(fc.key)}" aria-label="${esc(fc.title)}"><option value="">${esc(fc.any || 'Any')}</option></select></label>`).join('')}
-        ${minF.map(fc => `<label class="facet min" data-fk="${esc(fc.key)}"><span>${esc(fc.title)} ≥</span><input class="fmin" data-fk="${esc(fc.key)}" type="number" inputmode="decimal" placeholder="0" value="${esc(st.f[fc.key] || '')}" aria-label="${esc(fc.title)} at least"></label>`).join('')}
+        ${minF.map(fc => `<label class="facet min" data-fk="${esc(fc.key)}"><span>${esc(fc.title)} ≥</span><input class="fmin" data-fk="${esc(fc.key)}" type="number" inputmode="decimal" placeholder="0" value="${esc(state.facetValues[fc.key] || '')}" aria-label="${esc(fc.title)} at least"></label>`).join('')}
         <div class="seg" role="group" aria-label="View">
-          <button data-v="table" class="${st.v === 'table' ? 'on' : ''}">${svg('list')}<span class="hide-sm">Table</span></button>
-          <button data-v="grid" class="${st.v === 'grid' ? 'on' : ''}">${svg('grid')}<span class="hide-sm">Grid</span></button>
+          <button data-v="table" class="${state.layout === 'table' ? 'on' : ''}">${svg('list')}<span class="hide-sm">Table</span></button>
+          <button data-v="grid" class="${state.layout === 'grid' ? 'on' : ''}">${svg('grid')}<span class="hide-sm">Grid</span></button>
         </div>
       </div>
       ${selF.filter(fc => fc.hint).map(fc => `<p class="facet-hint">${svg('info')}<span>${esc(fc.hint)}</span></p>`).join('')}
@@ -746,19 +847,10 @@
     // The box's hint: "Narrow down…" once there are keywords.
     const keyHint = () => {
       const i = $('#lq');
-      if (i) i.placeholder = st.keys.length ? 'Narrow down…' : `Filter ${(cat ? catTitle(t, cat) : d.title).toLowerCase()}…`;
+      if (i) i.placeholder = state.keywords.length ? 'Narrow down…' : `Filter ${(cat ? catTitle(t, cat) : d.title).toLowerCase()}…`;
     };
-    const sync = () => {
-      const p = {};
-      if (cat) p.cat = cat;
-      if (st.keys.length) p.k = st.keys.join('|');
-      if (st.q) p.q = st.q;
-      if (st.p > 1) p.p = st.p;
-      if (st.s) { p.s = st.s; if (st.d) p.d = 1; }
-      for (const k in st.f) if (st.f[k]) p['f_' + k] = st.f[k];
-      if (q.get('v')) p.v = st.v;
-      history.replaceState(null, '', listHref(t, p));
-    };
+    // The address follows every change, without a new history entry each time.
+    const sync = () => history.replaceState(null, '', listStateHref(t, cat, q, state));
     const colOf = k => cols.find(c => c.key === k);
     // Numeric-looking columns sort highest first on the first click.
     const descFirst = k => { const c = colOf(k); return !!(c && (c.sort || c.bar || c.meter)); };
@@ -767,31 +859,12 @@
     loadIndex(t).then(rows => {
       if (!view.isConnected || !$('#lres')) return;
       const cs = catSet(t, cat);
+      // The category's rows, before the words and filters narrow them.
       const base = cs ? rows.filter(r => r._c.some(c => cs.has(c))) : rows;
       let filtered = base;
+      // Filters and sorts the rows again, then redraws the count, the filters in use and the rows.
       const run = () => {
-        const toks = st.keys.concat(st.q).join(' ').toLowerCase().split(/\s+/).filter(Boolean);
-        filtered = toks.length ? base.filter(r => toks.every(k => r._h.includes(k))) : base;
-        for (const fc of facets) {
-          const k = fc.key, v = st.f[k];
-          if (!v) continue;
-          if (fc.kind === 'min') {
-            const n = parseFloat(v);
-            if (Number.isFinite(n)) filtered = filtered.filter(r => { const x = sortVal(r[k]); return typeof x === 'number' && x >= n; });
-          } else filtered = filtered.filter(r => v === FACET_NONE ? (r[k] == null || r[k] === '' || (Array.isArray(r[k]) && !r[k].length))
-            : Array.isArray(r[k]) ? r[k].map(String).includes(v) : String(r[k]) === v);
-        }
-        if (st.s) {
-          const k = st.s, dir = st.d ? -1 : 1, c = colOf(k);
-          const key = k === 'name' ? r => (r.name || '').toLowerCase()
-            : k === 'id' ? r => (isNaN(+r.id) ? r.id : +r.id)
-            : k === 'cat' ? r => catTitle(t, r._c[0] || '').toLowerCase()
-            : c && c.sort ? r => sortVal(r[c.sort])
-            : c && Array.isArray(c.meter) ? r => { const i = c.meter.indexOf(plain(r[k])); return i < 0 ? '' : i; }
-            : r => sortVal(r[k]);
-          const blank = v => v === '' || v === null || v === undefined;
-          filtered = filtered.map(r => [key(r), r]).sort((a, b) => (blank(a[0]) - blank(b[0])) || cmp(a[0], b[0]) * dir || 0).map(x => x[1]);
-        }
+        filtered = sortListRows(filterListRows(base, state, facets), state, cols, t);
         $('#lcount').textContent = `${filtered.length !== base.length ? fmtNum(filtered.length) + ' of ' : ''}${fmtNum(base.length)} ${base.length === 1 ? 'entry' : 'entries'}`;
         drawActive();
         draw();
@@ -801,9 +874,9 @@
         const box = $('#lact');
         if (!box) return;
         const parts = [];
-        st.keys.forEach((k, i) => parts.push(`<button type="button" class="x" data-clear="k:${i}" aria-label="Remove ${esc(k)}">“${esc(k)}”${svg('x')}</button>`));
+        state.keywords.forEach((k, i) => parts.push(`<button type="button" class="x" data-clear="k:${i}" aria-label="Remove ${esc(k)}">“${esc(k)}”${svg('x')}</button>`));
         for (const fc of facets) {
-          const v = st.f[fc.key];
+          const v = state.facetValues[fc.key];
           if (!v) continue;
           let lab;
           if (fc.kind === 'min') lab = `${fc.title} ≥ ${v}`;
@@ -813,23 +886,24 @@
           }
           parts.push(`<button type="button" class="x" data-clear="${esc(fc.key)}" aria-label="Remove ${esc(lab)}">${esc(lab)}${svg('x')}</button>`);
         }
-        const srt = st.s ? `<span class="srt">Sorted by ${esc(String(sortTitle(st.s)).toLowerCase())}, ${isNumSort(st.s) ? (st.d ? 'highest first' : 'lowest first') : (st.d ? 'Z to A' : 'A to Z')}</span>` : '';
+        const srt = state.sortKey ? `<span class="srt">Sorted by ${esc(String(sortTitle(state.sortKey)).toLowerCase())}, ${isNumSort(state.sortKey) ? (state.sortDesc ? 'highest first' : 'lowest first') : (state.sortDesc ? 'Z to A' : 'A to Z')}</span>` : '';
         box.hidden = !parts.length && !srt;
         box.innerHTML = parts.join('') + srt + (parts.length || srt ? '<button type="button" class="clr">Clear all</button>' : '');
         for (const b of $$('[data-clear]', box)) b.onclick = () => {
           const k = b.dataset.clear;
-          if (k === 'q') { st.q = ''; $('#lq').value = ''; } else if (k.startsWith('k:')) { st.keys.splice(+k.slice(2), 1); keyHint(); } else setFacet(k, '');
-          st.p = 1; sync(); run();
+          if (k === 'q') { state.query = ''; $('#lq').value = ''; } else if (k.startsWith('k:')) { state.keywords.splice(+k.slice(2), 1); keyHint(); } else setFacet(k, '');
+          state.page = 1; sync(); run();
         };
         const clr = $('.clr', box);
         if (clr) clr.onclick = () => {
-          st.q = ''; $('#lq').value = ''; st.keys = []; keyHint();
+          state.query = ''; $('#lq').value = ''; state.keywords = []; keyHint();
           for (const fc of facets) setFacet(fc.key, '');
-          st.s = ''; st.d = false; st.p = 1; sync(); run();
+          state.sortKey = ''; state.sortDesc = false; state.page = 1; sync(); run();
         };
       };
+      // Sets a filter's choice, keeps it in the browser for this list, and shows it on its control.
       const setFacet = (k, v) => {
-        st.f[k] = v;
+        state.facetValues[k] = v;
         store.set('facet-' + t + '-' + k, v);
         const sel = $(`select.fsel[data-fk="${CSS.escape(k)}"]`, view), inp = $(`input.fmin[data-fk="${CSS.escape(k)}"]`, view);
         if (sel) { sel.value = v; showFacet(sel); }
@@ -844,21 +918,21 @@
         const v = sel.value, o = (fc.options || []).find(x => x[0] === v);
         fv.textContent = !v ? (fc.any || 'Any') : v === FACET_NONE ? (fc.none || 'None') : (o ? o[1] : v);
       };
+      // Draws the current page of rows (100 a page in the table, 120 in the grid) and the pager.
       const draw = () => {
-        const per = st.v === 'grid' ? 120 : 100;
+        const per = state.layout === 'grid' ? 120 : 100;
         const pages = Math.max(1, Math.ceil(filtered.length / per));
-        if (st.p > pages) st.p = pages;
-        const slice = filtered.slice((st.p - 1) * per, st.p * per);
+        if (state.page > pages) state.page = pages;
+        const slice = filtered.slice((state.page - 1) * per, state.page * per);
         const box = $('#lres');
-        if (!filtered.length) box.innerHTML = emptyState({ title: `Nothing matches${st.q ? ` “${st.q}”` : ''}.`, text: 'Try fewer words, or clear the filters.' });
-        else box.innerHTML = (st.v === 'grid' ? gridView(t, slice, cols) : tableView(t, cols, slice, st)) + pager(st.p, pages);
+        if (!filtered.length) box.innerHTML = emptyState({ title: `Nothing matches${state.query ? ` “${state.query}”` : ''}.`, text: 'Try fewer words, or clear the filters.' });
+        else box.innerHTML = (state.layout === 'grid' ? gridView(t, slice, cols) : tableView(t, cols, slice, state)) + pager(state.page, pages);
         for (const th of $$('th.s', box)) th.onclick = () => {
-          const k = th.dataset.k, first = descFirst(k);
-          if (st.s === k) { if (st.d === first) st.d = !first; else { st.s = ''; st.d = false; } } else { st.s = k; st.d = first; }
-          st.p = 1; sync(); run();
+          cycleSort(state, th.dataset.k, descFirst(th.dataset.k));
+          state.page = 1; sync(); run();
         };
         for (const b of $$('.pager button[data-p]', box)) b.onclick = () => {
-          st.p = +b.dataset.p; sync(); draw();
+          state.page = +b.dataset.p; sync(); draw();
           $('.toolbar').scrollIntoView({ block: 'start' }); window.scrollBy(0, -70);
         };
         fitAll(box);
@@ -866,33 +940,24 @@
       // Facet dropdowns: the values in this list (with counts), plus "none".
       for (const sel of $$('select.fsel', view)) {
         const fc = facets.find(x => x.key === sel.dataset.fk);
-        const n = new Map();
-        let none = 0;
-        // A list value (an enchant's effects) counts under each of its values.
-        for (const r of base) {
-          const v = r[fc.key];
-          if (v == null || v === '' || (Array.isArray(v) && !v.length)) none++;
-          else for (const x of Array.isArray(v) ? v : [v]) n.set(String(x), (n.get(String(x)) || 0) + 1);
-        }
-        // Declared options keep their order and labels; other values follow.
-        const opts = (fc.options || []).map(([v, label]) => [v, n.get(v) || 0, label]);
-        for (const [v, c] of [...n.entries()].sort((a, b) => b[1] - a[1])) if (!opts.some(o => o[0] === v)) opts.push([v, c, v]);
-        if (fc.none) opts.push([FACET_NONE, none, fc.none]);
+        const opts = facetOptions(fc, base);
         sel.innerHTML = `<option value="">${esc(fc.any || 'Any')} (${fmtNum(base.length)})</option>` +
           opts.map(([v, c, label]) => `<option value="${esc(v)}"${c ? '' : ' disabled'}>${esc(label)} (${fmtNum(c)})</option>`).join('');
-        if (st.f[fc.key] && !opts.some(o => o[0] === st.f[fc.key])) st.f[fc.key] = '';
-        sel.value = st.f[fc.key] || '';
+        // A choice kept from before that this list doesn't have is dropped.
+        if (state.facetValues[fc.key] && !opts.some(o => o[0] === state.facetValues[fc.key])) state.facetValues[fc.key] = '';
+        sel.value = state.facetValues[fc.key] || '';
         sel.closest('.facet').classList.toggle('on', !!sel.value);
         showFacet(sel);
-        sel.onchange = () => { setFacet(fc.key, sel.value); st.p = 1; sync(); run(); };
+        sel.onchange = () => { setFacet(fc.key, sel.value); state.page = 1; sync(); run(); };
       }
+      // Minimum filters apply as they're typed.
       for (const inp of $$('input.fmin', view)) {
         const k = inp.dataset.fk;
-        inp.closest('.facet').classList.toggle('on', !!st.f[k]);
-        inp.oninput = debounce(() => { setFacet(k, inp.value.trim()); st.p = 1; sync(); run(); }, 200);
+        inp.closest('.facet').classList.toggle('on', !!state.facetValues[k]);
+        inp.oninput = debounce(() => { setFacet(k, inp.value.trim()); state.page = 1; sync(); run(); }, 200);
       }
       const inp = $('#lq');
-      const typed = debounce(() => { st.q = inp.value.trim(); st.p = 1; sync(); run(); }, 140);
+      const typed = debounce(() => { state.query = inp.value.trim(); state.page = 1; sync(); run(); }, 140);
       inp.oninput = typed;
       // Enter keeps what's typed as a keyword and empties the box for the next one, which narrows
       // the list within it; Backspace in an empty box takes the last keyword back.
@@ -901,15 +966,16 @@
           e.preventDefault();
           const v = inp.value.trim();
           if (!v) return;
-          if (!st.keys.some(k => k.toLowerCase() === v.toLowerCase())) st.keys.push(v);
-          inp.value = ''; st.q = ''; st.p = 1; keyHint(); sync(); run();
-        } else if (e.key === 'Backspace' && !inp.value && st.keys.length) {
+          if (!state.keywords.some(k => k.toLowerCase() === v.toLowerCase())) state.keywords.push(v);
+          inp.value = ''; state.query = ''; state.page = 1; keyHint(); sync(); run();
+        } else if (e.key === 'Backspace' && !inp.value && state.keywords.length) {
           e.preventDefault();
-          inp.value = st.keys.pop(); st.q = inp.value; st.p = 1; keyHint(); sync(); run();
+          inp.value = state.keywords.pop(); state.query = inp.value; state.page = 1; keyHint(); sync(); run();
         }
       };
+      // Table or grid, kept in the browser for this list.
       for (const b of $$('.seg button', view)) b.onclick = () => {
-        st.v = b.dataset.v; store.set('view-' + t, st.v);
+        state.layout = b.dataset.v; store.set('view-' + t, state.layout);
         for (const x of $$('.seg button', view)) x.classList.toggle('on', x === b);
         draw();
       };
@@ -935,7 +1001,7 @@
     if (c.lines && Array.isArray(v)) return v.map(x => `<div class="vline">${tonesHtml(String(x))}</div>`).join('');
     return val(v);
   }
-  function tableView(t, cols, rows, st) {
+  function tableView(t, cols, rows, state) {
     // The Info column only when it says something the rows don't all share, and isn't just each
     // row's category again (a quest's "Normal" next to Category "Normal").
     const hasCat = new Set(rows.map(r => r._c[0] || '')).size > 1;
@@ -951,23 +1017,24 @@
     // Text ids (tircho_alby_dungeon) aren't numbers: left-aligned, and they wrap.
     const textIds = rows.some(r => !/^\d+$/.test(String(r.id)));
     const idCls = textIds ? 'idt hide-sm' : 'num hide-sm';
-    const th = (k, label, cls) => `<th class="s${cls ? ' ' + cls : ''}${st.s === k ? ' on' : ''}" data-k="${esc(k)}"${st.s === k ? ` aria-sort="${st.d ? 'descending' : 'ascending'}"` : ''}>${esc(label)}${st.s === k ? `<span class="ar">${st.d ? '▼' : '▲'}</span>` : ''}</th>`;
+    const th = (k, label, cls) => `<th class="s${cls ? ' ' + cls : ''}${state.sortKey === k ? ' on' : ''}" data-k="${esc(k)}"${state.sortKey === k ? ` aria-sort="${state.sortDesc ? 'descending' : 'ascending'}"` : ''}>${esc(label)}${state.sortKey === k ? `<span class="ar">${state.sortDesc ? '▼' : '▲'}</span>` : ''}</th>`;
     const tops = {};
     for (const c of cols) if (c.bar) tops[c.key] = rows.reduce((m, r) => Math.max(m, +r[c.key + 'Max'] || 0), 0);
     // noId: a type whose ids are only slugs (questlines) shows no ID column.
     const showId = !td.noId;
     let h = `<div class="tablebox"><div class="scroll"><table class="t"><thead><tr>${showId ? th('id', 'ID', idCls) : ''}${hasCat && catFirst ? th('cat', 'Category', 'hide-sm') : ''}${th('name', 'Name', 'nmh')}`;
-    for (const c of cols) h += th(c.key, c.title || c.key, c.num || c.bar ? 'num' : '');
+    // A column with wide: true (an enchant's effects) gets room first: a minimum width, the others wrap.
+    for (const c of cols) h += th(c.key, c.title || c.key, (c.num || c.bar ? 'num' : '') + (c.wide ? ' cwide' : ''));
     if (hasSub) h += th('sub', 'Info');
     if (hasCat && !catFirst) h += th('cat', 'Category', 'hide-sm');
     h += '</tr></thead><tbody>';
-    const on = k => (st.s === k ? ' on' : '');
+    const on = k => (state.sortKey === k ? ' on' : '');
     const catTd = r => `<td class="hide-sm${on('cat')}">${r._c[0] ? `<a href="${listHref(t, { cat: r._c[0] })}">${esc(catTitle(t, r._c[0]))}</a>` : ''}</td>`;
     for (const r of rows) {
       h += '<tr>' + (showId ? `<td class="${idCls} id copy${on('id')}" ${copyAttr(r.id)}><span class="idchip">${textIds ? esc(r.id).replace(/_/g, '_<wbr>') : esc(r.id)}</span></td>` : '');
       if (hasCat && catFirst) h += catTd(r);
       h += `<td class="nm${on('name')}"><span class="nmw">${hasIcon ? ibox(r.icon, 32, t) : ''}<span class="nmt"><a href="${href(td.linkAs || t, r.id)}">${esc(r.name || r.id)}</a>${r.alt && r.alt !== r.name ? `<small>${esc(r.alt)}</small>` : ''}</span></span></td>`;
-      for (const c of cols) h += `<td class="${c.num || c.bar ? 'num' : ''}${c.bar || c.meter ? ' nw' : ''}${on(c.key)}">${r[c.key] == null || r[c.key] === '' ? '' : cell(c, r, tops[c.key])}</td>`;
+      for (const c of cols) h += `<td class="${c.num || c.bar ? 'num' : ''}${c.bar || c.meter ? ' nw' : ''}${c.wide ? ' cwide' : ''}${on(c.key)}">${r[c.key] == null || r[c.key] === '' ? '' : cell(c, r, tops[c.key])}</td>`;
       if (hasSub) h += `<td class="${on('sub').trim()}">${r.sub ? val(r.sub) : ''}</td>`;
       if (hasCat && !catFirst) h += catTd(r);
       h += '</tr>';
@@ -1047,9 +1114,14 @@
     // Each section has an id from its heading ("How it's made" → sec-how-its-made), so a link can point at
     // it (#/item/40006?sec=how-its-made); the link button beside the heading copies that address.
     const secKeys = secs.map(s => secSlug(s.heading)).map((k, i, all) => (all.indexOf(k) < i ? `${k}-${i}` : k));
-    const secHtml = (s, i) => `<section class="sec${s.wide ? ' wide' : ''}" id="sec-${secKeys[i]}"><h2><span class="orn-d"></span>${esc(s.heading || '')}` +
-      `<a class="slink" href="${esc(href(t, id) + '?sec=' + secKeys[i])}" data-sec="${esc(secKeys[i])}" title="Link to this section" aria-label="Link to ${esc(s.heading || '')}">${svg('hash')}</a></h2>` +
-      `${(s.blocks || []).map(b => block(b, blocks)).join('')}${s.empty ? `<div class="blk">${emptyState(s.empty)}</div>` : ''}</section>`;
+    // tip: a short note on the section as a whole, behind an (i) after its heading: shown on hover, and on
+    // tap or keyboard focus (phones have no hover).
+    const htip = s => (s.tip ? `<span class="htip" tabindex="0" role="note" aria-label="${esc(s.tip)}" data-tip="${esc(s.tip)}">${svg('info')}</span>` : '');
+    const slink = (s, i) => `<a class="slink" href="${esc(href(t, id) + '?sec=' + secKeys[i])}" data-sec="${esc(secKeys[i])}" title="Link to this section" aria-label="Link to ${esc(s.heading || '')}">${svg('hash')}</a>`;
+    // The section is a card: its heading a bar that stays in view while the card scrolls past, its
+    // blocks in the body below (a fold on its own there is a row of the card).
+    const secHtml = (s, i) => `<section class="sec${s.wide ? ' wide' : ''}" id="sec-${secKeys[i]}"><h2><span class="orn-d"></span>${esc(s.heading || '')}${htip(s)}${slink(s, i)}</h2>` +
+      `<div class="secbody">${(s.blocks || []).map(b => block(b, blocks)).join('')}${s.empty ? `<div class="blk">${emptyState(s.empty)}</div>` : ''}</div></section>`;
     const sectionsHtml = secs.map((s, i) => (s.wide ? '' : secHtml(s, i))).join('');
     const wideHtml = secs.map((s, i) => (s.wide ? secHtml(s, i) : '')).join('');
     const info = p.infobox || [];
@@ -1102,6 +1174,12 @@
         h2._t = setTimeout(() => { delete h2.dataset.copied; }, 1400);
         goSection(a.dataset.sec);
       };
+    }
+    // A heading's tip shows its own note: no heading tooltip over it, and a click on it does nothing else
+    // (no link copied, no section opened or shut).
+    for (const t of $$('.htip', view)) {
+      t.title = '';
+      t.onclick = e => { e.preventDefault(); e.stopPropagation(); t.focus(); };
     }
     // A jump link: its section's address in the bar, and the page scrolls there (no re-render).
     for (const a of $$('.jumps a', view)) a.onclick = e => { e.preventDefault(); history.replaceState(null, '', a.getAttribute('href')); goSection(a.dataset.sec); };
@@ -1180,37 +1258,65 @@
     const title = b.title ? `<h3>${esc(b.title)}</h3>` : '';
     const k = b.kind;
     let body = '';
-    if (k === 'text') {
+    if (k === 'text' && b.value !== undefined) {
+      // A value on its own, without a label (a set effect's one threshold: its effect and details).
+      body = `<div class="txt fxval">${val(b.value)}</div>`;
+    } else if (k === 'text' && Array.isArray(b.parts)) {
+      // A line of words and links ({parts: ['How gifts work: ', {t: 'guide', ...}]}), quiet with tone: 'muted'.
+      body = `<div class="txt${b.tone ? ' tone-' + esc(b.tone) : ''}"><p>${b.parts.map(val).join('')}</p></div>`;
+    } else if (k === 'text') {
       const txt = String(b.text || '').trim();
       // tones: signed amounts in color (a skill rank's effect).
       const tx = b.tones ? tonesHtml : esc;
-      // Inside a rank, the rank's effect is always set in the effect style, whatever its length, so it
-      // doesn't change from rank to rank (its lines kept); another one-line text there too.
-      if (ctx === 'rank' && txt && (b.title === 'Effect' || (txt.length <= 40 && !/\n/.test(txt)))) body = `<div class="effect">${txt.split(/\r?\n/).map(l => tx(l.trim())).join('<br>')}</div>`;
-      else body = `<div class="txt">${txt.split(/\n\s*\n/).map(p => `<p>${tx(p.trim())}</p>`).join('')}</div>`;
+      // A rank's description and effect are set alike, in the page's text style (its lines kept).
+      // {tone: 'muted'}: a quiet line (a key under a list).
+      body = `<div class="txt${b.tone ? ' tone-' + esc(b.tone) : ''}">${txt.split(/\n\s*\n/).map(p => `<p>${tx(p.trim())}</p>`).join('')}</div>`;
     } else if (k === 'kv') {
       const rows = (b.rows || []).filter(r => Array.isArray(r));
       const long = rows.some(r => plain(r[1]).length > 34 || plain(r[0]).length > 28);
-      body = `<dl class="kv${long ? ' one' : ''}">${rows.map(r => `<div><dt>${val(r[0])}</dt><dd${isGold(r[1]) ? ' class="gold"' : ''}>${valRow(r[0], r[1])}</dd></div>`).join('')}</dl>`;
+      // A value that reads as a sentence goes under its label, left-aligned like text, rather than
+      // pushed against the right edge; in a list that has one, so does every value longer than a word
+      // or a number, so the list reads one way. {stack: true} puts every value under its label.
+      const anyProse = rows.some(r => plain(r[1]).length > 60);
+      const prose = r => b.stack || (anyProse && plain(r[1]).length > 24);
+      body = `<dl class="kv${long ? ' one' : ''}">${rows.map(r => `<div${prose(r) ? ' class="prose"' : ''}><dt>${val(r[0])}</dt><dd${isGold(r[1]) ? ' class="gold"' : ''}>${valRow(r[0], r[1])}</dd></div>`).join('')}</dl>`;
     } else if (k === 'formula') {
       // A formula or a short algorithm, as written: {text}.
       body = `<pre class="formula"><code>${esc(b.text || '')}</code></pre>`;
     } else if (k === 'details') {
       // A one-line summary that opens to the rest: {summary, blocks, open (open at first)}.
-      body = `<details class="more"${b.open ? ' open' : ''}><summary>${esc(b.summary || 'More')}</summary><div class="morebody">${(b.blocks || []).map(x => block(x, reg)).join('')}</div></details>`;
+      // A count at the end of the summary ("Ways to learn it (23)") is a badge at the row's right.
+      const cm = /^(.*?)\s*\((\d[\d,]*)\)$/.exec(String(b.summary || ''));
+      const sum = cm ? `<span>${esc(cm[1])}</span><span class="cnt">${esc(cm[2])}</span>` : esc(b.summary || 'More');
+      body = `<details class="more"${b.open ? ' open' : ''}><summary>${sum}</summary><div class="morebody">${(b.blocks || []).map(x => block(x, reg)).join('')}</div></details>`;
     } else if (k === 'table') {
       const i = reg.push({ kind: 'table', b, sort: b.sort == null ? -1 : b.sort, dir: 1, all: false }) - 1;
       body = `<div class="tablebox" data-bid="${i}"></div>`;
+    } else if (k === 'formulas') {
+      // Calculations, one card each: {items: [{name, expr, tag}]}: what is worked out as a small heading,
+      // the working below it.
+      body = `<div class="fmls">${(b.items || []).map(f => `<div class="fml">${f.name ? `<div class="fn">${esc(f.name)}</div>` : ''}<div class="fx">${esc(f.expr || '')}${f.tag ? vtag(f.tag) : ''}</div></div>`).join('')}</div>`;
+    } else if (k === 'sum') {
+      // A sum to read at a glance: tiles joined by + and =, {terms: [{label, value, note}], result:
+      // {label, value, note}, foot}. Each tile: what the part is, its range big, how it varies small.
+      // op: what joins the tiles ('→' for steps in order; no result then).
+      const tile = (t, cls) => `<div class="sumt${cls}"><span class="sl">${esc(t.label || '')}</span><b>${val(t.value)}</b>${t.note ? `<small>${val(t.note)}</small>` : ''}</div>`;
+      const terms = (b.terms || []).map(t => tile(t, '')).join(`<span class="op" aria-hidden="true">${esc(b.op || '+')}</span>`);
+      body = `<div class="sumrow">${terms}${b.result ? `<span class="op" aria-hidden="true">=</span>${tile(b.result, ' res')}` : ''}</div>` +
+        (b.foot ? `<p class="sumfoot">${val(b.foot)}</p>` : '');
     } else if (k === 'list') {
       const items = b.items || [];
+      // An item can lead with a few words in bold: {lead, text}.
+      const li = x => (isObj(x) && x.lead ? `<b>${esc(x.lead)}</b> ${val(x.text)}` : val(x));
       // Short facts as pills: a gold diamond each, or b.icon ('check', 'x') when the source says
-      // which way the list reads.
+      // which way the list reads; longer ones with an icon as a checklist.
       const mk = b.icon === 'check' || b.icon === 'x' ? svg(b.icon) : '<i class="dia"></i>';
       // ordered: numbered steps (a how-to), never the short-pill form.
-      body = b.ordered ? `<ol class="lst steps">${items.map(x => `<li>${val(x)}</li>`).join('')}</ol>`
+      body = b.ordered ? `<ol class="lst steps">${items.map(x => `<li>${li(x)}</li>`).join('')}</ol>`
         : isShortList(items)
-        ? `<ul class="ticks${b.icon === 'x' ? ' no' : ''}">${items.map(x => `<li>${mk}<span>${val(x)}</span></li>`).join('')}</ul>`
-        : `<ul class="lst">${items.map(x => `<li>${val(x)}</li>`).join('')}</ul>`;
+        ? `<ul class="ticks${b.icon === 'x' ? ' no' : ''}">${items.map(x => `<li>${mk}<span>${li(x)}</span></li>`).join('')}</ul>`
+        : b.icon ? `<ul class="checks${b.icon === 'x' ? ' no' : ''}">${items.map(x => `<li>${mk}<span>${li(x)}</span></li>`).join('')}</ul>`
+        : `<ul class="lst">${items.map(x => `<li>${li(x)}</li>`).join('')}</ul>`;
     } else if (k === 'links') {
       const items = b.items || [];
       const i = reg.push({ kind: 'links', b, all: !b.oneRow && items.length <= MAX_CHIPS }) - 1;
@@ -1397,6 +1503,24 @@
   // picture is one layer moved by a CSS transform (translate, scale); the markers sit over it in
   // screen space, placed from their percent each frame, so they keep their size and come apart as
   // it zooms in. The picture is the inline one's file, so the browser's cache serves it.
+  // The furthest it zooms in, as times the fitted size; but never less than the picture's own
+  // size times MAP_MIN_TOP_SCALE.
+  const MAP_MAX_ZOOM = 8, MAP_MIN_TOP_SCALE = 2;
+  // How much one press of + or − (a button or a key) zooms in or out.
+  const MAP_ZOOM_STEP = 1.6;
+  // Opened on markers, it zooms until they're this many pixels apart, from this many times fit on.
+  const MAP_OPEN_MARK_GAP = 20, MAP_OPEN_MIN_ZOOM = 2;
+  // A pointer that moves fewer pixels than this is a tap, not a drag.
+  const MAP_DRAG_SLOP = 5;
+  // A second tap this soon (ms) and this close (px) to the first is a double tap, which zooms in
+  // this many times around it.
+  const MAP_DOUBLE_TAP_MS = 350, MAP_DOUBLE_TAP_PX = 30, MAP_DOUBLE_TAP_ZOOM = 2;
+  // The wheel: a scroll reported in lines counts this many pixels a line; each pixel scrolled
+  // zooms by this fraction (exponentially, so turns add up evenly); and the picture is drawn sharp
+  // again once the wheel has been still this long (ms).
+  const MAP_WHEEL_LINE_PX = 16, MAP_WHEEL_RATE = 0.0018, MAP_WHEEL_SETTLE_MS = 180;
+  // How far one arrow key moves the map, in pixels.
+  const MAP_KEY_PAN_PX = 80;
   let mv = null;
   const mapView = {
     open(r, back, at) {
@@ -1418,14 +1542,14 @@
         `<div class="mvload" role="status">Loading the map…</div></div>`;
       document.body.appendChild(dlg);
       const stage = $('.mvstage', dlg), pic = $('.mvpic', dlg), img = $('img', pic), pins = $('.mvpins', dlg);
-      const v = mv = { r, dlg, img, back, s: 1, tx: 0, ty: 0, nw: 0, nh: 0, SW: 1, SH: 1, f0: 1, max: 8, raf: 0, inert: [], over: document.documentElement.style.overflow };
+      const v = mv = { r, dlg, img, back, s: 1, tx: 0, ty: 0, nw: 0, nh: 0, SW: 1, SH: 1, f0: 1, max: MAP_MAX_ZOOM, raf: 0, inert: [], over: document.documentElement.style.overflow };
       // The page behind can't be reached or scrolled while it's open.
       for (const x of document.body.children) if (x !== dlg && !x.inert) { x.inert = true; v.inert.push(x); }
       document.documentElement.style.overflow = 'hidden';
       const local = e => { const R = stage.getBoundingClientRect(); return [e.clientX - R.left, e.clientY - R.top]; };
       const size = () => {
         v.SW = stage.clientWidth; v.SH = stage.clientHeight;
-        v.f0 = Math.min(v.SW / v.nw, v.SH / v.nh); v.max = Math.max(8 * v.f0, 2);
+        v.f0 = Math.min(v.SW / v.nw, v.SH / v.nh); v.max = Math.max(MAP_MAX_ZOOM * v.f0, MAP_MIN_TOP_SCALE);
       };
       // In range, and kept on screen: centred while smaller than the screen, else its edges no
       // further in than the screen's.
@@ -1477,7 +1601,7 @@
             let d = Infinity;
             for (const a of at) for (const c of at) if (a !== c) d = Math.min(d, Math.hypot((a.x - c.x) / 100 * v.nw, (a.y - c.y) / 100 * v.nh));
             const mid = { x: at.reduce((t, m) => t + m.x, 0) / at.length, y: at.reduce((t, m) => t + m.y, 0) / at.length };
-            centre(mid, Math.min(v.max, Math.max(v.f0 * 2, d > 0 && d < Infinity ? 20 / d : v.max)));
+            centre(mid, Math.min(v.max, Math.max(v.f0 * MAP_OPEN_MIN_ZOOM, d > 0 && d < Infinity ? MAP_OPEN_MARK_GAP / d : v.max)));
           } else { v.s = v.f0; clamp(); }
           paint();
           stage.classList.add('ready');
@@ -1490,7 +1614,7 @@
       for (const z of $$('[data-z]', dlg)) z.onclick = () => {
         if (z.getAttribute('aria-disabled') === 'true') return;
         const d = +z.dataset.z;
-        if (!d) fit(); else zoomAt(v.s * (d > 0 ? 1.6 : 1 / 1.6), v.SW / 2, v.SH / 2);
+        if (!d) fit(); else zoomAt(v.s * (d > 0 ? MAP_ZOOM_STEP : 1 / MAP_ZOOM_STEP), v.SW / 2, v.SH / 2);
       };
       $('.mvx', dlg).onclick = () => mapView.close(true);
       for (const p of marks) p.onclick = e => openMapPop(e, p, r, pins, x => [x._x, x._y]);
@@ -1528,7 +1652,7 @@
         if (!g.pinch) {
           const [x, y] = pts.get(e.pointerId), dx = x - g.p0[0], dy = y - g.p0[1];
           if (!g.moved) {
-            if (Math.hypot(dx, dy) < 5) return;
+            if (Math.hypot(dx, dy) < MAP_DRAG_SLOP) return;
             g.moved = true;
             moving(true);
             try { stage.setPointerCapture(e.pointerId); } catch (x2) { /* gone */ }
@@ -1551,7 +1675,7 @@
         if (moved) { dragged = true; tap = null; return; }
         if (e.type !== 'pointerup' || onMark) { tap = null; return; }
         const now = performance.now();
-        if (tap && now - tap.t < 350 && Math.hypot(at2[0] - tap.x, at2[1] - tap.y) < 30) { tap = null; zoomAt(v.s * 2, at2[0], at2[1]); }
+        if (tap && now - tap.t < MAP_DOUBLE_TAP_MS && Math.hypot(at2[0] - tap.x, at2[1] - tap.y) < MAP_DOUBLE_TAP_PX) { tap = null; zoomAt(v.s * MAP_DOUBLE_TAP_ZOOM, at2[0], at2[1]); }
         else tap = { t: now, x: at2[0], y: at2[1] };
       };
       stage.addEventListener('pointerup', end);
@@ -1561,11 +1685,11 @@
       stage.addEventListener('wheel', e => {
         e.preventDefault();
         if (!v.nw) return;
-        const [x, y] = local(e), dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * v.SH : e.deltaY;
+        const [x, y] = local(e), dy = e.deltaMode === 1 ? e.deltaY * MAP_WHEEL_LINE_PX : e.deltaMode === 2 ? e.deltaY * v.SH : e.deltaY;
         moving(true);
         clearTimeout(v.wheel);
-        v.wheel = setTimeout(() => moving(false), 180);
-        zoomAt(v.s * Math.exp(-dy * 0.0018), x, y);
+        v.wheel = setTimeout(() => moving(false), MAP_WHEEL_SETTLE_MS);
+        zoomAt(v.s * Math.exp(-dy * MAP_WHEEL_RATE), x, y);
       }, { passive: false });
       // Keys. The page's own (the search's) wait until it's closed; Tab stays inside.
       dlg.addEventListener('keydown', e => {
@@ -1583,9 +1707,9 @@
           return;
         }
         if (e.ctrlKey || e.metaKey || e.altKey || !v.nw) return;
-        const step = 80, c = [v.SW / 2, v.SH / 2];
-        if (e.key === '+' || e.key === '=') zoomAt(v.s * 1.6, c[0], c[1]);
-        else if (e.key === '-' || e.key === '_') zoomAt(v.s / 1.6, c[0], c[1]);
+        const step = MAP_KEY_PAN_PX, c = [v.SW / 2, v.SH / 2];
+        if (e.key === '+' || e.key === '=') zoomAt(v.s * MAP_ZOOM_STEP, c[0], c[1]);
+        else if (e.key === '-' || e.key === '_') zoomAt(v.s / MAP_ZOOM_STEP, c[0], c[1]);
         else if (e.key === '0') fit();
         else if (e.key.startsWith('Arrow')) {
           v.tx += e.key === 'ArrowLeft' ? step : e.key === 'ArrowRight' ? -step : 0;
@@ -1833,10 +1957,17 @@
     // come first and the fold columns hide behind a "Show the N <label>" button (upgrade paths: the goal
     // and the final stats first, the upgrades folded). The desktop table is unchanged.
     const ph = r.b.phone, lead = new Set((ph && ph.lead) || []), fold = new Set((ph && ph.fold) || []);
-    const pcls = i => (lead.has(i) ? ' pl' : '') + (fold.has(i) ? ' pf' : '');
+    // nowrap: [column names] whose lines never break (each gem "Star Sapphire 2cm ×1" on one line); the
+    // other columns wrap to make room.
+    const keep = new Set(r.b.nowrap || []);
+    const pcls = i => (lead.has(i) ? ' pl' : '') + (fold.has(i) ? ' pf' : '') + (keep.has(cols[i]) ? ' keep' : '');
     const ptoggle = x => (ph && stack ? `<td class="ptg"><button type="button" class="linkbtn ptgb">Show the ${order.filter(i => fold.has(i) && !blank(x[i])).length} ${esc(ph.label || 'more')}</button></td>` : '');
-    el.innerHTML = `<div class="scroll"><table class="t${stack}${ph && stack ? ' phone-fold' : ''}"><thead><tr>${order.map(i => `<th class="s${num[i] ? ' num' : ''}${r.sort === i ? ' on' : ''}" data-i="${i}">${esc(cols[i])}${r.sort === i ? `<span class="ar">${r.dir < 0 ? '▼' : '▲'}</span>` : ''}</th>`).join('')}</tr></thead>` +
-      `<tbody>${shown.map(x => `<tr>${order.map(i => `<td data-label="${esc(plain(cols[i]))}" class="${num[i] ? 'num' : ''}${x[i] != null && !Array.isArray(x[i]) && plain(x[i]).length <= 12 ? ' nw' : ''}${plain(x[i]).length > 22 ? ' long' : ''}${blank(x[i]) ? ' blank' : ''}${pcls(i)}">${blank(x[i]) ? '' : stack ? `<div class="cv">${valRow(cols[i], x[i])}</div>` : valRow(cols[i], x[i])}</td>`).join('')}${ptoggle(x)}</tr>`).join('')}</tbody></table></div>` +
+    // lead: the first column is what each row is for (a tier, a condition): set apart in bold.
+    // fit: the table never scrolls sideways; its long columns give up their minimum width and wrap.
+    el.innerHTML = `<div class="scroll"><table class="t${stack}${ph && stack ? ' phone-fold' : ''}${r.b.lead ? ' leadcol' : ''}${r.b.fit ? ' fit' : ''}"><thead><tr>${order.map(i => `<th class="s${num[i] ? ' num' : ''}${r.sort === i ? ' on' : ''}" data-i="${i}">${esc(cols[i])}${r.sort === i ? `<span class="ar">${r.dir < 0 ? '▼' : '▲'}</span>` : ''}</th>`).join('')}</tr></thead>` +
+      // {grouped: true}: a row whose first cell is filled starts a group (the rows under it leave it
+      // blank), set off by a stronger line while the table is in its own order.
+      `<tbody>${shown.map((x, j) => `<tr${r.b.grouped && r.sort < 0 && j && !blank(x[0]) ? ' class="grp"' : ''}>${order.map(i => `<td data-label="${esc(plain(cols[i]))}" class="${num[i] ? 'num' : ''}${x[i] != null && !Array.isArray(x[i]) && plain(x[i]).length <= 12 ? ' nw' : ''}${plain(x[i]).length > 22 ? ' long' : ''}${blank(x[i]) ? ' blank' : ''}${pcls(i)}">${blank(x[i]) ? '' : stack ? `<div class="cv">${valRow(cols[i], x[i])}</div>` : valRow(cols[i], x[i])}</td>`).join('')}${ptoggle(x)}</tr>`).join('')}</tbody></table></div>` +
       (rows.length > shown.length ? `<div class="tmore"><button class="linkbtn">Show all ${fmtNum(rows.length)} rows</button></div>` : '');
     for (const th of $$('th', el)) th.onclick = () => {
       const i = +th.dataset.i;
@@ -1914,10 +2045,13 @@
     const picker = groups.length
       ? `<div class="picker rpick" role="group" aria-label="Rank">${groups.map(g => `<div class="rgroup"><span>${esc(g[0])}</span><div>${range(g[1], g[2]).map(btn).join('')}</div></div>`).join('')}</div>`
       : `<div class="picker" role="group" aria-label="Rank">${labels.map((_, i) => btn(i)).join('')}</div>`;
+    // A value of several lines (the rank-up bonus, a stat to a line) is as wide as its longest line.
+    const cards = cols.length && rows.length ? `<div class="statbar rcards">${cols.map((c, i) => { const len = Math.max(0, ...plain(cur[i]).split('; ').map(s => s.length)); return `<div class="${len > 28 ? 'full' : len > 12 ? 'wide' : ''}"><span>${esc(c)}</span><b>${val(cur[i])}</b></div>`; }).join('')}</div>` : '';
+    // The picked rank's own blocks (description, effect, training): one panel headed by the rank, so
+    // they read as that rank's parts.
+    const lab = String(labels[r.cur] != null ? labels[r.cur] : r.cur + 1), rankName = /^(novice|dan|rank)\b/i.test(lab) ? lab : 'Rank ' + lab;
     el.innerHTML = picker +
-      // A value of several lines (the rank-up bonus, a stat to a line) is as wide as its longest line.
-      (cols.length && rows.length ? `<div class="statbar rcards">${cols.map((c, i) => { const len = Math.max(0, ...plain(cur[i]).split('; ').map(s => s.length)); return `<div class="${len > 28 ? 'full' : len > 12 ? 'wide' : ''}"><span>${esc(c)}</span><b>${val(cur[i])}</b></div>`; }).join('')}</div>` : '') +
-      (subHtml ? `<div class="rsub">${subHtml}</div>` : '') +
+      (subHtml ? `<div class="rpanel"><div class="rpanel-h">${esc(rankName)}</div><div class="rpanel-b">${cards}<div class="rsub">${subHtml}</div></div></div>` : cards) +
       (table ? `<button class="linkbtn">${r.all ? 'Hide' : 'Show'} the table of every rank</button>` : '') +
       (table && r.all ? `<div class="tablebox rtable"><div class="scroll"><table class="t"><thead><tr><th>Rank</th>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.map((x, i) => `<tr class="${i === r.cur ? 'on' : ''}"><td><b>${esc(labels[i] || i + 1)}</b></td>${cols.map((_, j) => `<td>${val(x[j])}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>` : '');
     const rs = $('.rsub', el);
@@ -2004,12 +2138,15 @@
       if (!q) { box.innerHTML = emptyState({ title: 'Type to search.', text: 'Names, Korean names, IDs and tags all count.' }, 'search'); $('#scount').textContent = ''; return; }
       const res = searchRows(rows, q, 3000);
       $('#scount').textContent = `${fmtNum(res.length)}${res.length >= 3000 ? '+' : ''} results`;
-      const groups = new Map();
-      for (const r of res) { if (!groups.has(r.t)) groups.set(r.t, []); groups.get(r.t).push(r); }
+      let groups = new Map();
+      // The lists and categories in a group of their own, first.
+      for (const r of res) { const k = r.cat ? '_cat' : r.t; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+      if (groups.has('_cat')) { const c = groups.get('_cat'); groups.delete('_cat'); groups = new Map([['_cat', c], ...groups]); }
       let h = '';
       for (const [t, list] of groups) {
-        h += `<div class="sgroup"><h2>${svg(typeIcon(t))}${esc(typeTitle(t))}<span class="n">${fmtNum(list.length)}</span>${list.length > 25 ? `<a class="all" href="${listHref(t, { q })}">See all</a>` : ''}</h2><div class="rows">` +
-          list.slice(0, 25).map(r => `<a class="rowlink" href="${href(r.t, r.id)}">${ibox(r.icon, 32, r.t)}<span class="tx"><b>${hl(r.name || r.id, q)}</b><small>${hl(r.alt, q)}${r.sub ? (r.alt ? ' · ' : '') + esc(r.sub) : ''}</small></span>${r.fx ? `<span class="fx">${hlAll(r.fx, q)}</span>` : ''}<span class="meta">#${esc(r.id)}</span></a>`).join('') + '</div></div>';
+        const cats = t === '_cat';
+        h += `<div class="sgroup"><h2>${svg(cats ? 'book' : typeIcon(t))}${esc(cats ? 'Lists and categories' : typeTitle(t))}<span class="n">${fmtNum(list.length)}</span>${list.length > 25 && !cats ? `<a class="all" href="${listHref(t, { q })}">See all</a>` : ''}</h2><div class="rows">` +
+          list.slice(0, 25).map(r => `<a class="rowlink" href="${r.h || href(r.t, r.id)}">${ibox(r.icon, 32, r.t)}<span class="tx"><b>${hl(r.name || r.id, q)}</b><small>${hl(r.alt, q)}${r.sub ? (r.alt ? ' · ' : '') + esc(r.sub) : ''}</small></span>${r.fx ? `<span class="fx">${hlAll(r.fx, q)}</span>` : ''}${r.id ? `<span class="meta">#${esc(r.id)}</span>` : ''}</a>`).join('') + '</div></div>';
       }
       box.innerHTML = h || emptyState({ title: `Nothing found for “${q}”.`, text: 'Try fewer letters, or another name.' }, 'search');
       fitAll(box);
@@ -2095,7 +2232,7 @@
         h = '<div class="pempty">Loading the search index…</div>';
       } else {
         const found = searchRows(S.search, q, 50);
-        for (const r of found) items.push({ h: href(r.t, r.id), html: row(r.icon, r.t, hl(r.name || r.id, q), (r.alt && r.alt !== r.name ? hl(r.alt, q) : '') + (r.sub ? (r.alt && r.alt !== r.name ? ' · ' : '') + esc(r.sub) : '') + ` <span class="muted">#${esc(r.id)}</span>` + (r.fx ? `<span class="pfx">${hlAll(r.fx, q)}</span>` : ''), typeTitle(r.t)) });
+        for (const r of found) items.push({ h: r.h || href(r.t, r.id), html: row(r.icon, r.t, hl(r.name || r.id, q), (r.alt && r.alt !== r.name ? hl(r.alt, q) : '') + (r.sub ? (r.alt && r.alt !== r.name ? ' · ' : '') + esc(r.sub) : '') + (r.id ? ` <span class="muted">#${esc(r.id)}</span>` : '') + (r.fx ? `<span class="pfx">${hlAll(r.fx, q)}</span>` : ''), typeTitle(r.t)) });
         items.push({ h: '#/search?q=' + encodeURIComponent(q), html: row(null, 'search', `See all results for “${esc(q)}”`, 'Ctrl+Enter', '', 'search') });
         h = (found.length ? '' : '<div class="pempty">No matches.</div>') + items.map((x, i) => itemHtml(x, i)).join('');
       }

@@ -360,6 +360,19 @@
       <FileType>Document</FileType>
     </CopyFileToFolders>
   </ItemGroup>
+  <!-- The Mabinogi Wiki's page, made from its source in MabiWiki\ on every build where one of those
+       files changed: Release\MabiWiki_Standalone.html, which the release puts in the game folder and
+       Kanan opens (MabiWiki.cpp). -->
+  <ItemGroup>
+    <CustomBuild Include="MabiWiki\make-standalone.ps1">
+      <FileType>Document</FileType>
+      <Command>powershell -NoProfile -ExecutionPolicy Bypass -File "%(FullPath)" -Out "$(OutDir)MabiWiki_Standalone.html"</Command>
+      <Message>Making MabiWiki_Standalone.html</Message>
+      <AdditionalInputs>MabiWiki\hostable.html;MabiWiki\app.css;MabiWiki\app.js;MabiWiki\datasource.js;MabiWiki\sources.js;MabiWiki\viewer3d.js;MabiWiki\region3d.js;MabiWiki\packs.js;MabiWiki\images.js;MabiWiki\sinks.js;MabiWiki\prepare.js;MabiWiki\boot.js;MabiWiki\lib\three-bundle.min.js;MabiWiki\lib\three-LICENSE.txt</AdditionalInputs>
+      <Outputs>$(OutDir)MabiWiki_Standalone.html</Outputs>
+      <LinkObjects>false</LinkObjects>
+    </CustomBuild>
+  </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kanan.rc" />
     <ResourceCompile Include="MabiTrackers.rc" />

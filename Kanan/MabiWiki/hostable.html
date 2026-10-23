@@ -17,7 +17,11 @@
      data/site.js: whether the copy has the 3D models. data/game-data.js loads its parts itself.
      datasource.js and app.js are type="text/plain" data-run: lib/boot.js runs them once the data
      is in place, and sets the data up when it isn't (loading lib/packs.js, images.js, sinks.js and
-     prepare.js only then). -->
+     prepare.js only then).
+     make-standalone.html (in a browser) and make-standalone.ps1 (Kanan's build runs it) turn this
+     page into MabiWiki_Standalone.html: the tags below become the
+     files' text, the data scripts point into MabiWiki/data/ and MABIWIKI_HOSTED goes. Keep the
+     tags as they are written here (one per line) so it finds them. -->
 <script>window.MABIWIKI_BASE = "./"; window.MABIWIKI_HOSTED = true;</script>
 <script src="data/site.js"></script>
 <script src="data/game-data.js"></script>

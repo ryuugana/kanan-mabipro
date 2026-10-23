@@ -255,7 +255,8 @@
   // whole by its amount; anything else (a link, a line with no amount) as it is.
   const toneFx = s => {
     if (typeof s !== 'string') return s;
-    const m = /^(.*?)\s*([+\-−]\s?\d[\d.,]*(?:\s?[~–-]\s?\d[\d.,]*)?\s?%?)(?=\s|$)/.exec(s);
+    // A sign only counts at the start of a word: "1-4 points" is a range, not a "-4".
+    const m = /^(.*?)(?<![^\s(:,/])([+\-−]\s?\d[\d.,]*(?:\s?[~–-]\s?\d[\d.,]*)?\s?%?)(?=\s|$)/.exec(s);
     const t = m && toneOf(m[1], m[2]);
     return t ? { text: s, tone: t } : s;
   };
@@ -422,7 +423,7 @@
     crit: { key: 'crit', title: 'Critical', num: true, card: true, short: 'Crit' },
     bal: { key: 'bal', title: 'Balance', num: true, card: true, short: 'Bal' },
     speed: { key: 'speed', title: 'Speed', meter: SPEEDS.slice().reverse(), card: true, short: '' },
-    hits: { key: 'hits', title: 'Combo', num: true, card: true, short: 'Combo' },
+    hits: { key: 'hits', title: 'Hits per combo', num: true, card: true, short: 'Combo' },
     range: { key: 'range', title: 'Range', num: true, card: true },
     def: { key: 'def', title: 'Defense', num: true, card: true, short: 'Def' },
     prot: { key: 'prot', title: 'Protection', num: true, card: true, short: 'Prot' },
@@ -692,6 +693,9 @@
     if (book) sections.push(book);
     const craft = craftingSection(id);
     if (craft) sections.push(craft);
+    sections.push(...randomUseSections(id));
+    const turnin = itemTurninSection(id);
+    if (turnin) sections.push(turnin);
     const asked = questRefs().need.get(String(id));
     if (asked && asked.size) sections.push({ heading: 'Quests', blocks: [questTable(asked, 'Quests that ask for it')] });
     const books = collectionsOf(id);
@@ -792,14 +796,16 @@
     return (COMMON_BLOCKS = new Set([...n].filter(([, c]) => c > all.length / 2).map(x => x[0])));
   }
   // The kinds of equipment an enchant's AllowItem pattern takes, for the enchant list's Equipment
-  // filter. "Any equipment" counts as every kind.
+  // filter. One that goes on any equipment is "Any equipment" (its own choice in the filter), not every
+  // kind, so a kind's filter shows the enchants made for it.
   const ONTO_KINDS = [['Weapons', /weapon|edged|blunt|axe|lance|bow|crossbow|wand|staff|knuckle|cylinder|atlatl/], ['Armor & clothing', /armor|cloth|robe/],
     ['Headgear', /head|helmet/], ['Gloves', /hand|glove|gauntlet|bracelet/], ['Footwear', /foot|shoes|armorboots/], ['Accessories', /accessary|pendant/],
     ['Shields', /shield/], ['Instruments', /instrument/], ['Tools', /tool|fishing|cooking/]];
+  const ANY_EQUIP = 'Any equipment';
   function ontoKinds(p) {
     const alts = patternAlts(p).map(a => a.toLowerCase());
     if (!alts.length) return [];
-    if (alts.some(a => a.replace(/[^a-z_/&]/g, '').split('&').every(x => x.replace(/\//g, '') === 'equip'))) return ONTO_KINDS.map(k => k[0]);
+    if (alts.some(a => a.replace(/[^a-z_/&]/g, '').split('&').every(x => x.replace(/\//g, '') === 'equip'))) return [ANY_EQUIP];
     return ONTO_KINDS.filter(([, re]) => alts.some(a => re.test(a))).map(k => k[0]);
   }
   const reEsc = s => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
@@ -817,24 +823,26 @@
     if (e.rank) info.push(['Rank', e.rank]);
     const scroll = r.ScrollId && items().get(r.ScrollId);
     if (scroll) info.push(['Scroll', { t: 'item', id: r.ScrollId, label: scroll.name }]);
-    if (truthy(r.IsAlwaysSuccess)) info.push(['Always succeeds', 'Yes']);
-    // RepairCostRate: extra repair cost in percent (100 is the description's "Repair Fee 2x").
-    const rc = num(r.RepairCostRate);
-    if (rc) info.push(['Repair cost', `×${+(1 + rc / 100).toFixed(2)}`]);
+    // What the enchant does to the item, all in Effects (not the info box): its stats, then the repair
+    // cost (RepairCostRate: extra percent, 100 = the description's "Repair Fee 2x"), always succeeding,
+    // and working at any Enchant rank (IsIgnoreLevel).
     const fx = effects(r.OptionList);
     const sections = [];
     const fxCell = f => (f[3] && setElement(f[3]) ? { t: 'set_effect', id: setElement(f[3]).id, label: f[0] } : f.cell || f[0]);
     // A bonus's stat and value blue, a penalty's red (the stat too, as the enchant list does).
-    if (fx.length) sections.push({ heading: 'Effects', blocks: [{ kind: 'table', columns: ['Stat', 'Value', 'Condition'], rows: fx.map(f => { const t = toneOf(f[0], f[1]); return [tonedAs(fxCell(f), t), toned(f[0], f[1]), f[2] || '—']; }) }] });
-    const allow = patterns(r.AllowItem), block = patterns(r.BlockItem);
-    if (allow.length || block.length) {
-      const b = [];
-      if (allow.length) b.push({ kind: 'list', title: 'Can be applied to', items: allow });
-      if (block.length) b.push({ kind: 'list', title: "Can't be applied to", items: block });
-      sections.push({ heading: 'Applies to', blocks: b });
-    }
+    const fxRows = fx.map(f => { const t = toneOf(f[0], f[1]); return [tonedAs(fxCell(f), t), toned(f[0], f[1]), f[2] || '—']; });
+    const rc = num(r.RepairCostRate);
+    if (rc) fxRows.push([{ text: 'Repair cost', tone: rc > 0 ? 'neg' : 'pos' }, { text: `×${+(1 + rc / 100).toFixed(2)}`, tone: rc > 0 ? 'neg' : 'pos' }, '—']);
+    if (truthy(r.IsAlwaysSuccess)) fxRows.push(['Enchanting', 'Always succeeds', '—']);
+    if (truthy(r.IsIgnoreLevel)) fxRows.push(['Enchanting', 'Works at any Enchant rank', '—']);
+    if (fxRows.length) sections.push({ heading: 'Effects', blocks: [{ kind: 'table', columns: ['Stat', 'Value', 'Condition'], rows: fxRows }] });
+    // What it goes on (the exceptions inside those kinds aren't listed: the list says enough).
+    const allow = patterns(r.AllowItem);
+    if (allow.length) sections.push({ heading: 'Applies to', blocks: [{ kind: 'list', items: allow }] });
     sections.push(sourcesSection('sets', e.id));
-    return { title: e.name, subtitle: e.alt || null, icon: null, category: [e.cat], infobox: info, summary: tr(r.OptionDesc), sections };
+    // The game's description says what Effects and Applies to already show, so it's only the summary of
+    // an enchant with neither.
+    return { title: e.name, subtitle: e.alt || null, icon: null, category: [e.cat], infobox: info, summary: fxRows.length || allow.length ? '' : tr(r.OptionDesc), sections };
   }
 
   // Where an enchant's scroll or an item comes from. The game's files don't say, so it ships with
@@ -926,7 +934,7 @@
       if (e) spans.push([at, at + name.length, { t: 'enchant', id: e.id, label: name }]);
     };
     for (const m of s.matchAll(/(^|: |, |\+ )([^,:+()]+?) \((prefix|suffix)\)/g)) enchantAt(m.index + m[1].length, m[2], m[3]);
-    for (const m of s.matchAll(/\b([Ww]ith|and) ([A-Z][\w' -]*?) (prefix|suffix)\b/g)) enchantAt(m.index + m[1].length + 1, m[2], m[3]);
+    for (const m of s.matchAll(/\b([Ww]ith|and|or) ([A-Z][\w' -]*?) (prefix|suffix)\b/g)) enchantAt(m.index + m[1].length + 1, m[2], m[3]);
     // A pattern or manual: the manual's item, else the item it makes; nothing inside it otherwise.
     for (const m of s.matchAll(/\(((?:Tailoring|BlackSmith|Blacksmith) Manual - ((?:[^()]|\([^()]*\))*))\)/g)) {
       const at = m.index + 1, id = itemByName(m[1]) || itemByName(m[2]);
@@ -976,6 +984,13 @@
     if (at < s.length) out.push(s.slice(at));
     return out;
   }
+  // A long note's closing aside on a line of its own: "Gift from Owl pets (Eagle Owl, Snowy Owl) (while
+  // the pet is age 14 or younger)" -> ["Gift from Owl pets (Eagle Owl, Snowy Owl)", "While the pet is age
+  // 14 or younger"]. Only an aside in lower case (not a name, a manual, or "(prefix)").
+  const asideLines = x => {
+    const m = String(x).length > 60 && /^(.{15,}?\S)\s+\(([a-z][^()]{7,})\)$/.exec(String(x));
+    return m ? [m[1], m[2].charAt(0).toUpperCase() + m[2].slice(1)] : [x];
+  };
   // A source: a link when the wiki has its page (named by the source's own name when it has one: the
   // game's is sometimes left in Korean), else its name, else where it is.
   function sourceRef(s) {
@@ -987,16 +1002,25 @@
     if (it) return { t: 'item', id: String(s.id), label: s.n || it.name };
     if (n) return { t: 'npc', id: n.id, label: s.n || n.name, icon: npcFace(n.id) };
     const x = s.n || s.w;
-    return x ? { lines: [noteLinks(x)], sep: '' } : '—';
+    return x ? { lines: asideLines(x).map(noteLinks), sep: '' } : '—';
   }
   // A field boss's drop note, for item and monster pages. "Each player who fought it gets one item from
   // its list" is true of every boss line, so it isn't said (''). A boss whose time runs out leaves
   // undefeated, and everyone who fought it still gets one item from a second list (bossgroupdb
-  // drop_items_escape): said that way, not "if it escapes".
+  // drop_items_escape): said as "if its time runs out", not "if it escapes".
   const bossNote = x => String(x)
     .replace(/^each player who fought it gets one item from its list(?:\s*\([^()]*\))?\.?$/i, '')
-    .replace(/^also ([\d.]+%) per player if it escapes$/i, 'If it leaves undefeated (its time runs out): $1 for each player who fought it')
-    .replace(/^only if it escapes: each player who fought it gets one item from its list(?:\s*\([^()]*\))?\.?$/i, 'Only if it leaves undefeated (its time runs out), for each player who fought it');
+    .replace(/^also ([\d.]+%) per player if it escapes$/i, 'If its time runs out: $1 per player who fought it')
+    .replace(/^only if it escapes: each player who fought it gets one item from its list(?:\s*\([^()]*\))?\.?$/i, 'Only if its time runs out: per player who fought it');
+  // A Shadow Mission drop's chance on each difficulty ("Highest difficulty shown. Per kill, by difficulty:
+  // Basic: 11.5%, Advanced: 1% (none on Hard)"), one difficulty a line: ["Basic: 11.5%", "Advanced: 1%",
+  // "None on Hard"]; any other note as it is ([note]).
+  const DIFF_NOTE = /^(?:Highest difficulty shown\. )?Per [\w ]+?, by difficulty: (.*?)(?:\s*\(none on ([^)]*)\))?\.?$/i;
+  const diffNoteLines = x => {
+    const m = DIFF_NOTE.exec(String(x).trim()), d = m ? [...m[1].matchAll(/([A-Za-z]+): ([\d.]+%)/g)].map(y => `${y[1]}: ${y[2]}`) : [];
+    return d.length ? d.concat(m[2] ? [`None on ${m[2]}`] : []) : [x];
+  };
+  const isDiffLine = x => /^(?:[A-Za-z]+: [\d.]+%|None on .*)$/.test(x);
   // keep: an optional filter over the sources (a manual form's page keeps the shops selling that one).
   function sourcesSection(table, id, keep) {
     const all = keep ? sourcesOf(table, id).filter(keep) : sourcesOf(table, id);
@@ -1043,19 +1067,21 @@
     // kill, by difficulty: Intermediate: 0.25%, Advanced: 0.5% (none on Basic)" -> "Intermediate 0.25%,
     // Advanced 0.5%", or just the names when the chance is the same on each. Its "Shadow missions" place
     // says no more than the kind.
-    const DIFF = /^Highest difficulty shown\. Per \w+, by difficulty: (.*?)(?:\s*\(none on [^)]*\))?\.?$/i;
+    // (Also "Per reward roll, by difficulty: ...", without the first sentence.)
+    const DIFF = /^(?:Highest difficulty shown\. )?Per [\w ]+?, by difficulty: (.*?)(?:\s*\(none on [^)]*\))?\.?$/i;
     const diffsOf = s => {
       const m = s.k === 'shadow_mission' && String(s.cn || '').split(/;\s+/).map(x => DIFF.exec(x.trim())).find(Boolean);
       if (!m) return null;
       const d = [...m[1].matchAll(/([A-Za-z]+): ([\d.]+%)/g)].map(x => [x[1], x[2]]);
-      return d.length ? (new Set(d.map(x => x[1])).size === 1 ? d.map(x => x[0]).join(', ') : d.map(x => `${x[0]} ${x[1]}`).join(', ')) : null;
+      return d.length ? (new Set(d.map(x => x[1])).size === 1 ? [d.map(x => x[0]).join(', ')] : d.map(x => `${x[0]}: ${x[1]}`)) : null;
     };
-    const kindOf = s => { const k = SOURCE_KINDS[s.k] || 'Other', d = diffsOf(s); return d ? { lines: [[k], [d]], sep: '' } : k; };
+    // Each difficulty with its own chance on a line of its own.
+    const kindOf = s => { const k = SOURCE_KINDS[s.k] || 'Other', d = diffsOf(s); return d ? { lines: [[k], ...d.map(x => [x])], sep: '' } : k; };
     const notesOf = (s, price = true) => ({ lines: [...new Set([...(placeIsSource(s) ? [] : String(s.w || '').split(/;\s+/)), s.a ? '×' + s.a : '', ...String(s.cn || '').split(/;\s+/), price && priceOf(s) ? priceOf(s).toLocaleString('en-US') + ' G' : '']
       .filter(x => !(diffsOf(s) && (DIFF.test(String(x).trim()) || /^shadow missions?$/i.test(String(x).trim()))))
       .map(x => bossNote(noWeight(sumNote(notSelf(s, String(x || '').trim()))).trim())))]
       .filter(x => x && !(s.c != null && /^[\d,]+ in [\d,]+$/.test(x)))
-      .map(clarifyChest).filter(Boolean).map(capFirst).map(noteLinks), sep: '' });
+      .map(clarifyChest).filter(Boolean).flatMap(diffNoteLines).flatMap(asideLines).map(capFirst).map(noteLinks), sep: '' });
     // One table per way to get it: shops apart from drops, and so on. In each, the likeliest first (a
     // common item drops from hundreds of monsters), then the sources without a chance (a sure way).
     const GROUPS = [['Shops', ['shop']], ['Monster drops', ['monster', 'boss']], ['Dungeons and shadow missions', ['chest', 'puzzle', 'dungeon', 'shadow_mission']],
@@ -1158,7 +1184,7 @@
         // The stats the quality gives; the quality itself only when they aren't known (a random quality,
         // or an item no manual makes).
         const got = qs ? qs.filter(([k, b, to]) => b !== to && k !== 'durability').map(([k, b, to]) => arrow(Q_LABEL[k], b, to, Q_PCT[k] ? '%' : '', to > b)) : [];
-        secs.push(got.length ? got : [Array.isArray(q) ? `Made at a random quality from ${q[0]} to ${q[1]}` : `Made at quality ${q}`]);
+        secs.push(got.length ? got : [Array.isArray(q) ? `Made with a random quality score from ${q[0]} to ${q[1]}` : `Made with a quality score of ${q}`]);
       }
       const dur = [];
       if (v.d) dur.push(arrow('Max durability', v.d[0], v.d[1], '', v.d[1] > v.d[0]));
@@ -1173,7 +1199,8 @@
       const ss = v.s.slice().sort((a, b) => (b[5] < 0 ? 101 : b[5]) - (a[5] < 0 ? 101 : a[5]));
       const all = ss.map(([k, t, sid, n, w, c, cn]) => {
         const ref = sourceRef({ k, t: t || undefined, id: sid || undefined, n: str(n), w: str(w) });
-        const kind = SOURCE_KINDS[k] || 'Other', refParts = ref && ref.lines ? ref.lines[0] : [ref];
+        // (A source's aside, on a line of its own in its cell, goes after it here.)
+        const kind = SOURCE_KINDS[k] || 'Other', refParts = ref && ref.lines ? [].concat(...ref.lines.map((l, i) => (i ? [' · '] : []).concat(l))) : [ref];
         // A shop's random enchanted stock: its tab, how often this one is rolled, and its price.
         if (k === 'shop') {
           const tab = /,\s*([^,]*\btab\b[^,]*)$/.exec(str(w)), price = /\(([\d,]+) gold\)/.exec(str(cn));
@@ -1353,7 +1380,8 @@
     const bon = enhanceBonuses(it);
     const blocks = [{ kind: 'kv', rows: [['Type', sr.type], ['Raised with', stone(sr.type)], ['Converts to', link(sr.other)], ['Made from', link(sr.N)]] }];
     blocks.push({ kind: 'table', columns: ['Level', 'Bonus', 'Gold', 'Success', 'If it fails'],
-      rows: E.levels.map(l => [String(l[0]), bon ? bon.map(b => bonusText(b, b.values[l[0] - 1])).join(', ') : '—', gold(l[1]), num(l[2]) + '%', l[2] >= 100 ? '—' : failText(l)]) });
+      // Each bonus a line.
+      rows: E.levels.map(l => [String(l[0]), bon ? { lines: bon.map(b => bonusText(b, b.values[l[0] - 1])), sep: '' } : '—', gold(l[1]), num(l[2]) + '%', l[2] >= 100 ? '—' : failText(l)]) });
     // The conversion's cost: "20,000 G times the level" when it's that, else each level's.
     const per = E.convert.length && E.convert[0][1] / E.convert[0][0];
     const conv = per && E.convert.every(c => c[1] === c[0] * per) ? `${gold(per)} times the level` : E.convert.map(c => `${gold(c[1])} at level ${c[0]}`).join(', ');
@@ -1408,10 +1436,23 @@
     return { heading: 'Repair', blocks: [
       { kind: 'table', columns: ['Success rate', 'Gold per point', 'NPCs'], rows },
       { kind: 'note', text: 'Blessed with Holy Water, or protected by a Repair Protection Potion? Repair all at once. Otherwise it makes no difference.' },
+      // One short fact a line, under a heading per case.
       { kind: 'details', summary: 'How repairs work', blocks: [
-        { kind: 'text', text: 'Each point is its own roll at the NPC\'s success rate, and costs the same whichever way you repair. You only pay for the points that succeed: a failed point is refunded, but it lowers the max durability by 1. So for an item that isn\'t blessed, repairing one point at a time or all at once comes out the same. A higher success rate costs more, and an enchant with a repair cost changes the price.' },
-        { kind: 'text', text: 'Blessed items: the blessing halves each point\'s chance to fail, but it\'s lost if any point fails. A full repair only removes it after every point has been rolled, so all of them get the better odds. One point at a time, the blessing is gone after the first failure, and the points after it roll at the normal rate.' },
-        { kind: 'text', text: 'Repair Protection Potion: if any points fail in a repair, one use of the potion is spent and none of the failed points lower the max durability, however many failed. So a full repair covers every failure with one use; one point at a time spends a use on each point that fails.' },
+        { kind: 'list', title: 'Every repair', items: [
+          { lead: 'Each point', text: 'is its own roll at the NPC\'s success rate.' },
+          { lead: 'Failed points', text: 'are refunded, but each lowers the max durability by 1. You only pay for the points that succeed.' },
+          { lead: 'One at a time or all at once', text: 'comes out the same for an item that isn\'t blessed or protected.' },
+          { lead: 'Price:', text: 'a higher success rate costs more; an enchant with a repair cost changes it.' }] },
+        { kind: 'list', title: 'Blessed with Holy Water', items: [
+          { lead: 'Each point', text: 'fails half as often.' },
+          { lead: 'Any failed point', text: 'removes the blessing.' },
+          { lead: 'Repair all:', text: 'the blessing comes off only after every point has rolled, so all of them get the better odds.' },
+          { lead: 'One point at a time:', text: 'the blessing is gone after the first failure; the points after it roll at the normal rate.' }] },
+        { kind: 'list', title: 'Repair Protection Potion', items: [
+          { lead: 'Failed points', text: 'don\'t lower the max durability.' },
+          { lead: 'One use', text: 'is spent per repair that has any failures, however many failed.' },
+          { lead: 'Repair all:', text: 'one use covers every failure.' },
+          { lead: 'One point at a time:', text: 'a use for each point that fails.' }] },
       ] },
     ] };
   }
@@ -1500,7 +1541,9 @@
   // rank 1)>.
   const CRAFT_SKILLS = { Tailoring: 'Tailoring', Tailoring_Arbeit: 'Tailoring', BlackSmith: 'Blacksmithing', Spinning: 'Weaving', Weaving: 'Weaving',
     Refine: 'Refining', Milling: 'Milling', PotionMaking: 'Potion Making', Handicraft: 'Handicraft', ManaForming: 'Magic Craft', CrystalMaking: 'Magic Craft',
-    MetalExtraction: 'Metallurgy', Carpentry: 'Carpentry', StageTicket: 'Theatre Mission pass' };
+    MetalExtraction: 'Metal Conversion', Carpentry: 'Carpentry', StageTicket: 'Make Theatre Mission Pass' };
+  // (<MetalExtraction> is Metal Conversion's, the alchemy skill that turns ore into ingots, not
+  // Metallurgy's: the game's handler for that section is Metal Conversion's.)
   // "Cheap Fabric; Common Finishing Thread" with "*/x/, 1 ; */y/, 2": [[name, count, item id, pattern]].
   // The pattern (an item category filter, as the game reads it) is what the recipe really takes: the
   // name text has slips ("Iron Ingot" for a copper finish's */ingot/copperingot/*) and names no item for
@@ -1681,7 +1724,13 @@
         return [name, row[3] + '%', row[2] + '%', row[1] + '%', row[0] + '%', a ? String(a) : 'Never (it goes backwards more than forwards)'];
       }) };
     return [{ kind: 'kv', rows: kv }, table,
-      { kind: 'note', text: 'The item is finished when its progress reaches 100%. Each attempt uses one set of the materials. Which materials you use, and their quality, don\'t change the progress. Dex above 20 turns some Good results into Best, Making Mastery cuts the failures, and working in the rain adds a little to each attempt.' }];
+      { kind: 'list', title: 'Good to know', items: [
+        { lead: 'Finished', text: 'when its progress reaches 100%.' },
+        { lead: 'Each attempt', text: 'uses one set of the materials.' },
+        { lead: 'Materials', text: '(which ones, and their quality) don\'t change the progress.' },
+        { lead: 'Dex above 20', text: 'turns some Good results into Best.' },
+        { lead: 'Making Mastery', text: 'cuts the failures.' },
+        { lead: 'Rain', text: 'adds a little to each attempt.' }] }];
   }
   // The finished item: GAME_SOURCES.crafting.quality = {keys, rules: [[[stat index], [[from, to, [change]]],
   // [[skill level, [change]]]]], forms: {form: [rule, [base]]}, play}. How the game runs it (traced in the
@@ -1724,18 +1773,27 @@
     const smith = r.skill === 'Blacksmithing', play = (q.play || {})[smith ? 'Blacksmithing' : 'Tailoring'] || [];
     const good = play[2] ? Math.round(play[2][2]) : 82, top = Math.max(...q.bands.map(b => b[1]));
     const normal = qualityStats(q, 0), worst = qualityStats(q, -100), fine = qualityStats(q, good), best = qualityStats(q, top, 99);
-    const blocks = [{ kind: 'table', columns: ['Stat', 'Normal', 'Worst', `Good (quality ${good})`, q.bonus.length ? 'Best (rank 1)' : 'Best'],
+    const blocks = [{ kind: 'table', columns: ['Stat', 'Normal', 'Worst', `Good (quality score ${good})`, q.bonus.length ? 'Best (rank 1)' : 'Best'],
       rows: groups.map(g => [g[0], text(g, normal), text(g, worst), text(g, fine), { text: text(g, best), tone: 'pos' }]) }];
-    blocks.push({ kind: 'details', summary: 'Stats at each quality', blocks: [{ kind: 'table', columns: ['Quality', ...groups.map(g => g[0])],
+    blocks.push({ kind: 'details', summary: 'Stats at each quality score', blocks: [{ kind: 'table', columns: ['Quality score', ...groups.map(g => g[0])],
       rows: q.bands.slice().reverse().map(([lo, hi]) => [lo === hi ? String(lo) : `${lo} to ${hi}`, ...groups.map(g => text(g, qualityStats(q, lo)))]) }] });
     if (q.bonus.length) {
-      const adds = ch => q.keys.map((k, i) => [k, ch[i]]).filter(([k, n]) => n && k !== 'durability').map(([k, n]) => `${Q_LABEL[k]} ${signed(n)}${Q_PCT[k] ? '%' : ''}`).join(', ');
-      blocks.push({ kind: 'table', title: 'Rank bonus (on top of quality)', columns: ['Your rank', 'Adds'],
+      // One stat a line.
+      const adds = ch => ({ lines: q.keys.map((k, i) => [k, ch[i]]).filter(([k, n]) => n && k !== 'durability').map(([k, n]) => `${Q_LABEL[k]} ${signed(n)}${Q_PCT[k] ? '%' : ''}`), sep: '' });
+      blocks.push({ kind: 'table', title: 'Rank bonus (on top of the quality score)', columns: ['Your rank', 'Adds'],
         rows: q.bonus.map(([lv, ch], i) => ['Rank ' + CRAFT_RANKS[lv] + (i < q.bonus.length - 1 ? '' : CRAFT_RANKS[lv] === '1' ? ' and Dan' : ' and up'), adds(ch)]) });
     }
-    const tier = (name, x) => (x ? `about ${Math.round(x[2])} at ${name}` : '');
+    // How the quality score comes about: a short list, the best a rank can do as a small table.
     const marks = smith ? 'hammer mark' : 'stitch';
-    blocks.push({ kind: 'note', text: `Quality comes from the finishing minigame: the closer each ${marks} lands, the higher, from -100 to 100. Your rank limits how close a ${marks} can count, so even perfect hits give ${[tier('Novice to D', play[0]), tier('C to 9', play[1]), tier('rank 8 and up', play[2])].filter(Boolean).join(', ')}; 100 needs every one perfect and lucky. Normal is quality -20 to 19, the item's own stats. The finishing material only changes the color. At quality 80 or more and rank 9 or higher, your name goes on the item.` });
+    const tiers = [['Novice to D', play[0]], ['C to 9', play[1]], ['Rank 8 and up', play[2]]].filter(t => t[1]).map(([name, x]) => [name, `About ${Math.round(x[2])}`]);
+    blocks.push({ kind: 'list', title: 'How the quality score comes about', items: [
+      { lead: 'The finishing minigame:', text: `the closer each ${marks} lands, the higher the quality score (-100 to 100).` },
+      { lead: 'Your rank', text: `limits how close a ${marks} can count, so even perfect hits only reach the quality score below.` },
+      { lead: 'Quality score 100', text: 'needs every one perfect, and luck.' },
+      { lead: 'Normal', text: 'is a quality score of -20 to 19: the item\'s own stats.' },
+      { lead: 'The finishing material', text: 'only changes the color.' },
+      { lead: 'Your name', text: 'goes on the item at a quality score of 80 or more, made at rank 9 or higher.' }] });
+    if (tiers.length) blocks.push({ kind: 'table', title: 'Perfect hits give', columns: ['Your rank', 'Quality score'], rows: tiers });
     return blocks;
   }
   // A manual or pattern form's page: what it makes, what it takes, what it costs and who sells it; the
@@ -1747,7 +1805,7 @@
     const info = [['Skill', skillByName(r.skill)], ['Makes', p ? itemLink(r.product, p.name) : 'Item ' + r.product]];
     if (m) info.push(['Item', itemLink(r.manual, m.name)]);
     if (r.price) info.push(['Price', { text: gold(r.price), tone: 'gold' }]);
-    info.push(['Form', String(id)]);
+    info.push(['Form ID', String(id)]);
     const sections = [{ heading: 'What it takes', blocks: [{ kind: 'kv', rows: [['Materials (each attempt)', matsCell(r.mats.map(materialCell))]].concat(r.finish.length ? [['To finish', finishCell(r.finish)]] : []) }] }];
     const making = manualMakingBlocks(r);
     if (making.length) sections.push({ heading: 'Making it', blocks: making });
@@ -1809,7 +1867,7 @@
         const maxOnly = (g, o) => (g[0] === 'Durability' ? String(o.durability_max !== undefined ? o.durability_max : text(g, o)) : text(g, o));
         const rows = groups.map(g => {
           const lines = [[`${maxOnly(g, worst)} to `, { text: maxOnly(g, best), tone: 'pos' }, maxOnly(g, normal) !== maxOnly(g, best) ? ` (normally ${maxOnly(g, normal)})` : '']];
-          if (g[0] === 'Durability' && worst.durability !== undefined && worst.durability < worst.durability_max) lines.push([`At the worst quality it comes worn: ${worst.durability} of ${worst.durability_max} durability`]);
+          if (g[0] === 'Durability' && worst.durability !== undefined && worst.durability < worst.durability_max) lines.push([`At the worst quality score it comes worn: ${worst.durability} of ${worst.durability_max} durability`]);
           return [g[0] === 'Durability' ? 'Max durability' : g[0], { lines, sep: '' }];
         });
         const key = JSON.stringify(rows);
@@ -1830,6 +1888,8 @@
         rows: cook.map(r => [skillByName(r.skill), r.action, matsCell(ingredientCells(r.ess)), matsCell(r.extra.map(extraCell))]) });
       blocks.push({ kind: 'note', text: 'Each ingredient\'s share of the dish: the closer the mix is to it, the better the dish. An optional extra added makes it better or worse.' });
     }
+    // What the producing skills can give at random (random synthesis, Fragmentation, finds).
+    blocks.push(...randomItemBlocks(id));
     // What a pattern or manual makes, each item once (some have several forms).
     const makes = [...new Map((byManual.get(String(id)) || []).map(r => [r.product, r])).values()];
     if (makes.length) {
@@ -1840,19 +1900,93 @@
 
   // The Crafting list: everything a recipe makes, by skill (an item made several ways is under each).
   const CRAFT_CATS = [['tailoring', 'Tailoring'], ['blacksmithing', 'Blacksmithing'], ['weaving', 'Weaving'], ['refining', 'Refining'], ['milling', 'Milling'],
-    ['potion-making', 'Potion Making'], ['handicraft', 'Handicraft'], ['magic-craft', 'Magic Craft'], ['metallurgy', 'Metallurgy'], ['carpentry', 'Carpentry'],
-    ['synthesis', 'Synthesis'], ['cooking', 'Cooking'], ['theatre-mission-pass', 'Theatre Mission pass']];
+    ['potion-making', 'Potion Making'], ['handicraft', 'Handicraft'], ['magic-craft', 'Magic Craft'], ['metal-conversion', 'Metal Conversion'], ['carpentry', 'Carpentry'],
+    ['synthesis', 'Synthesis'], ['cooking', 'Cooking'], ['theatre-mission-pass', 'Make Theatre Mission Pass']];
   const craftCat = skill => (CRAFT_CATS.find(c => c[1] === skill) || [slug(skill)])[0];
   function craftRows() {
-    const out = [];
+    const out = [], at = new Map();
     for (const [id, list] of recipes().byProduct) {
       const it = items().get(id);
       if (!it) continue;
       const sk = [...new Set(list.map(r => r.skill))];
-      out.push({ id, name: it.name, alt: it.local, icon: itemIcon(id), cat: sk.map(craftCat), sub: sk.join(', '), skills: sk.join(', '),
-        recipes: list.length, tags: it.base });
+      at.set(id, out.push({ id, name: it.name, alt: it.local, icon: itemIcon(id), cat: sk.map(craftCat), sub: sk.join(', '), skills: sk.join(', '),
+        recipes: list.length, tags: it.base }) - 1);
+    }
+    // What the producing skills can give at random (random synthesis, Fragmentation, finds), under their skill.
+    const R = randomIndex();
+    for (const [id, hits] of R.made) {
+      const it = items().get(id);
+      if (!it) continue;
+      const sk = [...new Set(hits.map(h => skillName(h.t.s)).filter(Boolean))];
+      if (at.has(id)) {
+        const row = out[at.get(id)], all = [...new Set(row.skills.split(', ').concat(sk))];
+        Object.assign(row, { cat: [...new Set(row.cat.concat(sk.map(craftCat)))], sub: all.join(', '), skills: all.join(', ') });
+      } else out.push({ id, name: it.name, alt: it.local, icon: itemIcon(id), cat: sk.map(craftCat), sub: sk.join(', '), skills: sk.join(', '), recipes: 0, tags: it.base });
     }
     return out;
+  }
+  // How many Craftables a skill (by name) has in its list.
+  const craftCount = name => cached('craftCount', () => {
+    const n = new Map();
+    for (const r of craftRows()) for (const c of [].concat(r.cat)) n.set(c, (n.get(c) || 0) + 1);
+    return n;
+  }).get(craftCat(name)) || 0;
+  // GAME_SOURCES.randomOutputs = {t: [{k, s: skill, title, how, c: [column], r: [[item, [value], qty, note]]} or
+  // {..., g: [[from item, [[item, [value], qty, note]]]]}], rules: [[skill, text]]}: what a producing skill can
+  // give at random. made: item -> [{t, row}] (it can come out); from: item -> [{t, rows}] (using the skill on
+  // it gives these); gives: item -> [{t, from, row}] (it comes out of using the skill on another).
+  const randomIndex = () => cached('randomIndex', () => {
+    const R = (window.GAME_SOURCES || {}).randomOutputs || {}, made = new Map(), from = new Map(), gives = new Map();
+    const add = (m, k, v) => { if (!m.has(k)) m.set(k, []); m.get(k).push(v); };
+    for (const t of R.t || []) {
+      for (const row of t.r || []) add(made, row[0], { t, row });
+      for (const [src, rows, uses] of t.g || []) { add(from, src, { t, rows, uses }); for (const row of rows) { add(gives, row[0], { t, from: src, row, uses }); add(made, row[0], { t, row, from: src }); } }
+    }
+    return { tables: R.t || [], rules: R.rules || [], made, from, gives };
+  });
+  const rowQty = row => (row[2] && row[2] !== '1' ? ' ×' + row[2] : '');
+  // A list's "how" text: one sentence, a note; several, a list of them, one a line.
+  const howBlock = how => { const v = sentenceLines(how); return typeof v === 'string' ? { kind: 'note', text: how } : { kind: 'list', title: 'Good to know', items: v.lines }; };
+  // An item's page: where the random lists can give it, and what using a skill on it gives.
+  function randomItemBlocks(id) {
+    const R = randomIndex(), k = String(id), out = [];
+    const flat = (R.made.get(k) || []).filter(h => !h.from);
+    for (const t of [...new Set(flat.map(h => h.t))]) {
+      const rows = flat.filter(h => h.t === t);
+      out.push({ kind: 'table', title: t.title, columns: ['Skill', ...t.c, ...(rows.some(h => h.row[3]) ? ['Note'] : [])],
+        rows: rows.map(h => [skillLink(t.s, skillName(t.s)), ...h.row[1].map(v => v || '—'), ...(rows.some(x => x.row[3]) ? [h.row[3] || '—'] : [])]) });
+      if (t.how) out.push(howBlock(t.how));
+    }
+    const got = R.gives.get(k) || [];
+    for (const t of [...new Set(got.map(h => h.t))]) {
+      const rows = got.filter(h => h.t === t);
+      out.push({ kind: 'table', title: `From ${t.title}`, columns: ['Using it on', ...t.c],
+        rows: rows.map(h => [h.uses > 1 ? { lines: [[itemRef(h.from), ` (${h.uses} at a time)`]], sep: '' } : itemRef(h.from), ...h.row[1].map(v => v || '—')]) });
+    }
+    return out;
+  }
+  // An item's page: what using a skill on it gives (Fragmentation), a section per skill.
+  function randomUseSections(id) {
+    return (randomIndex().from.get(String(id)) || []).map(({ t, rows, uses }) => ({ heading: t.title, blocks: [
+      ...(uses > 1 ? [{ kind: 'text', text: `It takes ${uses} at a time.` }] : []),
+      { kind: 'table', columns: ['You get', ...t.c], rows: rows.map(row => [{ lines: [[itemRef(row[0]), rowQty(row)]], sep: '' }, ...row[1].map(v => v || '—')]) },
+      ...(t.how ? [howBlock(t.how)] : [])] }));
+  }
+  // A skill's page: the random lists it draws from, each folded, and its rules.
+  function randomSkillSection(id) {
+    const R = randomIndex(), k = String(id), tabs = R.tables.filter(t => String(t.s) === k), rules = R.rules.filter(r => String(r[0]) === k);
+    if (!tabs.length && !rules.length) return null;
+    const blocks = [];
+    if (rules.length) blocks.push({ kind: 'list', items: rules.map(r => r[1]) });
+    for (const t of tabs) {
+      const inner = [];
+      if (t.how) inner.push(howBlock(t.how));
+      if (t.g) inner.push({ kind: 'table', columns: ['Using it on', 'You get'], rows: t.g.map(([src, rows, uses]) => [uses > 1 ? { lines: [[itemRef(src), ` (${uses} at a time)`]], sep: '' } : itemRef(src),
+        { lines: rows.map(row => [itemRef(row[0]), rowQty(row), row[1].filter(Boolean).length ? ` (${row[1].filter(Boolean).join(', ')})` : '']), sep: '' }]) });
+      else inner.push({ kind: 'table', columns: ['Item', ...t.c], rows: t.r.map(row => [{ lines: [[itemRef(row[0]), rowQty(row)]], sep: '' }, ...row[1].map(v => v || '—')]) });
+      blocks.push({ kind: 'details', summary: `${t.title} (${(t.g || t.r).length.toLocaleString('en-US')})`, blocks: inner });
+    }
+    return { heading: 'What it can give', blocks };
   }
   // The Craftables list opens each item's own page (its recipes are under "How it's made" there); an
   // old #/craft/<id> link shows the item's page too.
@@ -1941,25 +2075,28 @@
   const upgradesFor = cat => (cat ? upgrades().filter(u => { const t = upgradeTest(u.r.item_filter || ''); return t && t(cat); }) : []);
   const npcCells = u => u.npcs.map(npcRef);
   // need_gem's numbers are sizes: the game writes the list as "<gem> <n>cm, ..." (StandardD's
-  // "%s %.1fcm, ") followed by "or bigger" (pli_upgradeboxitem.20), and the upgrade takes one gem,
-  // any one of the list ("Attaches a gem to ...", "You do not have the right gem for the upgrade";
-  // Thathis's cat armor lists ten gems). Gems (and fish) are unstackable and each one has its own size
-  // (base_size: the average). Other items are counted instead: stackables (Cat's Eye, Bamboo Pearl,
-  // Magic Diamond) can't each have a size, and parts such as the Bronze Blade aren't gems.
+  // "%s %.1fcm, ") followed by "or bigger" (pli_upgradeboxitem.20). The upgrade takes EVERY gem listed,
+  // one bag item per entry: SItemUpgradeDesc::IsAvailableGem (StandardD 0x10296822) walks need_gem (a
+  // multimap size -> gem id, built by BuildDesc 0x10296a90), takes for each entry the smallest bag item
+  // of that id at size - 0.005 or more, and passes only when every entry found one; the upgrade
+  // (GameSystemD 0x67dfef40) then deletes each of them (unicorn canary: 3,008 cases, 0 mismatches;
+  // docs/mabipro_wiki.md "Gem upgrades take every gem listed"). Gems (and fish) are unstackable and each
+  // one has its own size (base_size: the average); stackables (Cat's Eye, Bamboo Pearl, Magic Diamond)
+  // and parts such as the Bronze Blade show as ×1 (one is taken; every such entry's number is 1).
   const gemSized = gid => {
     const g = items().get(gid);
     return !!g && num(tagAttrs(g.r.XML, 'xml').base_size) > 0 && num(g.r.Bundle_Max) <= 1 && /^\/jewel\/|\/fish\//.test(g.r.Category || '');
   };
   const gemName = gid => { const g = items().get(gid); return g ? g.name : 'Item ' + gid; };
   const gemRef = gid => (items().get(gid) ? itemLink(gid, gemName(gid)) : gemName(gid));
-  const gemAmount = (gid, n) => (gemSized(gid) ? `${fmtN(n)}cm ×1` : `×${fmtN(n)}`);
-  // "Topaz 4cm ×1 / or Ruby 2cm ×1 / or Diamond 1cm ×1", one per line, the gems linked.
-  const gemCell = u => ({ lines: u.gems.map(([gid, n], i) => [i ? 'or ' : '', gemRef(gid), ' ' + gemAmount(gid, n)]), sep: '' });
-  const GEM_NOTE = 'A gem upgrade takes one gem: any one of those listed, at the size shown or bigger.';
-  // The builder's materials ([[name, count]], added up across the upgrades picked): the choice of
-  // gems as one material, one of it per upgrade ("Topaz 4cm or Ruby 2cm"); an unsized item by count.
-  const builderGems = u => (u.gems.length === 1 && !gemSized(u.gems[0][0]) ? [[gemName(u.gems[0][0]), u.gems[0][1]]]
-    : u.gems.length ? [[u.gems.map(([gid, n]) => gemName(gid) + (gemSized(gid) ? ` ${fmtN(n)}cm` : n !== 1 ? ` ×${fmtN(n)}` : '')).join(' or '), 1]] : []);
+  // Every gem with its quantity (one of each), so no row is left without one: "4cm ×1", or "×1".
+  const gemAmount = (gid, n) => (gemSized(gid) ? `${fmtN(n)}cm ×1` : '×1');
+  // "Topaz 4cm ×1 / Ruby 2cm ×1 / Diamond 1cm ×1", one per line, the gems linked (all of them are needed).
+  const gemCell = u => ({ lines: u.gems.map(([gid, n]) => [gemRef(gid), ' ' + gemAmount(gid, n)]), sep: '' });
+  const GEM_SIZE_NOTE = 'At the size shown or bigger.';
+  // The builder's materials ([[name, count]], added up across the upgrades picked): each gem its own
+  // material, one per upgrade ("Topaz 4cm", "Ruby 2cm"); an unsized item by name.
+  const builderGems = u => u.gems.map(([gid, n]) => [gemName(gid) + (gemSized(gid) ? ` ${fmtN(n)}cm` : ''), 1]);
   const UPG_STEPS_NOTE = 'Steps: how many upgrades the item may already have for this one to be offered (0: none yet).';
 
   function upgradePage(id) {
@@ -1986,8 +2123,8 @@
     }
     if (u.gems.length) {
       sections.push({ heading: 'Gems needed', blocks: [{ kind: 'table', columns: ['Gem', 'Size', 'Count'],
-        rows: u.gems.map(([gid, n]) => (gemSized(gid) ? [gemRef(gid), fmtN(n) + 'cm', 1] : [gemRef(gid), '—', n])) }]
-        .concat(u.gems.length > 1 ? [{ kind: 'note', text: GEM_NOTE }] : gemSized(u.gems[0][0]) ? [{ kind: 'note', text: 'At the size shown or bigger.' }] : []) });
+        rows: u.gems.map(([gid, n]) => (gemSized(gid) ? [gemRef(gid), fmtN(n) + 'cm', 1] : [gemRef(gid), '—', 1])) }]
+        .concat(u.gems.some(([gid]) => gemSized(gid)) ? [{ kind: 'note', text: GEM_SIZE_NOTE }] : []) });
     }
     const b = [];
     const pats = patterns(r.item_filter);
@@ -2121,7 +2258,8 @@
     ['imMelee', 'Melee auto-defense'], ['imRanged', 'Ranged auto-defense'], ['imMagic', 'Magic auto-defense'], ['splashR', 'Splash radius'], ['splashD', 'Splash damage'],
     ['gSpeed', 'Gathering speed'], ['gBonus', 'Gathering bonus']];
   const pathVal = (st, k) => (k === 'dmg' ? [st.dmgMin || 0, st.dmgMax || 0] : k === 'wound' ? [st.wMin || 0, st.wMax || 0] : st[k] || 0);
-  const pathText = (st, k, unit = '') => { const v = pathVal(st, k); return Array.isArray(v) ? `${v[0]}~${v[1]}${unit}` : v + unit; };
+  // (Rounded: added-up fractions leave float dust, "0.6000000000000001".)
+  const pathText = (st, k, unit = '') => { const v = pathVal(st, k); return Array.isArray(v) ? `${round2(v[0])}~${round2(v[1])}${unit}` : round2(v) + unit; };
   function upgradePathsSection(it, list) {
     const P = upgradePaths(it, list);
     if (!P) return null;
@@ -2129,12 +2267,13 @@
       return { heading: 'Upgrade paths', blocks: [{ kind: 'note', text: `There are over ${PATH_CAP.toLocaleString('en-US')} ways to fill its ${P.slots} upgrades; the upgrade builder in Upgrades tries any of them.` }] };
     }
     const shown = PATH_STATS.filter(([k]) => P.paths.some(p => JSON.stringify(pathVal(p.st, k)) !== JSON.stringify(pathVal(P.base, k))) || (k === 'dmg' && P.base.dmgMax !== undefined));
-    // The final cell: the item's main numbers always, others only where this path changes them.
+    // The final cell: the item's main numbers always, others only where this path changes them, one
+    // stat a line, then the proficiency and gold.
     const MAIN = new Set(['dmg', 'crit', 'bal', 'dur', 'def', 'prot']);
     const cells = new Map();
-    const stepCell = o => cells.get(o) || cells.set(o, { lines: [[{ t: 'upgrade', id: o.id, label: o.label }], [`${o.ep} / ${gold(o.gold)}`]], sep: '' }).get(o);
-    const finalCell = p => ({ lines: [[shown.filter(([k]) => MAIN.has(k) || JSON.stringify(pathVal(p.st, k)) !== JSON.stringify(pathVal(P.base, k)))
-      .map(([k, l, u]) => `${l} ${pathText(p.st, k, u)}`).join(', ')], [{ text: `${p.ep} / ${gold(p.gold)}`, tone: 'gold' }]], sep: '' });
+    const stepCell = o => cells.get(o) || cells.set(o, { lines: [[{ t: 'upgrade', id: o.id, label: o.label }], [`${o.ep} proficiency`], [gold(o.gold)]], sep: '' }).get(o);
+    const finalCell = p => ({ lines: [...shown.filter(([k]) => MAIN.has(k) || JSON.stringify(pathVal(p.st, k)) !== JSON.stringify(pathVal(P.base, k)))
+      .map(([k, l, u]) => [`${l} ${pathText(p.st, k, u)}`]), [{ text: `${p.ep} proficiency`, tone: 'gold' }], [{ text: gold(p.gold), tone: 'gold' }]], sep: '' });
     const steps = Array.from({ length: P.filled }, (_, i) => `Upgrade ${i + 1}`);
     // The best path for each goal: the stat it's for first, then damage, then the cheaper one. Paths
     // that win several goals are one row named for each. Min damage counts up to the max (a path with
@@ -2178,7 +2317,8 @@
       : 'Each path fills all the item\'s upgrades, in an order the game offers them.', 'Proficiency is what each upgrade needs on the item; gold is its price.'];
     if (list.some(u => !u.gems.length && artisanOf(u))) notes.push('Artisan upgrades give random results, so they aren\'t in these paths.');
     if (all.some(p => p.seq.some(o => o.notes.length))) notes.push('Upgrades with other effects (an enchant, binding) count only their stats here; their pages say the rest.');
-    blocks.push({ kind: 'note', text: notes.join(' ') });
+    // One note a line.
+    blocks.push({ kind: 'list', title: 'Good to know', items: notes });
     return { heading: 'Upgrade paths', wide: true, blocks };
   }
   // An item page's "Upgrades" section: the builder, then every upgrade.
@@ -2191,8 +2331,8 @@
     const builder = upgradeBuilder(it, list);
     // The upgrades first, the builder to try them under them.
     return { heading: 'Upgrades', wide: true, blocks: [
-      { kind: 'table', columns: ['Upgrade', 'Effect', 'Proficiency', 'Gold', 'Steps', 'NPCs'].concat(gems ? ['Gems'] : []), rows: rowsU },
-      { kind: 'note', text: UPG_STEPS_NOTE + (gems ? ' Gem upgrades count gem upgrades. ' + GEM_NOTE : '') },
+      { kind: 'table', columns: ['Upgrade', 'Effect', 'Proficiency', 'Gold', 'Steps', 'NPCs'].concat(gems ? ['Gems'] : []), nowrap: ['Gems'], fit: true, rows: rowsU },
+      { kind: 'note', text: UPG_STEPS_NOTE + (gems ? ' Gem upgrades count gem upgrades. Gems: ' + GEM_SIZE_NOTE.toLowerCase() : '') },
     ].concat(builder ? [builder] : []) };
   }
 
@@ -2263,9 +2403,19 @@
   }
   const setItemIds = key => [...setItems()].filter(([, s]) => s.el.some(p => p[0] === key) || s.quality.some(q => q.bonus.some(p => p[0] === key))).map(x => x[0]);
 
-  // GAME_SOURCES.setEffects = {effect key: [[points, what (with its numbers), inferred]]}: what each set
+  // GAME_SOURCES.setEffects = {effect key: [[points, what (with its numbers; text or [main, details...]), inferred]]}: what each set
   // effect does at each threshold (its _rules, how points add up, aren't shown).
   const setEffectFx = key => ((window.GAME_SOURCES || {}).setEffects || {})[String(key).toLowerCase()] || [];
+  // A text of several sentences (also split at "; ") one a line, for a table cell or a kv value; one
+  // sentence stays as it is.
+  const sentenceLines = s => {
+    const parts = String(s || '').split(/(?<=\.)\s+(?=[A-Z(])|(?<=;)\s+/).map(x => x.replace(/;$/, '.').trim()).filter(Boolean).map(x => x[0].toUpperCase() + x.slice(1));
+    return parts.length > 1 ? { lines: parts, sep: '' } : String(s || '');
+  };
+  // A set effect's what: [main line, details...] (the details muted under it), or one text.
+  const setFxLines = what => (Array.isArray(what)
+    ? { lines: [[what[0]], ...what.slice(1).map(d => [{ text: d, tone: 'muted' }])], sep: '' }
+    : sentenceLines(what));
   function setEffectPage(id) {
     const e = setElement(id);
     if (!e) return null;
@@ -2274,12 +2424,13 @@
     const first = e.th.length ? setCondition(e, e.th[0]) : null;
     if (e.th.length === 1 && first) info.push(['Condition', first.name]);
     const sections = [];
-    // What it does in numbers (setEffectFx, traced in the server code), each threshold its own row; the
-    // game's own description under it. Without the numbers, the description alone.
+    // What it does in numbers (setEffectFx, traced in the server code), each threshold its own row.
+    // Without the numbers, the game's own description alone.
     const fx = setEffectFx(e.id);
     if (fx.length) {
-      const blocks = [{ kind: 'kv', rows: fx.map(([pts, what, inferred]) => [`At ${pts} points${e.penalty ? ' or fewer' : ''}`, what + (inferred ? ' (likely)' : '')]) }];
-      if (first && first.desc) blocks.push({ kind: 'note', text: 'The game describes it as: ' + first.desc });
+      // One threshold: just what it does (the info box says when it turns on); several: each under its points.
+      const blocks = fx.length === 1 ? [{ kind: 'text', value: setFxLines(fx[0][1]) }]
+        : [{ kind: 'kv', stack: true, rows: fx.map(([pts, what]) => [`At ${pts} points${e.penalty ? ' or fewer' : ''}`, setFxLines(what)]) }];
       if (fx.length > 1) blocks.push({ kind: 'note', text: 'With several thresholds, the first one in the list that the total reaches is the one that applies.' });
       sections.push({ heading: 'What it does', blocks });
     } else if (first && first.desc) sections.push({ heading: 'What it does', blocks: [{ kind: 'text', text: first.desc }] });
@@ -2287,10 +2438,10 @@
     if (ids.length) {
       const rowsI = ids.map(i => {
         const s = setItems().get(i), own = s.el.filter(p => p[0] === e.id).map(p => amount(p[1]));
-        const q = s.quality.map(x => x.bonus.filter(p => p[0] === e.id).map(p => `${amount(p[1])} at quality ${x.at}+`)).flat();
+        const q = s.quality.map(x => x.bonus.filter(p => p[0] === e.id).map(p => `${amount(p[1])} at a quality score of ${x.at}+`)).flat();
         return [itemLink(i, items().get(i).name), own.join(', ') || '—', q.join(', ') || '—'];
       });
-      sections.push({ heading: 'Items', blocks: [{ kind: 'table', columns: ['Item', 'Points', 'Quality bonus'], rows: rowsI }] });
+      sections.push({ heading: 'Items', blocks: [{ kind: 'table', columns: ['Item', 'Points', 'Quality score bonus'], rows: rowsI }] });
     }
     const ench = setEnchants(e.id);
     if (ench.length) {
@@ -2315,11 +2466,11 @@
     for (const [k] of s.el.concat(...s.quality.map(q => q.bonus))) if (!keys.includes(k)) keys.push(k);
     const link = k => (setElement(k) ? { t: 'set_effect', id: k, label: setEffectName(k) } : setEffectName(k));
     // What each one does once it's on, in numbers (its first threshold's).
-    const does = k => { const f = setEffectFx(k)[0]; return f ? f[1] + (f[2] ? ' (likely)' : '') : '—'; };
+    const does = k => { const f = setEffectFx(k)[0]; return f ? setFxLines(f[1]) : '—'; };
     const blocks = [{ kind: 'table', columns: ['Effect', 'Points', 'Activates at', 'What it does'],
       rows: keys.map(k => [link(k), toned(setEffectName(k), s.el.filter(p => p[0] === k).map(p => amount(p[1])).join(', ') || '—'), setElement(k) ? thresholdText(setElement(k)) || '—' : '—', does(k)]) }];
-    const q = s.quality.map(x => `At quality ${x.at} or higher: ` + x.bonus.map(([k, p]) => `${setEffectName(k)} ${amount(p)}`).join(', '));
-    if (q.length) blocks.push({ kind: 'list', title: 'Quality bonuses', items: q });
+    const q = s.quality.map(x => `With a quality score of ${x.at} or higher: ` + x.bonus.map(([k, p]) => `${setEffectName(k)} ${amount(p)}`).join(', '));
+    if (q.length) blocks.push({ kind: 'list', title: 'Quality score bonuses', items: q });
     blocks.push({ kind: 'note', text: 'The points of all worn equipment add up; an effect turns on when its total reaches its threshold.' });
     // The other items adding to each effect, one block for effects with the same items (a set's pieces).
     const byList = new Map();
@@ -2380,7 +2531,7 @@
     // hit with an arrow lit at a campfire.
     else if (t.id === '88') {
       sections.push({ heading: 'How to get it', blocks: [{ kind: 'text', text: 'Defeat an enemy with a critical hit from an arrow lit at a campfire: shoot with a bow within 500 of a fire made with the Campfire skill or a Campfire Kit, or inside a Camp Kit camp.' },
-        { kind: 'links', items: [skillLink(21001, skillName(21001))] },
+        { kind: 'links', items: [FIRE_GUIDE] },
         { kind: 'note', text: 'While a human uses this title, Aranwen offers the Arrow Revolver quest.' }] });
     }
     if (t.fx.length) sections.push({ heading: 'Effects', blocks: [{ kind: 'list', items: t.fx.map(f => toneFx(fxText(f))) }] });
@@ -2412,10 +2563,15 @@
   // what's in them (100: Hide, Performance, Rock Throwing...; 102: the Theatre Mission skills).
   // [key, list title, SkillCategory]
   const SKILL_CATS = [['life', 'Life', '1'], ['combat', 'Combat', '2'], ['magic', 'Magic', '3'], ['alchemy', 'Alchemy', '4'],
-    ['transform', 'Transformations', '5'], ['demigod', 'Demigod & special', '6'], ['other', 'Other', '7'],
+    ['transform', 'Transformations', '5'], ['special', 'Special', '6'], ['other', 'Other', '7'],
     ['action', 'Actions', '100'], ['theatre', 'Theatre Mission', '102'], ['none', 'Uncategorized', '']];
   const SKILL_CAT_BY_NUM = Object.fromEntries(SKILL_CATS.filter(c => c[2]).map(c => [c[2], c[0]]));
   const SKILL_CAT_TITLE = Object.fromEntries(SKILL_CATS.map(c => [c[0], c[1]]));
+  // The game puts the Demigod skills (45001-45009, and Nuadha's versions 23047-23051) in one category
+  // (6) with the special-use ones (kits, Dye, item seals, passes, hidden item skills): the wiki lists the
+  // Demigod skills with the transformations, and the rest as Special.
+  const isDemigodSkill = id => (+id >= 45001 && +id <= 45009) || (+id >= 23047 && +id <= 23051);
+  const skillCat = (id, r) => (isDemigodSkill(id) ? 'transform' : SKILL_CAT_BY_NUM[(r.SkillCategory || '').trim()] || 'none');
   // One skill of a category, for the page's type label.
   const SKILL_KIND = { life: 'Life skill', combat: 'Combat skill', magic: 'Magic skill', alchemy: 'Alchemy skill', transform: 'Transformation skill',
     action: 'Action', theatre: 'Theatre Mission skill' };
@@ -2434,7 +2590,7 @@
       const eng = (r.SkillEngName || '').trim();
       const name = english(local) ? local : eng || local;
       SKILL_ALL.set(id, { id, r, name: name || 'Skill ' + id, local: name !== local && local ? local : '',
-        cat: SKILL_CAT_BY_NUM[(r.SkillCategory || '').trim()] || 'none', hidden: truthy(r.IsHidden), unused: skillUnused(r, local) });
+        cat: skillCat(id, r), hidden: truthy(r.IsHidden), unused: skillUnused(r, local) });
     }
     return SKILL_ALL;
   }
@@ -2561,14 +2717,32 @@
     [/^4101[123]$/, 'Each time you transform, the three Chaos skills are put in order by Pick-order weight: the first gives 1.8 times its values, the second 1 time, the third 0.6 times.'],
     [/^41001$/, 'Max HP and Max MP are each rolled between the value and twice it every time you transform. Max Stamina is the pool minus the HP and MP rolled.'],
     [/^4(0001|0002|0003|0004|1001|101[123])$/, 'A Paladin or Dark Knight pet transforms with you and gets the "pet gets" share of these stats.']];
-  // effect, training methods, Dan advancement and description.
+  // description, effect, training methods and Dan advancement.
   // sv: what the rank's Var values do, for the skills that have them (GAME_SOURCES.skillVars: the
   // transformation skills' stats, traced in the server code), shown as more columns.
+  // Where a rank's description disagrees with the rank's own numbers (GAME_SOURCES.skillValues[skill].rf =
+  // {all | humans | elves | giants: {rank: [what the numbers give, inferred]}}), a note on the rank card
+  // under its Effect line.
+  function applyRankFixes(rb, fixes) {
+    if (!rb || !fixes) return rb;
+    rb.labels.forEach((label, i) => {
+      const f = fixes[label];
+      if (!f) return;
+      const sub = rb.blocks[i], at = sub.findIndex(b => b.title === 'Effect');
+      // The game's description and the rank's own numbers disagree here. Which one applies in play
+      // isn't certain (the game may follow either), so the note says so rather than calling one wrong.
+      sub.splice(at + 1, 0, { kind: 'note', text: `This effect doesn't match the rank's own numbers, which give ${f[0]}. In play it may follow either one.` });
+    });
+    return rb;
+  }
   function rankBlock(map, title, sv = []) {
     const lvs = levelList(map), cards = [], per = [];
     for (const lv of lvs) {
       const x = map.get(lv), sub = [];
       cards.push(rankCard(x).concat(sv.map(v => varValue(x, v))));
+      // The rank's description first, then its effect (the same text style), then how to train it.
+      const desc = tr(x.LevelDescription);
+      if (desc) sub.push({ kind: 'text', title: 'Description', text: desc });
       const eff = tr(x.EffectDescription);
       if (eff) sub.push({ kind: 'text', title: 'Effect', text: eff, tones: true });
       const methods = trainingMethods(x.Conditions);
@@ -2579,8 +2753,6 @@
         sub.push({ kind: 'note', text: 'The rank can advance at 100 training points. Each method counts up to its number of times.' +
           (methods.some(m => !m.shown) ? ' Methods marked Hidden show in the skill window as “Unknown Training Method” until they have been trained.' : '') });
       }
-      const desc = tr(x.LevelDescription);
-      if (desc) sub.push({ kind: 'text', title: 'Description', text: desc });
       per.push(sub);
     }
     const cols = RANK_COLS.concat(sv.map(v => v[1]));
@@ -2627,44 +2799,116 @@
       { kind: 'note', text: 'Each row adds up the AP and rank-up stats of every rank up to and including that one.' }];
   }
 
-  // Fishing: GAME_SOURCES.fishingGear = {items: {item: [[label, value, unit, note, inferred]]}, pets: {race:
+  // Fishing: GAME_SOURCES.fishingGear = {items: {item: [[label, value, unit, note (text or [lines]), inferred]]}, pets: {race:
   // same}, rules: [[label, text | [steps], example]], ranks: [[rank, size bonus, bite %, auto %, auto size limit %,
   // Making Mastery bonus]]} (the auto-fishing and bite rules traced in the server code, checked by running it).
   const FISHING_SKILL = 10023;
   const fishingGearData = () => (window.GAME_SOURCES && window.GAME_SOURCES.fishingGear) || {};
-  // A piece of fishing gear's (or a seal pet's) fishing stats: one row each, its note under it; "likely" when inferred.
+  // A piece of fishing gear's (or a seal pet's) fishing stats: one row each, its note under it.
+  // The value keeps its unit ("1-4 points", "40%", "30-40 s"), except a multiplier ("x1.5") and a
+  // unit its label already says ("Durability used per catch attempt").
+  const FISH_UNITS = { seconds: ' s', minutes: ' min', '%': '%' };
   function fishingStatsSection(rows) {
     if (!rows || !rows.length) return null;
-    const kv = rows.map(([label, value, unit, note, inferred]) => {
-      const v = `${value}${unit && !/^(points|durability)$/.test(unit) ? (/^x/.test(String(value)) ? '' : ' ' + unit) : ''}`;
-      const lines = [[toneFx(String(v))]];
-      if (note) lines.push([note + (inferred ? ' (likely)' : '')]);
-      else if (inferred) lines.push(['(likely)']);
+    const kv = rows.map(([label, value, unit, note]) => {
+      const word = String(unit || '').replace(/[^\w ]/g, ''), said = !!word && new RegExp('\\b' + word + '\\b', 'i').test(label);
+      const v = `${value}${unit && !said && !/^x/.test(String(value)) ? (FISH_UNITS[unit] || ' ' + unit) : ''}`;
+      // The note: a sentence or short lines, muted under the value.
+      const lines = [[toneFx(String(v))]], notes = (Array.isArray(note) ? note : [note]).filter(Boolean);
+      notes.forEach((n, i) => lines.push([{ text: n, tone: 'muted' }]));
       return [label, { lines, sep: '' }];
     });
     return { heading: 'Fishing', blocks: [{ kind: 'kv', rows: kv },
       { kind: 'links', title: 'How fishing works', items: [{ t: 'skill', id: String(FISHING_SKILL), label: skillName(FISHING_SKILL), sec: 'how-fishing-works' }] }] };
   }
   // The Fishing skill's page: how fishing works, step by step, and what each rank gives.
+  // F.rules = [[label, text | [steps], example]]; the page lays the known ones out (one cast at a glance,
+  // auto fishing step by step, fish size as a formula, the rest to know) and lists any other in order.
   function fishingRulesSection(id) {
     const F = fishingGearData();
     if (String(id) !== String(FISHING_SKILL) || !(F.rules || []).length) return null;
+    const rule = label => F.rules.find(r => r[0] === label), used = new Set();
+    const take = label => { const r = rule(label); if (r) used.add(label); return r; };
+    const ranks = F.ranks || [], lo = ranks[0], hi = ranks[ranks.length - 1];
     const blocks = [];
-    for (const [label, text, example] of F.rules) {
-      if (Array.isArray(text)) blocks.push({ kind: 'list', title: label, ordered: true, items: text });
-      else blocks.push({ kind: 'kv', rows: [[label, text]] });
+    // One cast, in order. The waits are the bites' own rules (Wait between bites, Reeling time); the
+    // bite and auto chances come from the rank table.
+    take('Wait between bites'); take('Reeling time');
+    if (lo && hi) {
+      blocks.push({ kind: 'text', text: 'Every cast goes the same way:' });
+      blocks.push({ kind: 'sum', op: '→', terms: [
+        { label: 'Wait', value: '30–40 s', note: '5–25 s with a Bait Feeder' },
+        { label: 'Bite', value: `${lo[2]}% to ${hi[2]}%`, note: 'By rank; a seal adds +20. A miss waits again, bait kept' },
+        { label: 'Struggle', value: '3–10 s', note: 'Reel in early and it gets away' },
+        { label: 'Land it', value: `${lo[3]}% to ${hi[3]}%`, note: 'Auto fishing, by rank (gear adds more). By hand: how you play' },
+      ] });
+    }
+    const auto = take('Auto-fishing success chance');
+    if (auto && Array.isArray(auto[1])) {
+      blocks.push({ kind: 'list', title: 'Auto fishing\'s chance, step by step', ordered: true, items: auto[1] });
+      if (auto[2]) blocks.push({ kind: 'note', text: 'For example: ' + auto[2] });
+    }
+    const size = take('Fish size');
+    if (size) {
+      const m = /^([^=.]{2,48}?)\s=\s([\s\S]+)$/.exec(size[1]);
+      blocks.push({ kind: 'formulas', items: [{ name: m ? m[1].trim() : 'Fish size', expr: m ? m[2] : size[1] }] });
+    }
+    // The rest, one line each with what it's about in bold.
+    const LEADS = { 'Reeling in yourself': 'Reeling in yourself:', 'What you catch': 'What you catch:', 'Rod wear': 'Rod wear:',
+      'Bite chance': 'Bites:', 'Things that don\'t change fishing': 'Makes no difference:' };
+    const rest = F.rules.filter(r => !used.has(r[0]) && r[0] !== 'Bite chance' && typeof r[1] === 'string');
+    if (rest.length) blocks.push({ kind: 'list', title: 'Good to know', items: rest.map(([label, text]) => ({ lead: LEADS[label] || label + ':', text })) });
+    // Any other stepwise rule, as it is.
+    for (const [label, text, example] of F.rules.filter(r => !used.has(r[0]) && Array.isArray(r[1]))) {
+      blocks.push({ kind: 'list', title: label, ordered: true, items: text });
       if (example) blocks.push({ kind: 'note', text: 'For example: ' + example });
     }
-    if ((F.ranks || []).length) blocks.push({ kind: 'details', summary: `By rank (${F.ranks.length})`, blocks: [{ kind: 'table',
-      columns: ['Rank', 'Auto-fishing success', 'Bite chance', 'Fish size bonus', 'Auto size limit', 'Making Mastery bonus'],
-      rows: F.ranks.map(([rank, size, bite, auto, limit, mm]) => [rank, auto + '%', bite + '%', (size > 0 ? '+' : '') + size, limit + '%', mm ? '+' + mm : '—']) }] });
-    return { heading: 'How fishing works', wide: true, blocks };
+    const fishCols = ['Auto-fishing success', 'Bite chance', 'Fish size bonus', 'Auto size limit', 'Making Mastery bonus'];
+    if (ranks.length) blocks.push({ kind: 'details', summary: byRankTitle(fishCols, ranks.length), blocks: [{ kind: 'table',
+      columns: ['Rank', ...fishCols],
+      rows: ranks.map(([rank, sz, bite, a, limit, mm]) => [rank, a + '%', bite + '%', (sz > 0 ? '+' : '') + sz, limit + '%', mm ? '+' + mm : '—']) }] });
+    return { heading: 'How fishing works', blocks };
   }
   // The ways to learn a skill: GAME_SOURCES.skillSources = {skill: [[kind, quest, npc, item, text, cond, rank,
-  // gen, temporary]]} (strings indexes; quest rewards, the story's grants, NPCs, books, items, equipment).
+  // gen, temporary]]} (strings indexes; quest rewards, the story's grants, NPCs, books, items, equipment). text:
+  // a short how, details on lines after "\n"; cond: conditions split by "; ".
   // Story grants first by generation, then quests, books, NPCs, items, the rest.
   const WAY_KINDS = { quest: 'Quest', story: 'Story', book: 'Book', npc: 'NPC', item: 'Item', equip: 'While equipped', auto: 'Automatic', event: 'Event', other: 'Other' };
   const WAY_ORDER = ['story', 'quest', 'book', 'npc', 'item', 'equip', 'auto', 'event', 'other'];
+  // A way's condition with what it names linked: a quest after "finishing" (or any quest named in three
+  // words or more), a title in quotes after "title", a skill by its whole name (two words or more).
+  let COND_NAMES = null;
+  function condNames() {
+    if (COND_NAMES) return COND_NAMES;
+    const m = new Map();
+    for (const q of quests().values()) if (q.name && !/^Quest \d/.test(q.name) && !m.has(q.name)) m.set(q.name, { t: 'quest', id: q.id, label: q.name });
+    for (const s of skills()) if (s.name && s.name.includes(' ')) m.set(s.name, skillLink(s.id, s.name));
+    return (COND_NAMES = { map: m, names: [...m.keys()].sort((a, b) => b.length - a.length) });
+  }
+  function condLinks(text, self) {
+    const s = String(text || ''), spans = [];
+    for (const mt of s.matchAll(/\b[Tt]itle "([^"]+)"/g)) {
+      const t = titles().find(x => x.name === mt[1]), at = mt.index + 'title "'.length;
+      if (t) spans.push([at, at + mt[1].length, { t: 'title', id: t.id, label: mt[1] }]);
+    }
+    const { map, names } = condNames();
+    for (const n of names) {
+      for (let at = s.indexOf(n); at >= 0; at = s.indexOf(n, at + n.length)) {
+        const end = at + n.length, ref = map.get(n);
+        if (/\w/.test(s[at - 1] || '') || /\w/.test(s[end] || '') || spans.some(([a, b]) => at < b && end > a)) continue;
+        if (ref.t === 'quest' && n.split(' ').length < 3 && !/finish(?:ing)?\s*$/i.test(s.slice(0, at))) continue;
+        if (ref.t === 'skill' && ref.id === String(self)) continue;  // the page's own skill: no link to itself
+        spans.push([at, end, ref]);
+      }
+    }
+    if (!spans.length) return [s];
+    spans.sort((a, b) => a[0] - b[0]);
+    const parts = [];
+    let at = 0;
+    for (const [a, b, ref] of spans) { if (a > at) parts.push(s.slice(at, a)); parts.push(ref); at = b; }
+    if (at < s.length) parts.push(s.slice(at));
+    return parts;
+  }
   function skillWays(id) {
     const S = window.GAME_SOURCES || {}, list = (S.skillSources || {})[String(id)];
     if (!list || !list.length) return [];
@@ -2677,17 +2921,79 @@
         const from = quest ? sourceRef({ t: 'quest', id: String(quest) }) : npc ? sourceRef({ t: 'npc', id: String(npc) }) : item ? sourceRef({ t: 'item', id: String(item) }) : null;
         const kind = gen ? `Generation ${genNum(gen)} story` : WAY_KINDS[k] || 'Other';
         const fromCell = from && from !== '—' ? { lines: [[from], [kind]], sep: '' } : kind;
-        return [fromCell, str(text), (str(rank) || '—') + (temp ? ' (temporary)' : ''), str(cond) || '—'];
+        // How: its first line, any further lines muted under it. Condition: one a line (split at "; ").
+        const how = str(text).split('\n'), conds = str(cond).split(/\n|;\s+/).filter(Boolean).map(x => cap(x.trim()));
+        conds.forEach((x, i) => { conds[i] = x.replace(/\.$/, ''); });  // one a line, so no full stops
+        const howCell = how.length > 1 ? { lines: [[how[0]], ...how.slice(1).map(d => [{ text: d, tone: 'muted' }])], sep: '' } : how[0];
+        // Each condition one a line, the quests, titles and skills it names linked.
+        return [fromCell, howCell, (str(rank) || '—') + (temp ? ' (temporary)' : ''), conds.length ? { lines: conds.map(c => condLinks(c, id)), sep: '' } : '—'];
       });
     // The same quest under two ids (one per region or race) reads the same: once.
     const seen = new Set(), uniq = rows.filter(r => { const k = JSON.stringify(r); return !seen.has(k) && seen.add(k); });
-    // What only completes a rank's "learn from people or books" training goes in a table of its own.
+    // What only completes a rank's "learn from people or books" training goes on that rank's card
+    // (skillTraining); any the cards can't take stay here in a table of their own (trainRest).
     const isTrain = r => /training/i.test(String(r[2]));
     const learn = uniq.filter(r => !isTrain(r)), train = uniq.filter(isTrain);
-    const out = [], fold = (title, rows) => ({ kind: 'details', summary: `${title} (${rows.length})`, blocks: [{ kind: 'table', columns: ['From', 'How', 'Rank', 'Condition'], rows }] });
-    if (learn.length) out.push(fold('Ways to learn it', learn));
-    if (train.length) out.push(fold('Training from people or books', train));
+    const fold = (title, rows) => ({ kind: 'details', summary: `${title} (${rows.length})`, blocks: [{ kind: 'table', columns: ['From', 'How', 'Rank', 'Condition'], rows }] });
+    const out = learn.length ? [fold('Ways to learn it', learn)] : [];
+    out.trainRest = ranks => { const rest = train.filter(r => !ranks.has(String(r[2]).replace(/^Rank\s+|\s+training.*$/gi, ''))); return rest.length ? fold('Training from people or books', rest) : null; };
     return out;
+  }
+  // A skill's "learn better methods through other people or books" training, by rank ({rank label:
+  // [{kind: book | quest | npc | other, ref, how, conds}]}): the book to read, the quest to finish or
+  // the person to talk to for that rank (skillSources rows whose rank is "Rank E training").
+  function skillTraining(id) {
+    const S = window.GAME_SOURCES || {}, list = (S.skillSources || {})[String(id)] || [], out = {};
+    const str = v => (v >= 0 ? (S.strings || [])[v] || '' : '');
+    for (const [k, quest, npc, item, text, cond, rank] of list) {
+      const m = /^Rank\s+(.+?)\s+training/i.exec(str(rank));
+      if (!m) continue;
+      const ref = item ? sourceRef({ t: 'item', id: String(item) }) : quest ? sourceRef({ t: 'quest', id: String(quest) }) : npc ? sourceRef({ t: 'npc', id: String(npc) }) : null;
+      const kind = item ? 'book' : quest ? 'quest' : npc ? 'npc' : 'other';
+      // The rank card says the rank already: "At rank E" isn't repeated.
+      const conds = str(cond).split(/\n|;\s+/).map(x => x.trim()).filter(x => x && !/^at rank\b/i.test(x));
+      const e = { kind, ref, how: str(text).split('\n')[0], conds };
+      if (!(out[m[1]] || (out[m[1]] = [])).some(x => x.kind === e.kind && JSON.stringify(x.ref) === JSON.stringify(e.ref))) out[m[1]].push(e);
+    }
+    return out;
+  }
+  // The rank cards' part of it: the training method "Learn better methods through other people or
+  // books." names what that rank needs ("Read Resting Guide"), and a note under the table says it's
+  // needed to advance. Returns the ranks it put on a card.
+  function applyTraining(rb, train) {
+    const done = new Set();
+    if (!rb) return done;
+    rb.labels.forEach((label, i) => {
+      const list = train[label];
+      if (!list || !list.length) return;
+      const sub = rb.blocks[i], t = sub.findIndex(b => b.kind === 'table' && b.title === 'Training methods');
+      const step = e => (e.kind === 'book' ? ['Read ', e.ref] : e.kind === 'quest' ? ['Finish ', e.ref] : [e.how.replace(/\.$/, '')]);
+      // The method row says it all (no note repeating it): each step, any condition past the rank muted
+      // under it ("At least 3 successful healer part-time jobs").
+      let placed = false;
+      if (t >= 0) {
+        for (const row of sub[t].rows) {
+          const text = typeof row[0] === 'string' ? row[0] : (row[0] && row[0].text) || '';
+          if (!/other people or books/i.test(text)) continue;
+          const hidden = typeof row[0] === 'object' && row[0].tag;
+          row[0] = { lines: list.flatMap((e, j) => [step(e).concat(hidden && !j ? [{ text: '', tag: row[0].tag }] : []),
+            ...e.conds.map(c => condLinks(cap(c.replace(/\.$/, ''))).map(p => (typeof p === 'string' ? { text: p, tone: 'muted' } : p)))]), sep: '' };
+          placed = true;
+        }
+      }
+      if (placed) { done.add(label); return; }
+      // No method row to put it in: a note says what's needed, with any condition past the rank.
+      const books = list.filter(e => e.kind === 'book'), others = list.filter(e => e.kind !== 'book');
+      const lines = [];
+      if (books.length) lines.push(books.length === 1 ? ['You need the book ', books[0].ref, ' to advance this rank.']
+        : ['You need one of these books to advance this rank: ', ...books.flatMap((e, j) => (j ? [j === books.length - 1 ? ' or ' : ', ', e.ref] : [e.ref])), '.']);
+      for (const e of others) lines.push(e.kind === 'quest' ? ['You need to finish ', e.ref, ' to advance this rank.']
+        : ['To advance this rank: ', e.how.replace(/\.$/, ''), '.']);
+      for (const e of list) for (const c of e.conds) lines.push(condLinks(cap(c.replace(/\.$/, '')) + '.'));
+      sub.splice(t >= 0 ? t + 1 : sub.length, 0, { kind: 'note', text: { lines, sep: '' } });
+      done.add(label);
+    });
+    return done;
   }
   // Arrows lit at a campfire (traced in the G13 server, checked by running its code): a skill readied with
   // a bow (weapon type 4) in the right hand while inside a campfire's area (500 around a Camp Fire skill
@@ -2695,44 +3001,184 @@
   // ×1.5 after defense, protection, the critical bonus and the skill's own multiplier; the element P2/F7
   // in place of the shooter's; critical chance ×1.1 (cap 30). The arrow isn't checked: every arrow
   // lights. Decided when the skill finishes readying. Skills that use it, and bow skills that don't:
-  const FIRE_SKILLS = { 21001: '', 21002: 'skill', 21003: '', 21004: '', 21006: '', 22011: 'splash', 23030: 'final' };
+  const FIRE_SKILLS = { 21001: '', 21002: 'skill', 21003: '', 21004: '', 21006: '', 22011: 'splash', 23030: 'final', 23041: '' };
   const FIRE_IGNORED = { 21007: 1 };
   const FIRE_MAKERS = { 10008: 1, 50007: 1 };
   // [monster's element, damage against it compared with a plain arrow (fire's rate × 1.5)].
   const FIRE_RATES = [['Physical only', 1.5], ['A third lightning', 1.5], ['A third ice', 2], ['Two thirds ice', 2.5], ['All ice', 2.67],
     ['A third fire', 1], ['All fire', 0.33]];
+  // A skill page's part: one line on what the fire does for this skill, and the guide for the rest
+  // (the rules are the same for every bow skill).
+  const FIRE_GUIDE = { t: 'guide', id: 'fire-arrows', label: 'Fire Arrows guide' };
   function fireArrowSection(id) {
-    const k = String(id), how = skillLink(21001, skillName(21001));
+    const k = String(id), kind = FIRE_SKILLS[k];
+    const text = FIRE_MAKERS[k] ? 'A bow shot readied within 500 of this fire (the same units as a bow\'s range) is lit: ×1.5 damage, a fire element and a little more critical chance.'
+      : FIRE_IGNORED[k] ? 'Arrows lit at a campfire do nothing extra for this skill: it keeps its own damage and element.'
+      : kind === undefined ? null
+      : 'Ready this skill with a bow beside a campfire and its shot is lit: ×1.5 damage' + (kind === 'skill' || kind === 'splash' ? ' on top of the skill\'s own multiplier' : '') + ', a fire element and a little more critical chance.'
+        + (kind === 'splash' ? ' The splash around the target most likely burns too.' : kind === 'final' ? ' Its shots use the fire when the bow skill doing the shooting would.' : '');
+    return text ? { heading: 'Fire arrows', blocks: [{ kind: 'text', text }, { kind: 'links', items: [FIRE_GUIDE] }] } : null;
+  }
+  // The Fire Arrows guide: how to light an arrow at a campfire, what it does, against which monsters
+  // it helps, and the bow skills that use it.
+  function fireArrowGuide(g) {
     const fireTitle = titleById('88');
-    if (FIRE_MAKERS[k]) {
-      return { heading: 'Fire arrows', blocks: [{ kind: 'text', text: 'A bow shot readied within 500 of this fire (the same units as a bow\'s range) becomes an arrow lit at a campfire: 1.5× damage, a fire element and a little more critical chance.' },
-        { kind: 'links', items: [how] }] };
-    }
-    if (FIRE_IGNORED[k]) return { heading: 'Fire arrows', blocks: [{ kind: 'note', text: 'Arrows lit at a campfire do nothing extra for this skill: it keeps its own damage and element.' }] };
-    if (!(k in FIRE_SKILLS)) return null;
-    const kind = FIRE_SKILLS[k];
-    const rows = [
+    const skills = ids => ids.map(id => skillById(id)).filter(Boolean).map(s => ({ t: 'skill', id: s.id, label: s.name }));
+    const light = [
       ['How', 'Ready the skill with a bow within 500 of a fire made with the Campfire skill or a Campfire Kit (the same units as a bow\'s range), or anywhere inside a Camp Kit camp. You don\'t need to face the fire.'],
       ['Fires that count', 'Only campfires players make (the Campfire skill, a Campfire Kit) and Camp Kit camps. Braziers, torches and other fires in the world don\'t light arrows.'],
       ['Arrows', 'All arrows.'],
       ['Weapons', 'Bows only. Crossbows (even ones that load arrows) and atlatls never light.'],
       ['When it lights', 'As the skill finishes readying. A shot readied by the fire stays lit if you walk away before shooting. Walking up to a fire after readying doesn\'t light that shot; the next one lights.'],
-      ['Damage', { lines: [[{ text: '×1.5', tone: 'pos' }, kind === 'skill' || kind === 'splash' ? ', on top of defense, protection, critical damage and the skill\'s own multiplier' : ', on top of defense, protection and critical damage']], sep: '' }],
+    ];
+    const does = [
+      ['Damage', { lines: [[{ text: '×1.5', tone: 'pos' }, ', on top of defense, protection, critical damage and the skill\'s own multiplier']], sep: '' }],
       ['Element', 'Fire (mostly fire, a little physical). It takes the place of your equipment\'s element for that shot: elemental crystals and enchants don\'t count.'],
       ['Critical chance', { lines: [[{ text: '×1.1', tone: 'pos' }, ' (a tenth of your Critical added), still at most 30%']], sep: '' }],
       ['No effect on', 'Burning over time, stun, knockback, hit chance, wounds, arrows used or durability.'],
     ];
-    if (kind === 'splash') rows.push(['Splash', 'The splash around the target most likely burns too.']);
-    if (kind === 'final') rows.splice(0, 0, ['Shots', 'Its shots use the fire when the bow skill doing the shooting would.']);
-    const blocks = [{ kind: 'kv', rows },
-      { kind: 'table', title: 'Against monster elements', columns: ['Monster\'s element', 'Damage compared with a plain arrow'],
-        rows: FIRE_RATES.map(([n, x]) => [n, { text: `×${x}`, tone: x > 1 ? 'pos' : x < 1 ? 'neg' : undefined }]) },
-      { kind: 'note', text: 'Each monster\'s page shows its own figure in its Elements table ("Arrows lit at a campfire"). Against a monster that is a third fire it comes out even; against mostly-fire monsters a plain arrow is better.' }];
     const extra = [];
     if (fireTitle) extra.push({ lines: [['Defeating an enemy with a critical hit from an arrow lit at a campfire earns the title ', { t: 'title', id: fireTitle.id, label: fireTitle.name }, '.']], sep: '' });
     extra.push('Special arrows (Flare, Frostbite, Exorcism, Sniper...) light like any other arrow; how their own effects add to the fire isn\'t known.');
-    blocks.push({ kind: 'list', items: extra });
-    return { heading: 'Fire arrows', blocks };
+    const on = skills(Object.keys(FIRE_SKILLS)), off = skills(Object.keys(FIRE_IGNORED)), fires = skills(Object.keys(FIRE_MAKERS));
+    return { title: g.name, subtitle: null, icon: null, category: [g.cat], kind: 'Guide', noMeta: true, infobox: [], summary: g.sub + '.',
+      sections: [
+        { heading: 'How to light them', blocks: [{ kind: 'kv', stack: true, rows: light }, ...(fires.length ? [{ kind: 'links', title: 'Fires that light arrows', items: fires }] : [])] },
+        { heading: 'What a lit arrow does', blocks: [{ kind: 'kv', stack: true, rows: does }] },
+        { heading: 'Against monster elements', blocks: [
+          { kind: 'table', lead: true, columns: ['Monster\'s element', 'Damage compared with a plain arrow'],
+            rows: FIRE_RATES.map(([n, x]) => [n, { text: `×${x}`, tone: x > 1 ? 'pos' : x < 1 ? 'neg' : undefined }]) },
+          { kind: 'note', text: 'Each monster\'s page shows its own figure in its Elements table ("Arrows lit at a campfire"). Against a monster that is a third fire it comes out even; against mostly-fire monsters a plain arrow is better.' }] },
+        { heading: 'Skills', blocks: [{ kind: 'links', title: 'Bow skills that shoot lit arrows', items: on },
+          ...(off.length ? [{ kind: 'links', title: 'Bow skills the fire does nothing for', items: off }] : [])] },
+        { heading: 'Good to know', blocks: [{ kind: 'list', items: extra }] },
+      ] };
+  }
+  // Taming Wild Animals (traced in the game's code and checked by running it): GAME_SOURCES.taming = {skill,
+  // text (the formula in words), r: [[rank, bonus, seconds tamed, range]], cp: [[combat power, the creature's
+  // value]], canes: [[item, bonus]], baits: [item], dark: [[Control of Darkness rank, adds]], e: [[HP rule,
+  // time rule, while tamed]], races: {race: [rule, value or null]}, notes: {bait, duration, untamable, hp_fail}}.
+  // One roll of 1-100 against: the rank's bonus + the creature's value (from its combat power) + twice the
+  // cane's bonus (the bait's own is never read) + a third of Control of Darkness's rank, kept to 0-100.
+  const tamingData = () => (window.GAME_SOURCES || {}).taming || {};
+  // A part of the chance, in percent (the parts add up to the chance itself).
+  const tameAdds = n => ({ text: (n > 0 ? '+' : '') + n + '%', tone: n > 0 ? 'pos' : n < 0 ? 'neg' : undefined });
+  // The canes that exist as items, with their bonus.
+  const tamingCanes = () => (tamingData().canes || []).filter(([it]) => items().get(String(it)));
+  // Familiar creatures from easy to hard, for the skill page's examples (their own values; every tamable
+  // monster's page has its own).
+  const TAME_EXAMPLES = ['40101', '50001', '20001', '70001', '40203', '360102'];
+  const tameRank = k => ((tamingData().r || []).find(r => r[0] === k) || [k, 0])[1];
+  const tameChance = (bonus, value, cane) => Math.max(0, Math.min(100, bonus + value + 2 * cane));
+  function tamingSection(id) {
+    const T = tamingData();
+    if (!T.skill || String(id) !== String(T.skill)) return null;
+    const N = T.notes || {}, ranks = T.r || [], range = ranks[0] ? ranks[0][3] : 0;
+    const bonuses = tamingCanes().map(c => c[1]).filter(b => b > 0);
+    const basic = bonuses.length ? Math.min(...bonuses) : 0, best = bonuses.length ? Math.max(...bonuses) : 0;
+    const top = ranks.length ? ranks[ranks.length - 1] : null, r1 = ranks.find(r => r[0] === '1');
+    const cps = T.cp || [], easy = cps.length ? cps[0][1] : 0, hard = cps.length ? cps[cps.length - 1][1] : 0;
+    const dark = (T.dark || []).map(d => d[1]);
+    const blocks = [];
+    // The chance as a sum: what each part is, and how far it goes.
+    blocks.push({ kind: 'text', text: 'Every try is one roll. Your chance is three parts added up:' });
+    blocks.push({ kind: 'sum',
+      terms: [
+        { label: 'Your rank', value: `0% to +${top ? top[1] : 0}%`, note: `Novice 0 · rank 1 +${r1 ? r1[1] : 0}${top && top[0] !== '1' ? ` · ${top[0]} +${top[1]}` : ''}` },
+        { label: 'The creature', value: `+${easy}% to ${hard}%`, note: 'Weak creatures add a lot; strong ones take away' },
+        { label: 'Your Taming Cane', value: `+${2 * basic}% to +${2 * best}%`, note: 'Its bonus counts twice' },
+      ],
+      result: { label: 'Chance to tame', value: '0% to 100%', note: 'Kept within 0 and 100' },
+      foot: dark.length ? `Knowing Control of Darkness adds a little more: a third of its rank (+${Math.min(...dark)} to +${Math.max(...dark)}).` : '' });
+    // Familiar creatures, so the creature's part means something.
+    const ex = TAME_EXAMPLES.map(i => [i, (T.races || {})[i]]).filter(([i, h]) => h && h[1] != null && monsterById(i));
+    if (ex.length) {
+      const at = ['Novice', '1', top ? top[0] : 'Dan 5'];
+      blocks.push({ kind: 'table', title: 'For example', columns: ['Creature', 'Its part', ...at.map(k => (/^\d+$/.test(k) ? 'Rank ' + k : k))],
+        rows: ex.map(([i, h]) => [{ t: 'monster', id: i, label: monsterById(i).name }, tameAdds(h[1]), ...at.map(k => tameChance(tameRank(k), h[1], basic) + '%')]) });
+      blocks.push({ kind: 'note', text: `With the basic Taming Cane (+${basic}, counting ${2 * basic}). Every tamable monster's page shows its own part and chances.` });
+    }
+    // What to have and do first.
+    blocks.push({ kind: 'list', title: 'Before you try', icon: 'check', items: [
+      { lead: 'Hold a Taming Cane and load Taming Bait.', text: 'Each try uses one bait, whether it works or not.' },
+      { lead: 'Weaken it first.', text: 'Each creature has an HP limit (on its page); above it, the try fails.' },
+      { lead: `Get within ${range}.`, text: 'The same units as a bow\'s range.' },
+      { lead: 'Not as a Dark Knight.', text: 'Taming doesn\'t work while you are transformed into one.' },
+    ] });
+    blocks.push({ kind: 'list', title: 'Good to know', items: [
+      { lead: 'The bait doesn\'t change the chance.', text: 'Your cane\'s bonus is what counts, twice.' },
+      { lead: 'Nothing else changes it:', text: 'your level, stats, titles and how many times you have tried make no difference.' },
+      N.duration && { lead: 'How long it stays:', text: `${seconds(ranks[0] ? ranks[0][2] : 300)}${top && top[2] !== ranks[0][2] ? ` (${seconds(top[2])} at ${top[0]})` : ''}, until it or you die or you change regions. Taming another releases the first.` },
+      N.untamable && { lead: 'Some can\'t be tamed:', text: 'bosses, and creatures that are marked as impossible to tame.' },
+    ].filter(Boolean) });
+    // The details, folded.
+    const canes = tamingCanes();
+    if (canes.length) blocks.push({ kind: 'details', summary: `Taming Canes (${canes.length})`, blocks: [{ kind: 'table', columns: ['Cane', 'Bonus', 'Adds to the chance'],
+      rows: canes.map(([it, b]) => [itemRef(it), b ? '+' + b : '0', tameAdds(2 * b)]) }] });
+    if (ranks.length) blocks.push({ kind: 'details', summary: byRankTitle(['Taming chance bonus', 'Time tamed'], ranks.length), blocks: [{ kind: 'table', columns: ['Rank', 'Adds to the chance', 'Stays tamed'],
+      rows: ranks.map(([rank, b, s]) => [rank, tameAdds(b), seconds(s)]) }] });
+    if (cps.length) blocks.push({ kind: 'details', summary: 'How the creature\'s part is worked out', blocks: [
+      { kind: 'text', text: 'It comes from the creature\'s combat power, a hidden strength rating: weak creatures have a low one, bosses a very high one. The stronger the creature, the smaller its part, and past about 1,000 it starts taking away.' },
+      { kind: 'table', columns: ['Combat power', 'The creature\'s part'], rows: cps.map(([cp, v]) => [cp.toLocaleString('en-US'), tameAdds(v)]) }] });
+    if ((T.dark || []).length) blocks.push({ kind: 'details', summary: `Control of Darkness (${T.dark.length})`, blocks: [{ kind: 'table', columns: ['Control of Darkness rank', 'Adds to the chance'],
+      rows: T.dark.map(([rank, add]) => [rank, tameAdds(add)]) }] });
+    return { heading: 'How taming works', blocks };
+  }
+  // A monster's page: whether it can be tamed, its value, and the chance at a few ranks.
+  const TAME_RANKS = ['Novice', 'A', '1', 'Dan 5'];
+  function monsterTamingSection(id) {
+    const T = tamingData(), hit = (T.races || {})[String(id)];
+    if (!hit) return null;
+    const [rule, value] = hit, [hp, when, buffs] = (T.e || [])[rule] || [];
+    const blocks = [];
+    if (value == null) blocks.push({ kind: 'text', text: 'It can be tamed; the chance for it isn\'t known.' });
+    else {
+      // The weakest cane that adds anything, and the best one.
+      const bonuses = tamingCanes().map(c => c[1]).filter(b => b > 0);
+      const basic = bonuses.length ? Math.min(...bonuses) : 0, best = bonuses.length ? Math.max(...bonuses) : 0;
+      const pct = (bonus, cane) => Math.max(0, Math.min(100, bonus + value + 2 * cane)) + '%';
+      const ranks = TAME_RANKS.map(k => (T.r || []).find(r => r[0] === k)).filter(Boolean);
+      blocks.push({ kind: 'kv', rows: [['Its part in your chance', tameAdds(value)]] });
+      blocks.push({ kind: 'table', title: 'Chance to tame', columns: ['Your rank', `Cane +${basic}`, `Cane +${best}`],
+        rows: ranks.map(([rank, bonus]) => [rank, pct(bonus, basic), pct(bonus, best)]) });
+    }
+    // "While it stays tamed, you get Max HP +3, STR +3": the stats one a line.
+    const gets = /^While it stays tamed, you get (.*?)\.?$/i.exec(String(buffs || ''));
+    const rows = [['Its HP', hp], ['When', when], gets ? ['While tamed, you get', { lines: gets[1].split(/,\s*|\s+and\s+/), sep: '' }] : ['While tamed', buffs]].filter(r => r[1]);
+    if (rows.length) blocks.push({ kind: 'kv', rows });
+    blocks.push({ kind: 'links', items: [{ t: 'skill', id: String(T.skill), label: 'How taming works', sec: 'how-taming-works' }] });
+    return { heading: 'Taming', blocks };
+  }
+  // A rank table's fold says what it holds: "Splash damage by rank", "Bursts, reach, width and 4 more by
+  // rank" (units in brackets left out; later names lower-cased unless they're abbreviations like MP).
+  function byRankTitle(cols, n) {
+    const names = cols.map(c => String(c).replace(/\s*\([^)]*\)$/, '').trim()).filter(Boolean)
+      .map((c, i) => (i && /^[A-Z][a-z]/.test(c) ? c[0].toLowerCase() + c.slice(1) : c));
+    const shown = names.length > 3 ? names.slice(0, 3) : names, more = names.length - shown.length;
+    const list = more ? `${shown.join(', ')} and ${more} more` : shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}` : shown[0] || 'Values';
+    return `${list} by rank (${n})`;
+  }
+  // A skill's rules in numbers, past what its rank tables say: GAME_SOURCES.skillValues = {skill: {t: {c:
+  // [column], r: [[rank, [value]]]}, f: [[fact, inferred]], m: [[formula, inferred]], x: [[correction,
+  // inferred]]}}. What was worked out rather than seen happen is shown the same as the rest.
+  function skillValuesSection(id) {
+    const v = ((window.GAME_SOURCES || {}).skillValues || {})[String(id)];
+    if (!v) return null;
+    const blocks = [];
+    // A formula "Success chance = (...) + ..." as a card: what's worked out above, the working below.
+    if ((v.m || []).length) blocks.push({ kind: 'formulas', items: v.m.map(([text]) => {
+      const m = /^([^=.]{2,48}?)\s=\s([\s\S]+)$/.exec(text);
+      return { name: m ? m[1].trim() : '', expr: m ? m[2] : text };
+    }) });
+    // Values that read as a table (chances by tune difficulty...), the condition leading each row.
+    for (const [title, columns, rows] of v.tb || []) blocks.push({ kind: 'table', lead: true, title, columns, rows });
+    if ((v.f || []).length) blocks.push({ kind: 'list', title: 'Good to know', items: v.f.map(([text]) => text) });
+    // Where the game's own descriptions don't match what the skill does, apart from the rules.
+    if ((v.x || []).length) blocks.push({ kind: 'note', tone: 'warn', text: { lines: v.x.map(([text]) => [text]), sep: '' } });
+    if (v.t) blocks.push({ kind: 'details', summary: byRankTitle(v.t.c, v.t.r.length), blocks: [{ kind: 'table', columns: ['Rank', ...v.t.c],
+      rows: v.t.r.map(([rank, vals]) => [rank, ...vals.map(x => (x === '' || x == null ? '—' : x))]) }] });
+    // The one place the wiki says where its numbers come from (the user's choice, 2026-10-22).
+    return blocks.length ? { heading: 'Hidden details', tip: 'Derived from the server files: numbers the game doesn\'t show.', blocks } : null;
   }
   function skillPage(id) {
     const s = skillById(id);
@@ -2743,10 +3189,21 @@
     if (s.hidden) info.push(['Skill window', 'Not listed']);
     const mt = r.MasterTitle && titleById(r.MasterTitle);
     if (mt && titles().includes(mt)) info.push(['Master title', { t: 'title', id: mt.id, label: mt.name }]);
+    // A skill that makes things: its list under Craftables (recipes and what it can give at random).
+    const made = craftCount(s.name);
+    if (made) info.push(['Craftables', { t: 'craft', cat: craftCat(s.name), label: `${made.toLocaleString('en-US')} item${made === 1 ? '' : 's'}` }]);
     const sections = [];
     const how = [tr(r.ClosedDesc), clean(r.HowToGetDesc)].filter(Boolean), ways = skillWays(s.id);
-    // Above the ranks, each table folded under its name and count.
-    if (how.length || ways.length) sections.push({ heading: 'How to get', blocks: how.map(t => ({ kind: 'text', text: t })).concat(ways) });
+    // Above the ranks, each table folded under its name and count. The game's own text says the same as
+    // the tables, so it shows only for a skill with none. A rank's book or teacher goes on its rank card
+    // (applyTraining, below); any the cards don't take get a table here.
+    const train = skillTraining(s.id);
+    const howText = ways.length || Object.keys(train).length ? [] : how.map(t => ({ kind: 'text', text: t }));
+    const obtain = { heading: 'Obtaining the Skill', blocks: howText.concat(ways) };
+    sections.push(obtain);
+    // How the skill works (its rules in numbers, and the skills with a whole guide of their own), above
+    // the ranks: what it does first, then what each rank gives.
+    for (const sec of [skillValuesSection(s.id), tamingSection(s.id), fishingRulesSection(s.id), fireArrowSection(s.id), randomSkillSection(s.id)]) if (sec) sections.push(sec);
     // Ranks: the base group (humans, and any race without its own), and the elves' and giants'
     // own groups where they differ. When they do (20 skills), a Race switch with all three races
     // puts which race the ranks are for up front; a race on the base group says so.
@@ -2757,6 +3214,19 @@
       const b = rankBlock(g[k], undefined, sv);
       if (!base || !sameRanks(b, base)) own[k] = b;
     }
+    // The rank text fixes: on every race's cards for "all", else on that race's own (a race that shares
+    // the humans' ranks gets its own copy for its fix, so the fix doesn't show for the others).
+    const rf = (((window.GAME_SOURCES || {}).skillValues || {})[String(s.id)] || {}).rf;
+    if (rf && base) {
+      const RACE_FIX = { base: 'humans', elf: 'elves', giant: 'giants' };
+      for (const k of ['elf', 'giant']) if (rf[RACE_FIX[k]] && !own[k] && g[k] && g[k].size) own[k] = rankBlock(g[k], undefined, sv);
+      for (const [k, rb] of [['base', base], ...Object.entries(own)]) applyRankFixes(rb, Object.assign({}, rf.all, rf[RACE_FIX[k]]));
+    }
+    const onCards = new Set();
+    for (const rb of [base, ...Object.values(own)]) for (const l of applyTraining(rb, train)) onCards.add(l);
+    const rest = ways.trainRest ? ways.trainRest(onCards) : null;  // none for a skill without sources
+    if (rest) obtain.blocks.push(rest);
+    if (!obtain.blocks.length) sections.splice(sections.indexOf(obtain), 1);
     if (Object.keys(own).length) {
       const tabs = ['base', 'elf', 'giant'].filter(k => k === 'base' ? base : own[k] || base).map(k => {
         const label = RACE_PLURAL[k], shared = k !== 'base' && !own[k];
@@ -2766,10 +3236,6 @@
     } else if (base) {
       sections.push({ heading: 'Ranks', blocks: [{ kind: 'note', text: 'The same for every race that can learn it.' }, base].concat(rankTotals(g.base)) });
     }
-    const fire = fireArrowSection(s.id);
-    if (fire) sections.push(fire);
-    const fishing = fishingRulesSection(s.id);
-    if (fishing) sections.push(fishing);
     // Enchants and titles whose effects depend on this skill's rank.
     const re = new RegExp('Is(?:Greater|Less)EqualSkillLv\\(\\s*' + s.id + '\\s*,', 'i');
     const ench = enchants().filter(e => re.test(e.r.OptionList || ''));
@@ -2940,6 +3406,16 @@
     head_scale: 'Head scale', leg_scale: 'Leg scale', respawn_tick: 'Respawn tick', rooting_time: 'Rooting time',
     rainy_damage_rate: 'Damage rate in rain', downdelay_add: 'Extra knockdown delay', hunt_point_count: 'Hunt points' };
   const EXTRA_SKIP = new Set(['enablealphaout', 'mate_stringid', 'effect_itemid', 'id', 'stop_rain_effect', 'default_joint']);
+  // The units of the root attributes that have one: the times are milliseconds (shown in seconds),
+  // stone_rate is a percent (the server rolls rand(100) < it), not_interrupt_prob a chance from 0 to 1,
+  // and the damage rates multiply. The rest are shown as they are.
+  const EXTRA_UNITS = { stone_time: 'ms', down_duration: 'ms', downdelay_add: 'ms', stone_rate: '%', not_interrupt_prob: 'p',
+    demigod_boost_rate: '×', rainy_damage_rate: '×' };
+  const extraValue = (k, v) => {
+    const u = EXTRA_UNITS[k], n = Number(String(v).trim());
+    if (!u || String(v).trim() === '' || !Number.isFinite(n)) return v;
+    return u === 'ms' ? +(n / 1000).toFixed(2) + ' s' : u === 'p' ? +(n * 100).toFixed(2) + '%' : u === '%' ? n + '%' : '×' + n;
+  };
 
   // db/collectingform.xml: what gathering from a target gives. TargetId is a StringID pattern
   // ("/animal/sheep/cattle/"): a race matches when it has all its tags. Products: "item[,weight];...".
@@ -3013,6 +3489,12 @@
     ahchemy_golem: 'Alchemy Golems', alchemy_golem: 'Alchemy Golems' };
   const tagWords = s => [...new Set(String(s || '').split(/[|&]/).map(x => x.replace(/[*\/!\s]/g, ' ').trim()).filter(Boolean)
     .map(x => AI_TAGS[x.toLowerCase().replace(/\s+/g, '_')] || titleCase(words(x).toLowerCase())))].join(' and ');
+  // A rule's condition as a cell: each part a line, the ones after the first with "and" (a part said
+  // twice, once).
+  function aiCondCell(c) {
+    const parts = [...new Set(aiCondWords(c).split(', and '))].filter(Boolean);
+    return parts.length > 1 ? { lines: parts.map((p, i) => (i ? 'and ' + p : cap(p))), sep: '' } : parts.length ? cap(parts[0]) : '—';
+  }
   function aiCondWords(c) {
     if (!c) return '';
     return c.split(' & ').map(tok => {
@@ -3063,7 +3545,7 @@
       const parts = [];
       if (sight) parts.push(`sees ${dist(sight)} away${angle ? ` in a ${angle}° arc in front of it` : ''}`);
       if (hear) parts.push(`hears ${dist(hear)} away in any direction`);
-      if (parts.length) kv.push(['Notices you', cap(parts.join(' and '))]);
+      if (parts.length) kv.push(['Notices you', parts.length > 1 ? { lines: parts.map(cap), sep: '' } : cap(parts[0])]);
     }
     const ch = t.ch || {}, opt = t.opt || [], optOf = n => opt.find(o => o[0] === n);
     const rulesOf = type => t.att.filter(a => a[1] === type).map(a => who(a[0], a[2]));
@@ -3107,8 +3589,9 @@
       .filter(([k]) => num(w[k])).sort((a, b) => num(w[b[0]]) - num(w[a[0]])).map(([, l]) => l) : [];
     // A <target> list: a weighted random pick among those who've hurt it, by the kind of damage (the
     // weights over damage shares, so the amount mostly cancels out); re-picked every `update` ms.
-    const joinAnd = xs => (xs.length > 1 ? xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1] : xs[0] || '');
-    if (fights) kv.push(['Who it attacks', picks.length ? `Picks at random among those who've hurt it, and picks again every ${num(w.update) / 1000} seconds. The kind of damage matters more than the amount: ${joinAnd(picks)}, in that order.`
+    // One fact a line.
+    if (fights) kv.push(['Who it attacks', picks.length ? { lines: ['Picks at random among those who\'ve hurt it', `Picks again every ${num(w.update) / 1000} seconds`,
+      `The kind of damage counts more than the amount: ${picks.join(', then ')}`], sep: '' }
       : 'Whoever hit it most recently, then whoever is nearest']);
     // A hit with no reaction in its state: a 3-hit counter on the attacker, unless ignore_hitevent.
     if (!(atk || states.find(s => s[0] === 'battle') || [])[4]?.some(e => e[0] === 'hit' && !e[2]))
@@ -3116,12 +3599,13 @@
     kv.push(['Gives up', ch.return_to_startpoint === 'false' ? 'Never. It doesn\'t return home.'
       : `When it's more than ${dist(val(t.sense && t.sense[3]) || 3600)} from where it appeared and hasn't been hit for 20 seconds`]);
     kv.push(['Forgets you', '30 seconds after it last noticed you']);
-    const blocks = [{ kind: 'kv', rows: kv }];
+    // Every value under its label, so the list reads one way (most are sentences).
+    const blocks = [{ kind: 'kv', stack: true, rows: kv }];
     // What it does in each state and when something happens to it. Skills it doesn't have fail, so
     // they're left out.
     const usable = a => a[0] !== 'skill' && a[0] !== 'magic' || !a[1] || skills.has(String(a[1]));
     const table = acts => acts.filter(a => a[2] > 0 && usable(a)).sort((a, b) => (a[3] ? 1 : 0) - (b[3] ? 1 : 0) || b[2] - a[2])
-      .map(([kind, v, pct, cond]) => [aiActionCell(kind, v), (Math.round(pct * 10) / 10) + '%', cond ? cap(aiCondWords(cond)) : '—']);
+      .map(([kind, v, pct, cond]) => [aiActionCell(kind, v), (Math.round(pct * 10) / 10) + '%', cond ? aiCondCell(cond) : '—']);
     const more = [];
     for (const s of states) {
       if (!AI_STATES[s[0]]) continue;
@@ -3198,7 +3682,7 @@
     const { best, safe } = bestGear(el);
     const rows = SPELL_ELEMENTS.map(([n, a, m = 1]) => [n, pctOf(elementRate(a, el) * m)]);
     rows.push(['Melee and ranged with no elemental crystals', '×1']);
-    if (best.n) rows.push([`Melee and ranged with ${gearText(best)} crystals (the most damage)`, pctOf(best.rate)]);
+    if (best.n) rows.push([{ lines: [`Melee and ranged with ${gearText(best)} crystals`, 'The most damage'], sep: '' }, pctOf(best.rate)]);
     return [{ kind: 'table', columns: ['Attack', 'Damage'], rows },
       { kind: 'kv', rows: [['Crystals that hurt it most', `${gearText(best)} (${pctOf(best.rate)})`],
         ['Crystals that soften its own hits on you', `${gearText(safe)} (its damage ${pctOf(safe.rate)})`]] },
@@ -3240,9 +3724,10 @@
     if (num(r.PoisonDamage)) combat.push(['Poison damage', num(r.PoisonDamage)]);
     if (r.PoisonImmune !== undefined && /^\d+$/.test(String(r.PoisonImmune).trim())) combat.push(['Poison immunity', num(r.PoisonImmune)]);
     if (num(r.PoisonDamageRatio1) || num(r.PoisonDamageRatio2)) combat.push(['Poison damage ratios', `${num(r.PoisonDamageRatio1)} / ${num(r.PoisonDamageRatio2)}`]);
-    if (r.LifeRecoveryRate !== undefined && num(r.LifeRecoveryRate) !== 1) combat.push(['Life recovery rate', num(r.LifeRecoveryRate)]);
+    // LifeRecoveryRate and RunSpeedFactor multiply the usual rate (1 is the usual one).
+    if (r.LifeRecoveryRate !== undefined && num(r.LifeRecoveryRate) !== 1) combat.push(['Life recovery rate', '×' + num(r.LifeRecoveryRate)]);
     if (r.CriticalResist !== undefined && num(r.CriticalResist)) combat.push(['Critical resistance', num(r.CriticalResist)]);
-    if (r.RunSpeedFactor !== undefined && String(r.RunSpeedFactor).trim()) combat.push(['Run speed factor', num(r.RunSpeedFactor)]);
+    if (r.RunSpeedFactor !== undefined && String(r.RunSpeedFactor).trim()) combat.push(['Run speed factor', '×' + num(r.RunSpeedFactor)]);
     const weak = String(r.WeakPoints || '').trim();
     if (weak && weak[0] !== '<') combat.push(['Weak points', weak.split(';').map(s => s.trim()).filter(Boolean).join(', ')]);
     if (combat.length) sections.push({ heading: 'Combat', blocks: [{ kind: 'kv', rows: combat }] });
@@ -3250,6 +3735,8 @@
     if (elBlocks.length) sections.push({ heading: 'Elements', blocks: elBlocks });
     const behave = monsterBehaviour(r, new Set([...sc.skills.keys()].map(String)));
     if (behave.length) sections.push({ heading: 'Behavior', blocks: behave });
+    const taming = monsterTamingSection(id);
+    if (taming) sections.push(taming);
     const drops = monsterDropsSection(id);
     if (drops) sections.push(drops);
 
@@ -3274,11 +3761,11 @@
     }
     if (ex.enlarge.length) {
       const rng = ex.enlargeRange;
-      dmg.push({ kind: 'table', title: 'Grows when hit by' + (rng.scale_min || rng.scale_max ? ` (scale ${rng.scale_min || '?'} to ${rng.scale_max || '?'})` : ''), columns: ['Skill', 'Growth per hit'],
+      dmg.push({ kind: 'table', title: 'Grows when hit by' + (rng.scale_min || rng.scale_max ? ` (scale ${rng.scale_min || '?'} to ${rng.scale_max || '?'})` : ''), columns: ['Skill', 'Scale added per hit'],
         rows: ex.enlarge.map(([sid, s]) => { const k = skillById(sid); return [k ? skillLink(sid, k.name) : (sid === 'any' ? 'Any attack' : 'Skill ' + sid), s || '']; }) });
     }
     if (ex.joints.length) {
-      dmg.push({ kind: 'table', title: 'Body parts', columns: ['Part', 'Life'],
+      dmg.push({ kind: 'table', title: 'Body parts', columns: ['Part', 'HP'],
         rows: ex.joints.map(a => [a.name, a.life ? num(a.life) : (truthy(a.use_parent_param) ? 'Shared with the body' : '')]) });
     }
     if (dmg.length) sections.push({ heading: 'Damage', blocks: dmg });
@@ -3327,24 +3814,34 @@
     // The same spawn listed for several of the boss's groups is one row.
     const uniqueBoss = [...new Map(bossRows.map(r => [r.map(plain0).join('|'), r])).values()];
     if (bossRows.length) appears.push({ kind: 'table', title: 'As a field boss', columns: ['Region', 'Where', 'When it appears', BOSS_CHANCE, 'Leaves after', 'Appears with'], rows: uniqueBoss });
-    // The formulas for working out its next appearance, one set per kind of schedule it has.
+    // The formulas for working out its next appearance, said once per distinct schedule; the places and
+    // events sharing one (the same event in 2007, 2008, 2009) are a small table above it.
     if (bossRows.length) {
-      const seen = new Set(), groups = [];
+      const groups = new Map();
       for (const rg of Object.values(regionData())) for (const b of rg.b || []) if (b.r.map(String).includes(String(id))) {
-        const k = JSON.stringify(b.s) + '|' + b.ev;
-        if (seen.has(k)) continue;
-        seen.add(k);
-        groups.push([rg.n + (b.ev ? ` (${eventName(b.ev)} event)` : ''), bossFormula(b), bossFormulaCode(b)]);
+        const f = bossFormula(b), k = JSON.stringify(f);
+        if (!groups.has(k)) groups.set(k, { f, code: bossFormulaCode(b), wh: [] });
+        const wh = [rg.n, b.ev ? eventName(b.ev) : ''];
+        if (!groups.get(k).wh.some(w => w[0] === wh[0] && w[1] === wh[1])) groups.get(k).wh.push(wh);
       }
-      // More than one schedule: each says where it applies.
-      const lines = [].concat(...groups.map(([where, f]) => (groups.length > 1 && f.length ? [`${where}: ${f[0]}`].concat(f.slice(1)) : f)));
-      const code = [...new Set(groups.map(([where, , c]) => (groups.length > 1 ? `// ${where}\n` : '') + c).filter(c => c.trim()))].join('\n\n') +
+      const gs = [...groups.values()].filter(g => g.f.length), many = gs.length > 1;
+      const whText = w => w[0] + (w[1] ? ` (${w[1]} event)` : '');
+      // Where a schedule applies in a line: its regions per event ("Tir Chonaill, Rano (Halloween event)").
+      const whLine = wh => { const by = new Map(); for (const [r, ev] of wh) by.set(ev, (by.get(ev) || []).concat(r)); return [...by].map(([ev, rs]) => rs.join(', ') + (ev ? ` (${ev} event)` : '')).join('; '); };
+      const blocks = [];
+      for (const g of gs) {
+        // One schedule in several places or events: a table of them above it. Several schedules: each
+        // titled with where it applies.
+        if (!many && g.wh.length > 1) { const ev = g.wh.some(w => w[1]); blocks.push({ kind: 'table', title: 'Where this applies', columns: ev ? ['Region', 'Event'] : ['Region'], rows: g.wh.map(w => (ev ? [w[0], w[1] || '—'] : [w[0]])) }); }
+        blocks.push({ kind: 'list', title: many ? whLine(g.wh) : '', items: g.f });
+      }
+      const code = gs.map(g => (many || g.wh.length > 1 ? g.wh.map(w => `// ${whText(w)}\n`).join('') : '') + g.code).filter(c => c.trim()).join('\n\n') +
         '\n\n// Field Boss Info Scroll, per monster defeated in the region:\nchance = 1 / (5 × (minutes_left − 10))   if minutes_left > 10\nchance = 1                              otherwise';
-      if (lines.length) appears.push({ kind: 'details', summary: 'How to work out when it appears', blocks: [{ kind: 'list', items: [...new Set(lines)] }, { kind: 'note', text: INFO_SCROLL_NOTE },
-        { kind: 'formula', title: 'As a formula', text: code }] });
+      if (blocks.length) appears.push({ kind: 'details', summary: 'How to work out when it appears', blocks: blocks.concat([{ kind: 'note', text: INFO_SCROLL_NOTE },
+        { kind: 'formula', title: 'As a formula', text: code }]) });
     }
-    if (spawnRows.length) appears.push({ kind: 'table', title: 'In the field', columns: ['Region', 'Where', 'At most', 'Respawn', 'When'], rows: spawnRows },
-      { kind: 'note', text: 'At most: how many can be out at once (usually about half are). Respawn: how long after one is defeated another appears.' });
+    if (spawnRows.length) appears.push({ kind: 'table', title: 'In the field', columns: ['Region', 'Where', 'Most at once', 'Respawn', 'When'], rows: spawnRows },
+      { kind: 'note', text: 'Most at once: how many can be out at the same time (usually about half are). Respawn: how long after one is defeated another appears.' });
     if (met.length) appears.push({ kind: 'links', title: 'Dungeons', items: met });
     if (inMissions.length) appears.push({ kind: 'links', title: 'Missions', items: inMissions });
     if (appears.length) sections.push({ heading: 'Where it appears', blocks: appears });
@@ -3357,7 +3854,7 @@
     const other = [];
     for (const [k, v] of Object.entries(ex.attrs)) {
       if (EXTRA_SKIP.has(k) || ['scale', 'body_scale', 'head_scale', 'leg_scale'].includes(k)) continue;
-      other.push([EXTRA_LABELS[k] || cap(words(k).toLowerCase()), v]);
+      other.push([EXTRA_LABELS[k] || cap(words(k).toLowerCase()), extraValue(k, v)]);
     }
     if (other.length) sections.push({ heading: 'Other data', blocks: [{ kind: 'kv', rows: other }] });
     // Related: items it wears, its mate, items that summon it, races of the same name.
@@ -3553,23 +4050,24 @@
       if ((g.x || []).length) blocks.push({ kind: 'table', title: 'Gifts to avoid', columns: ['Item', 'Reaction', 'Liking'], rows: rows(g.x) });
       blocks.push({ kind: 'note', text: 'Liking is for one item. A whole stack counts for far less (at most +2), and they take the whole stack. Most items are neutral to everyone. One gift per conversation.' });
     } else if (g.k === 'flat') blocks.push({ kind: 'note', text: 'Takes any gift with a thank-you, but it doesn\'t change how much they like you.' });
-    else if (g.k === 'refuses' || g.k === 'ignores') blocks.push({ kind: 'note', text: 'Doesn\'t take gifts; the item stays with you.' });
+    // One who doesn't take gifts (refuses, ignores) gets no Gifts section at all, unless a special gift.
     if ((g.s || []).length) blocks.push({ kind: 'list', title: 'Special gifts', items: g.s });
     return blocks;
   }
   // ---------- friendship ----------
   // GAME_SOURCES.affection = {npc: {t: 1/0 talking can / can't raise liking, j: usual | harsh part-time
   // job, g: [special scenes]}}; secretShops = {npc: {u: [kind, detail], tabs, i: [[item, price]]}}.
-  function npcFriendBlocks(id) {
+  // What's particular to an NPC's friendship: what the guide (linked with their gifts) doesn't already
+  // say for everyone. Talking raising liking and the usual part-time job's liking are everyone's rules.
+  const FRIEND_GUIDE = { kind: 'text', tone: 'muted', parts: ['How gifts and liking work: ', { t: 'guide', id: 'npc-friendship', label: 'NPC Friendship guide' }] };
+  function npcFriendLines(id) {
     const a = ((window.GAME_SOURCES && window.GAME_SOURCES.affection) || {})[id];
     if (!a) return [];
     const items = [];
     if (a.t === 0) items.push('Talking never makes them like you more; use gifts or their part-time job.');
-    if (a.t === 1) items.push('Private Story and Nearby Rumors raise their liking once they "look at you favorably" and aren\'t tired of talking.');
-    if (a.j === 'usual') items.push('Their part-time job: perfect 0 to +3 liking, good 0 to +1, poor 0, fail 0 to −3.');
     if (a.j === 'harsh') items.push('Their part-time job is strict: perfect 0 to +3 liking, good 0 to +1, poor 0 to −2, fail 0 to −5.');
     for (const g of a.g || []) items.push(g);
-    return items.length ? [{ kind: 'list', items }, { kind: 'links', title: 'How it works', items: [{ t: 'guide', id: 'npc-friendship', label: 'NPC Friendship guide' }] }] : [];
+    return items;
   }
   // The secret tabs as the shop list names them (the two lists name a few tabs differently).
   const SECRET_TAB_NAMES = { 'High-Grade Weapons': 'Fine Weapons', 'High-Grade Armor': 'Fine Armor' };
@@ -3646,7 +4144,7 @@
     if (x.sn) out.push(': ' + x.sn);
     const en = [x.pf, x.sf].map(e => e && enchantById(e)).filter(Boolean);
     if (en.length) out.push(', with ', ...en.flatMap((e, i) => (i ? [' and ', { t: 'enchant', id: e.id, label: e.name }] : [{ t: 'enchant', id: e.id, label: e.name }])));
-    if (x.ql) out.push(` (quality ${x.ql})`);
+    if (x.ql) out.push(` (quality score ${x.ql})`);
     return out;
   }
   // How an NPC's secret tabs open, in a player's words: one note per way in ([] when they have none),
@@ -3690,6 +4188,146 @@
     const p = n.p ?? 1, cost = !p ? ' (free)' : p !== 1 ? ` (${p}× the usual price)` : '';
     return [['Repairs', n.m ? said + ' (only inside a Shadow Mission)' : said], ['Repair success', n.r + '%' + cost]];
   }
+  // Items handed in to NPCs for rewards: GAME_SOURCES.turnins = [{k, npc, title, how, tips, cond, repeat, i: [[give
+  // [[item, count]], get [[kind (item | gold | exp | text), value, count]], chance, note]]}].
+  const turnins = () => (window.GAME_SOURCES || {}).turnins || [];
+  const tiGive = give => ({ lines: give.map(([it, n]) => [itemRef(it, n > 1 ? n : undefined)]), sep: '' });
+  // Gold and EXP rewards get their unit unless the text already names it ("... exploration EXP").
+  const withUnit = (v, unit) => (new RegExp(`\\b${unit}\\b`, 'i').test(v) ? v : `${v} ${unit}`);
+  // "Enchant Scroll: Wyvern" links its enchant; "Title: the Wine Hero or ..." each title (a listed one).
+  const scrollLine = v => {
+    const m = /^Enchant Scroll: (.+)$/.exec(v), e = m && enchantNamed(m[1], 'prefix');
+    if (e) return ['Enchant Scroll: ', { t: 'enchant', id: e.id, label: m[1] }];
+    const tm = /^Title: (.+)$/.exec(v);
+    if (!tm) return [v];
+    return ['Title: ', ...tm[1].split(' or ').flatMap((name, i) => {
+      const t = titles().find(x => x.name === name);
+      return [...(i ? [' or '] : []), t ? { t: 'title', id: t.id, label: name } : name];
+    })];
+  };
+  const tiGet = get => ({ lines: get.map(([k, v, n]) => (k === 'item' ? [itemRef(v, +n > 1 ? +n : undefined)] : k === 'gold' ? [withUnit(v, 'gold')] : k === 'exp' ? [withUnit(v, 'EXP')] : scrollLine(v))), sep: '' });
+  const tiNpc = x => { const n = npcById(x.npc); return n ? { t: 'npc', id: n.id, label: n.name } : x.npc || 'An NPC'; };
+  const tiLink = x => ({ t: 'tradein', id: x.k, label: x.title });
+  const tiTown = x => { const n = npcById(x.npc); return (n && n.town) || 'Elsewhere'; };
+  // Text with what it names linked: quests, titles and skills (condLinks), then items, NPCs and monsters
+  // (noteLinks), as one line of words and links.
+  const richLine = s => ({ lines: [condLinks(s).flatMap(p => (typeof p === 'string' ? [].concat(noteLinks(p)) : [p]))], sep: '' });
+  // How the items handed in are earned (x.earn, an event like Threat in Renes): a line on what it is, how
+  // to get in, the tiers as a table (party level -> points), and the rules of a run.
+  function earnBlocks(x) {
+    const e = x.earn;
+    if (!e) return [];
+    const t = e.table;
+    return [...(e.intro ? [{ kind: 'text', parts: [richLine(e.intro)] }] : []),
+      ...((e.enter || []).length ? [{ kind: 'list', title: 'How to get in', items: e.enter.map(richLine) }] : []),
+      ...(t && (t.rows || []).length ? [{ kind: 'table', lead: true, title: t.title || '', columns: t.columns, rows: t.rows }] : []),
+      ...((e.rules || []).length ? [{ kind: 'list', title: 'During a run', items: e.rules.map(richLine) }] : [])];
+  }
+  // A trade-in's own page: who takes what, how, and what you get; then how its items are earned.
+  function tradeinPage(id) {
+    const x = turnins().find(t => t.k === id);
+    if (!x) return null;
+    const earn = earnBlocks(x);
+    return { title: x.title, subtitle: null, icon: null, category: [slug(tiTown(x))], kind: 'Trade-in', noMeta: true,
+      infobox: [['NPC', tiNpc(x)], ['Town', tiTown(x)], ['Items', x.i.length]], summary: '',
+      sections: [{ heading: 'How it works', blocks: turninBlocks(x) }, ...(earn.length ? [{ heading: `Earning it: ${x.earn.title}`, blocks: earn }] : [])] };
+  }
+  // A "how" text's sentences (also split at "; "), the formulas among them ("EXP = 20 × ...") apart.
+  function splitHow(text) {
+    // Two formulas in one sentence ("Gold = ... and exploration EXP = ...") are two.
+    const parts = String(text || '').split(/(?<=;)\s+|(?<=\.)\s+(?=[A-Z(])|\s+and\s+(?=[^=.;]{2,40}?\s=\s)/)
+      .map(s => s.replace(/;$/, '.').trim()).filter(Boolean).map(s => s[0].toUpperCase() + s.slice(1));
+    const isFormula = s => /^[^=.]{2,40}?\s=\s/.test(s);
+    // A per-item list ("Dish weights: Fruit Juice 10, Fried Egg 12, ...") becomes a column: {'Dish weight': {name: 10}}.
+    const perItem = {}, isList = s => {
+      const m = /^([A-Z][a-z]+?(?: [a-z]+?)*?)s?: ((?:[^,.]+? [\d.,]+(?:, |\.?$))+)$/.exec(s);
+      if (m) perItem[m[1]] = { text: s, of: Object.fromEntries(m[2].replace(/\.$/, '').split(', ').map(p => [p.replace(/ [\d.,]+$/, ''), p.match(/[\d.,]+$/)[0]])) };
+      return !!m;
+    };
+    const steps = parts.filter(s => !isFormula(s) && !isList(s));
+    return { steps, formulas: parts.filter(isFormula).map(s => s.replace(/\.$/, '')), perItem };
+  }
+  // One exchange as blocks: how to do it (its formulas as cards), what to bring, then a table of what
+  // you get: a tier first when there are tiers, the notes quieter than the values.
+  function turninBlocks(x) {
+    // What's handed in, when it's the same on every row, is said once above the table, not repeated.
+    // An exchange that takes nothing (stars from a raft ride are points on the character) has no Bring.
+    const noGive = x.i.every(r => !r[0].length);
+    const gives = new Set(x.i.map(r => JSON.stringify(r[0]))), oneGive = !noGive && gives.size === 1 && x.i.length > 1;
+    const how = splitHow(x.how);
+    // Tiers for several items (Glewyas's dishes): the item leads, said once over its tiers, with its
+    // per-item values from How or a tip ("Dish weights: ...") beside it; a list that doesn't fit the items
+    // stays where it was.
+    const grouped = !noGive && !oneGive && x.i.some(r => r[4]);
+    const giveName = give => (items().get(String(give[0][0])) || {}).name;
+    const tipLists = (x.tips || []).map(t => [t, splitHow(t).perItem]);
+    const lists = Object.entries(Object.assign({}, how.perItem, ...tipLists.map(([, p]) => p))).filter(([, l]) => grouped && x.i.every(r => giveName(r[0]) in l.of));
+    const used = l => lists.some(([, u]) => u === l);
+    const steps = [...how.steps, ...Object.values(how.perItem).filter(l => !used(l)).map(l => l.text)].join(' ');
+    // (No How often row: a limit worth knowing goes in Good to know, below.)
+    const rows = [['How', steps], ...(oneGive ? [['Bring', tiGive(x.i[0][0])]] : []), ['Needs', x.cond]].filter(r => r[1]);
+    // A tip that's a formula ("Liking = ...") is a card with the others.
+    const isFormula = s => /^[^=.]{2,40}?\s=\s/.test(s);
+    const tips = tipLists.filter(([t, p]) => !isFormula(t) && !Object.values(p).some(used)).map(([t]) => t);
+    // A real limit on how often ("Once per contest", "Once a day") leads Good to know; "Every time." says nothing.
+    if (x.repeat && !/^every time\.?$/i.test(x.repeat.trim())) tips.unshift(x.repeat);
+    how.formulas.push(...(x.tips || []).filter(isFormula).map(s => s.replace(/\.$/, '')));
+    const cards = how.formulas.length ? [{ kind: 'formulas', items: how.formulas.map(s => { const m = /^(.+?)\s=\s([\s\S]+)$/.exec(s); return { name: m[1], expr: m[2] }; }) }] : [];
+    // A chance the same on every row ("appraisal value + 11%") is the exchange's rule, said once in
+    // How: no column repeating it. Tiered rows (r[4], e.g. a quality score band) lead with their tier.
+    const chances = new Set(x.i.map(r => r[2] || ''));
+    const extra = { when: x.i.some(r => r[4]), give: !noGive && !oneGive, chance: x.i.some(r => r[2]) && chances.size > 1, note: x.i.some(r => r[3]) };
+    const giveCells = (give, i) => (i && JSON.stringify(give) === JSON.stringify(x.i[i - 1][0]) ? ['', ...lists.map(() => '')]
+      : [tiGive(give), ...lists.map(([, l]) => l.of[giveName(give)])]);
+    const giveCols = ['Bring', ...lists.map(([label]) => label)];
+    const head = [...(rows.length ? [{ kind: 'kv', stack: true, rows }] : []), ...cards], foot = tips.length ? [{ kind: 'list', title: 'Good to know', items: tips }] : [];
+    // Numbered choices (the raft and balloon star rewards: notes "Choice 3" and "Choice 3, extra chance"):
+    // one row per choice with its whole bundle, the sure item first and each extra chance after it with
+    // its chance; the tier (the star band) once over its choices, a line between tiers.
+    // What every choice gets as well (the Chief Mate title, "On top of your choice, from 20 stars") is
+    // an "Also" row of its tier, its condition muted after it.
+    const CHOICE = /^Choice (\d+)(, extra chance)?$/, ALSO = /^On top of your choice(?:, (.+))?$/;
+    if (x.i.length && x.i.every(r => CHOICE.test(r[3] || '') || ALSO.test(r[3] || '')) && x.i.some(r => CHOICE.test(r[3]))) {
+      const byKey = new Map();
+      for (const [, get, chance, note, when] of x.i) {
+        const c = CHOICE.exec(note), a = !c && ALSO.exec(note), n = c ? c[1] : 'Also', k = (when || '') + '|' + n;
+        if (!byKey.has(k)) byKey.set(k, { when: when || '', n, lines: [] });
+        const tail = c && c[2] ? ` · ${chance || 'a'} chance` : a && a[1] ? ` · ${a[1]}` : '';
+        byKey.get(k).lines.push(...tiGet(get).lines.map(l => (tail ? l.concat([{ text: tail, tone: 'muted' }]) : l)));
+      }
+      const choices = [...byKey.values()], hasWhen = choices.some(c => c.when);
+      return [...head, { kind: 'table', lead: hasWhen, grouped: hasWhen, columns: [...(hasWhen ? ['When'] : []), 'Choice', 'You get'],
+        rows: choices.map((c, i) => [...(hasWhen ? [i && c.when === choices[i - 1].when ? '' : c.when] : []), c.n, { lines: c.lines, sep: '' }]) }, ...foot];
+    }
+    // Every value under its label, the same way on every trade-in.
+    return [...head,
+      { kind: 'table', lead: extra.when, grouped, columns: [...(grouped ? giveCols : []), ...(extra.when ? ['When'] : []), ...(extra.give && !grouped ? ['Bring'] : []), 'You get', ...(extra.chance ? ['Chance of this result'] : []), ...(extra.note ? ['Note'] : [])],
+        rows: x.i.map(([give, get, chance, note, when], i) => [...(grouped ? giveCells(give, i) : []), ...(extra.when ? [when || '—'] : []), ...(extra.give && !grouped ? [tiGive(give)] : []), tiGet(get),
+          ...(extra.chance ? [chance || '—'] : []), ...(extra.note ? [note ? { text: note, tone: 'muted' } : '—'] : [])]) },
+      ...foot];
+  }
+  // An NPC's page: what they take in, each exchange under its name.
+  function npcTurninSection(id) {
+    const list = turnins().filter(x => npcById(x.npc) && npcById(x.npc).id === id);
+    if (!list.length) return null;
+    const blocks = list.length === 1 ? turninBlocks(list[0]).map((b, i) => (i === 0 && list[0].title ? Object.assign({ title: list[0].title }, b) : b))
+      // The first (the main one, e.g. Voight's prices) open; the rest folded.
+      : list.map((x, i) => ({ kind: 'details', summary: `${x.title} (${x.i.length})`, open: i === 0, blocks: turninBlocks(x) }));
+    return { heading: 'Trade-ins', blocks };
+  }
+  // An item's page: who takes it in (and for what), and the turn-ins that give it.
+  function itemTurninSection(id) {
+    const k = String(id), take = [], give = [];
+    for (const x of turnins()) for (const r of x.i) {
+      if (r[0].some(g => g[0] === k)) take.push([x, r]);
+      if (r[1].some(g => g[0] === 'item' && g[1] === k)) give.push([x, r]);
+    }
+    if (!take.length && !give.length) return null;
+    const blocks = [];
+    if (take.length) blocks.push({ kind: 'table', title: 'Turn it in', columns: ['To', 'Bring', 'You get'], rows: take.map(([x, r]) => [{ lines: [[tiNpc(x)], [tiLink(x)]], sep: '' }, tiGive(r[0]), tiGet(r[1])]) });
+    if (give.length) blocks.push({ kind: 'table', title: 'Get it by turning in', columns: ['To', 'Bring', 'You get'], rows: give.map(([x, r]) => [{ lines: [[tiNpc(x)], [tiLink(x)]], sep: '' }, tiGive(r[0]), tiGet(r[1])]) });
+    return { heading: 'Trade-ins', blocks };
+  }
   function npcPage(id) {
     const n = npcById(id);
     if (!n) return null;
@@ -3707,15 +4345,15 @@
     // quests can run long, so they're folded.
     const shb = npcShopBlocks(n.id);
     if (shb.length) sections.push({ heading: 'Shop', blocks: shb });
-    // Gifts, folded when there's a list (the summary says what they love); a one-line answer stays open.
+    // Gifts, folded under the same name on every NPC when there's a list (a one-line answer stays open):
+    // the gifts, then what's particular to this NPC's friendship, and a quiet line to the friendship guide
+    // at the foot. One who takes no gifts gets a Friendship section only for what's particular to them.
     const gb = npcGiftBlocks(n.id), gw = (((window.GAME_SOURCES || {}).gifts || {})[n.id] || {}).w;
-    // (The friendship guide is linked once, under Friendship.)
-    if (gb.length) {
-      const loves = gw ? GIFT_TRAITS.filter((t, i) => gw[i] === 2) : [];
-      sections.push({ heading: 'Gifts', blocks: gw ? [{ kind: 'details', summary: loves.length ? `Loves ${loves.join(', ')}: best gifts and ones to avoid` : 'Best gifts and ones to avoid', blocks: gb }] : gb });
-    }
-    const fb = npcFriendBlocks(n.id);
-    if (fb.length) sections.push({ heading: 'Friendship', blocks: fb });
+    const fl = npcFriendLines(n.id), friend = [...(fl.length ? [{ kind: 'list', title: 'Friendship', items: fl }] : []), FRIEND_GUIDE];
+    if (gb.length) sections.push({ heading: 'Gifts', blocks: gw ? [{ kind: 'details', summary: 'Gifts they like and dislike', blocks: gb.concat(friend) }] : gb.concat(friend) });
+    else if (fl.length) sections.push({ heading: 'Friendship', blocks: friend });
+    const ti = npcTurninSection(n.id);
+    if (ti) sections.push(ti);
     const offers = upgradesByNpc().get(n.id) || [];
     if (offers.length) {
       const groups = new Map();
@@ -3802,7 +4440,7 @@
       case 'collect': return it ? ['Collect ', it] : [d.x || 'Collect items'];
       case 'gather': return it ? ['Gather ', it] : [d.x || 'Gather items'];
       case 'fish': return it ? ['Catch ', it] : [d.x || 'Fish'];
-      case 'give': return it ? ['Give ', it, ' to ', npc, d.minSize ? ` (${d.minSize} cm or bigger)` : '', d.quality ? ` (quality ${d.quality} or better)` : ''] : ['Give an item to ', npc];
+      case 'give': return it ? ['Give ', it, ' to ', npc, d.minSize ? ` (${d.minSize} cm or bigger)` : '', d.quality ? ` (quality score ${d.quality} or better)` : ''] : ['Give an item to ', npc];
       case 'receive': return it ? ['Receive ', it, ' from ', npc] : ['Receive an item from ', npc];
       case 'craft': return [it ? 'Make ' : 'Make an item', it || '', d.skill ? ' (' : '', d.skill ? skillRef(d.skill) : '', d.skill ? ')' : ''];
       case 'learn': return ['Learn ', d.skill ? skillRef(d.skill) : 'a skill', d.rank ? ` (rank ${d.rank} or higher)` : ''];
@@ -3939,7 +4577,7 @@
 
   // ---------- questlines ----------
   // GAME_SOURCES.questChains = [{id, t: title, g: group, n: generation, s: summary, st: [[quest, name, step,
-  // how, cond, branch, note]]}]: quests in play order, from how the game links them (a quest that needs
+  // how (text or [sub-steps]), cond (text or [lines]), branch, note, alts, details]]}]: quests in play order, from how the game links them (a quest that needs
   // another done first, one sent when another ends, the story's chapters). Steps sharing a number are
   // a branch (Paladin or Dark Knight, elf or giant): the branch says which.
   const QL_GROUPS = [['main', 'Main stream'], ['transform', 'Transformations'], ['beginner', 'Beginner questlines'], ['side', 'Side stories'],
@@ -3952,15 +4590,34 @@
   function questlinePage(id) {
     const c = questChains().find(x => x.id === id);
     if (!c) return null;
-    const branches = c.st.some(s => s[5]);
     const info = [['Group', c.g], ['Quests', new Set(c.st.map(s => s[0])).size]];
     if (c.n) info.push(['Generation', c.n]);
     // A step's other versions (for the other gender, an easier copy...) under its quest: "or X (when)".
     const questCell = (q, name, alts) => (alts && alts.length ? { lines: [[qlQuest(q, name)], ...alts.map(([aq, an, when]) => ['or ', qlQuest(aq, an), ` (${when})`])], sep: '' } : qlQuest(q, name));
-    const rows = c.st.map(([q, name, step, how, cond, branch, note, alts]) => [step, questCell(q, name, alts), note ? { lines: [[how], [{ text: note, tone: 'neg' }]], sep: '' } : how, cond || '—']
-      .concat(branches ? [branch || '—'] : []));
-    const blocks = [{ kind: 'table', columns: ['Step', 'Quest', 'How to get it', 'Conditions'].concat(branches ? ['Path'] : []), rows }];
-    if (branches) blocks.push({ kind: 'note', text: 'Steps with the same number are different paths: take the one the Path column says applies to you.' });
+    // How: one sentence, or short sub-steps in order (numbered); then its details (muted) and any doubt (red).
+    // Conditions: one a line.
+    const howCell = (how, detail, note) => {
+      const steps = Array.isArray(how) ? how : [how], after = [];
+      for (const d of detail || []) after.push([{ text: d, tone: 'muted' }]);
+      if (note) after.push([{ text: note, tone: 'neg' }]);
+      const rest = after.length ? { lines: after, sep: '' } : null;
+      if (steps.length > 1) return rest ? { steps, after: rest } : { steps };
+      return rest ? { lines: [[steps[0]], ...after], sep: '' } : steps[0];
+    };
+    const condCell = cond => (Array.isArray(cond) ? (cond.length > 1 ? { lines: cond, sep: '' } : cond[0] || '—') : cond || '—');
+    // A line with a path per race (Generation 6: elves and giants) is a table per race, the steps both
+    // share in each, numbered again from 1; any other choice stays in a Path column.
+    const RACE_PATHS = [['Human', 'Humans'], ['Elf', 'Elves'], ['Giant', 'Giants']];
+    const races = RACE_PATHS.filter(([b]) => c.st.some(s => s[5] === b));
+    const isRace = b => RACE_PATHS.some(([r]) => r === b);
+    const stepTable = (steps, title) => {
+      const paths = steps.some(s => s[5] && !isRace(s[5])), order = [...new Set(steps.map(s => s[2]))];
+      const rows = steps.map(([q, name, step, how, cond, branch, note, alts, detail]) => [races.length > 1 ? order.indexOf(step) + 1 : step, questCell(q, name, alts), howCell(how, detail, note), condCell(cond)]
+        .concat(paths ? [branch && !isRace(branch) ? branch : '—'] : []));
+      return [{ kind: 'table', title, columns: ['Step', 'Quest', 'How to get it', 'Conditions'].concat(paths ? ['Path'] : []), rows },
+        ...(paths ? [{ kind: 'note', text: 'Steps with the same number are different paths: take the one the Path column says applies to you.' }] : [])];
+    };
+    const blocks = races.length > 1 ? races.flatMap(([b, title]) => stepTable(c.st.filter(s => s[5] === b || !isRace(s[5])), title)) : stepTable(c.st);
     return { title: c.t, subtitle: null, icon: null, category: [qlGroup(c.g)], kind: 'Questline', infobox: info, summary: c.s, sections: [{ heading: 'Steps', wide: true, blocks }] };
   }
   // A quest page's place in its questlines: the line, its step of how many, the quests before and after.
@@ -4028,6 +4685,8 @@
     return [...(DUNGEON_RACES.get(String(race)) || [])];
   }
   const monsterLine = ([race, n, ch]) => [raceLink(race), countOf(n), ch >= 0 && ch < 100 ? ` (${pctText(ch)})` : ''];
+  // Notes joined with "; " one a line, each capitalized.
+  const noteLines = s => { const p = [...new Set(String(s).split(/;\s+/).map(x => x.trim()).filter(Boolean))].map(cap); return p.length > 1 ? { lines: p, sep: '' } : p[0] || '—'; };
   const enchantBits = (prefix, suffix) => [].concat(...[['prefix', prefix], ['suffix', suffix]].filter(x => x[1]).map(([k, id]) => { const e = enchantById(id); return e ? [', ', { t: 'enchant', id: e.id, label: e.name }, ` (${k})`] : []; }));
   function dungeonPage(id) {
     const d = dungeonById(id);
@@ -4043,7 +4702,7 @@
       const altarOf = a => { const x = dungeonById(a); return a === d.id ? "This dungeon's altar" : x ? { t: 'dungeon', id: x.id, label: x.name + ' altar' } : cap(words(a)) + ' altar'; };
       const rows = en.map(e => [e.ru ? 'Iria ruin: ' + e.ru : e.a ? altarOf(e.a) : '—',
         (e.i || []).length ? { lines: e.i.map(x => [itemRef(x)]), sep: '' } : 'Any other item',
-        (e.p || []).length ? e.p.map(p => 'party ' + p.replace(/^==\s*/, '= ')).join(', ') : 'Any', e.t ? cap(e.t) : '—']);
+        (e.p || []).length ? e.p.map(p => 'party ' + p.replace(/^==\s*/, '= ')).join(', ') : 'Any', e.t ? noteLines(eventText(e.t)) : '—']);
       sections.push({ heading: 'How to get in', blocks: [{ kind: 'table', columns: ['Where', 'Item to offer', 'Party size', 'Notes'], rows },
         { kind: 'note', text: 'Drop an item on the altar to enter: some items (dungeon passes) send you to another version of the dungeon.' }] });
     }
@@ -4079,7 +4738,7 @@
       // The dungeon's own name (the pass is in its own column); a pass with no English name says so.
       const passRef = i => { const it = items().get(String(i)); return it && !english(it.name) ? { t: 'item', id: String(i), label: 'Pass (no English name)', icon: itemIcon(String(i)) } : itemRef(i); };
       const rowOf = (x, diff) => [{ t: 'dungeon', id: x.v.id, label: english(x.v.n) ? x.v.n : x.v.name }].concat(diff ? [DIFF_NAME[x.di] + (x.hard ? ' · Hard mode' : '')] : [],
-        [x.its.length ? { lines: x.its.map(i => [passRef(i)]), sep: '' } : '—', x.party, x.note ? cap(eventText(x.note)) : '—']);
+        [x.its.length ? { lines: x.its.map(i => [passRef(i)]), sep: '' } : '—', x.party, x.note ? noteLines(eventText(x.note)) : '—']);
       const blocks = [];
       if (groups.diff.length) blocks.push({ kind: 'table', title: 'Difficulties', columns: ['Version', 'Difficulty', 'Enter with', 'Party', 'Notes'],
         rows: groups.diff.sort((a, b) => a.hard - b.hard || a.di - b.di || a.n - b.n || a.v.name.localeCompare(b.v.name)).map(x => rowOf(x, true)) });
@@ -4200,8 +4859,10 @@
     const at = fishedAt(id);
     if (!at.length) return null;
     const size = fishingData().f[String(id)];
-    const blocks = [{ kind: 'table', columns: ['Where', 'Chance', 'When'], rows: at.sort((a, b) => b[1] - a[1]).map(([g, ch]) =>
-      [{ t: 'fishing', id: g.id, label: g.name }, pctText(ch), g.t || (g.k === 'spot' ? 'Always' : '—')]) }];
+    // The places fold away under their count, shut at first, like the tables in Where to get it.
+    const table = { kind: 'table', columns: ['Where', 'Chance', 'When'], rows: at.sort((a, b) => b[1] - a[1]).map(([g, ch]) =>
+      [{ t: 'fishing', id: g.id, label: g.name }, pctText(ch), g.t || (g.k === 'spot' ? 'Always' : '—')]) };
+    const blocks = [{ kind: 'details', summary: `Where it's caught (${at.length.toLocaleString('en-US')})`, blocks: [table], table }];
     if (size) blocks.push({ kind: 'note', text: `Caught at ${size[0]} to ${size[1]} cm.` });
     return { heading: 'Fishing', blocks };
   }
@@ -4230,8 +4891,11 @@
       if (!list.length) continue;
       // Notes every row shares are said once, under the table.
       const notesOf = s => String(s.w || '').split(/;\s+/).filter(x => x && !/^shadow missions?$/i.test(x.trim()) && x.trim() !== (monsterById(race) || {}).name)
-        .concat(String(s.cn || '').split(/;\s+/)).map(x => bossNote(String(x).trim())).map(clarifyChest).filter(x => x && !/^[\d,]+ in [\d,]+$/.test(x)).map(capFirst0);
+        .concat(String(s.cn || '').split(/;\s+/)).map(x => bossNote(String(x).trim())).map(clarifyChest).filter(x => x && !/^[\d,]+ in [\d,]+$/.test(x)).flatMap(diffNoteLines).map(capFirst0);
       const shared = list.length > 1 ? notesOf(list[0].s).filter(n => list.every(x => notesOf(x.s).includes(n)) && !/weight \d/.test(n)) : [];
+      // Each difficulty's chance shared by every row: a table of its own under this one.
+      const sharedDiff = shared.filter(isDiffLine), sharedText = shared.filter(n => !isDiffLine(n));
+      const anyDiff = list.some(x => notesOf(x.s).some(isDiffLine));
       const rows = list.sort((a, b) => (b.s.c ?? -1) - (a.s.c ?? -1)).map(({ item, enchant, s }) => {
         let what;
         if (enchant) { const e = enchantById(enchant); what = lineCell([itemRef(s.si || 62005), e ? ', ' : '', e ? { t: 'enchant', id: e.id, label: e.name } : '', e ? ` (${(usageOf(e.r)[2] || '').toLowerCase()})` : '']); }
@@ -4241,7 +4905,11 @@
         return [what, s.c != null ? pctText(s.c) : '—', notes.length ? { lines: notes.map(x => noteLinks(x)), sep: '' } : '—'];
       });
       blocks.push({ kind: 'table', title: blocks.length || DROP_KINDS.some(d => d[0] !== kind && all.some(x => x.s.k === d[0])) ? title : '', columns: ['Item', 'Chance', 'Notes'], rows });
-      if (shared.length) blocks.push({ kind: 'note', text: shared.join('. ') + '.' });
+      if (sharedDiff.length) blocks.push({ kind: 'table', title: 'Chance per kill on each difficulty', columns: ['Difficulty', 'Chance per kill'],
+        rows: sharedDiff.flatMap(n => { const m = /^([A-Za-z]+): (.*)$/.exec(n); return m ? [[m[1], m[2]]] : n.replace(/^None on /, '').split(/,\s*|\s+and\s+/).map(d => [d, 'None']); }) });
+      // (The Chance column has the best of the difficulties' chances, not always the hardest's.)
+      if (anyDiff) blocks.push({ kind: 'note', text: 'Chance: the best of its difficulties.' + (sharedDiff.length ? '' : ' Notes: each difficulty\'s chance per kill.') });
+      if (sharedText.length) blocks.push({ kind: 'note', text: sharedText.join('. ') + '.' });
     }
     blocks.push({ kind: 'note', text: 'Chances are per kill. Events and the game\'s settings can change what drops.' });
     return { heading: 'Drops', blocks };
@@ -4255,7 +4923,8 @@
   // hour; fixed: one day a week in a time window, once per week. Plus the event it needs.
   const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   // Seconds as "44 h 14 min".
-  const hm = s => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`; };
+  // (Rounded to the minute first, so 21,599 s reads "6 h", not "5 h 60 min".)
+  const hm = s => { s = Math.round(s / 60) * 60; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`; };
   const dur = s => (s >= 86400 && s % 3600 === 0 ? `${+(s / 86400).toFixed(1)} days`.replace(/^1 days/, '1 day')
     : s >= 3600 ? `${+(s / 3600).toFixed(1)} hours`.replace(/^1 hours/, '1 hour') : `${Math.round(s / 60)} minutes`.replace(/^1 minutes/, '1 minute'));
   function bossWhen(b) {
@@ -4265,13 +4934,16 @@
     else if (s[0] === 'fixed') t = `Every ${DAY_NAMES[s[1]] || 'week'} between ${s[2]} and ${s[3]} (server time), once a week`;
     else if (s[0] === 'regen' && s[3]) t = `Every Erinn day at ${s[3]} (Erinn time)`;
     else if (s[0] === 'regen') {
-      // "2–5 hours" when both ends are whole hours under a day, else each end in its own unit.
+      // "2–5 hours" when both ends are whole hours under a day, "52–56 minutes" under an hour, else each
+      // end in its own unit.
       const hrs = x => x >= 3600 && x < 86400 && x % 3600 === 0;
       const span = s[1] === s[2] ? (hrs(s[1]) ? `${s[1] / 3600} hour${s[1] === 3600 ? '' : 's'}` : dur(s[1]))
-        : hrs(s[1]) && hrs(s[2]) ? `${s[1] / 3600}–${s[2] / 3600} hours` : `${dur(s[1])}–${dur(s[2])}`;
+        : hrs(s[1]) && hrs(s[2]) ? `${s[1] / 3600}–${s[2] / 3600} hours`
+        : s[2] < 3600 ? `${Math.round(s[1] / 60)}–${Math.round(s[2] / 60)} minutes` : `${dur(s[1])}–${dur(s[2])}`;
       t = `${s[2] >= 86400 && s[1] !== s[2] ? `${hm(s[1])}–${hm(s[2])}` : span} after the last one leaves or is defeated`;
     } else t = cap(eventText(String(b.w || '—')));
-    return b.ev ? `${t}, during the ${eventName(b.ev)} event` : t;
+    // The event it needs on a line of its own.
+    return b.ev ? { lines: [t, `During the ${eventName(b.ev)} event`], sep: '' } : t;
   }
   // How long a field boss stays when nobody defeats it.
   const leavesAfter = b => (b.lt ? (b.lt >= 60 ? `${Math.round(b.lt / 60)} min` : `${b.lt} s`) : '—');
@@ -4279,20 +4951,30 @@
   // How to work out a field boss's next appearance, with its own numbers:
   // one entry per kind of schedule. "Gone" = when its time ran out, or 1 minute after its last boss fell.
   function bossFormula(b) {
-    const s = b.s || [], out = [];
+    // Short items, each led by what it answers ("Next appearance:", "After a restart:").
+    const s = b.s || [], out = [], L = (lead, text) => out.push({ lead, text });
+    // "52–56 minutes" when both ends are under an hour, else each end in its own unit.
+    // Ends that round to the same minute are given in seconds.
+    const range = (a, z) => (Math.round(a / 60) === Math.round(z / 60) ? `${a}–${z} seconds`
+      : z < 3600 ? `${Math.round(a / 60)}–${Math.round(z / 60)} minutes` : z < 86400 ? `${hm(a)} to ${hm(z)}` : `${dur(a)} to ${dur(z)}`);
     if (s[0] === 'regen' && s[3]) {
-      out.push(`Every Erinn day at ${s[3]} Erinn time. An Erinn day is 36 real minutes (1 Erinn minute = 1.5 real seconds), so it comes back every 36 minutes.`);
+      L('Next appearance:', `every Erinn day at ${s[3]} Erinn time, so every 36 real minutes.`);
+      L('Erinn time:', '1 Erinn day = 36 real minutes; 1 Erinn minute = 1.5 real seconds.');
     } else if (s[0] === 'regen' && s[2] < 86400) {
-      const lo = dur(s[1]), hi = dur(s[2]), avg = dur((s[1] + s[2]) / 2);
-      out.push(s[1] === s[2] ? `Next appearance = when the last one left or was defeated + ${lo}.`
-        : `Next appearance = when the last one left or was defeated + a random ${lo} to ${hi}. Any time in that range is equally likely; on average ${avg}.`);
-      out.push(`After maintenance or a restart: the time the server came back + a random wait between ${lo} and ${hi}.`);
+      if (s[1] === s[2]) L('Next appearance:', `${dur(s[1])} after the last one left or was defeated.`);
+      else {
+        L('Next appearance:', `a random ${range(s[1], s[2])} after the last one left or was defeated.`);
+        const avg = (s[1] + s[2]) / 2;
+        L('Odds:', `every time in that range is equally likely; ${s[2] < 3600 ? dur(avg) : hm(avg)} on average.`);
+      }
+      L('After maintenance or a restart:', s[1] === s[2] ? `${dur(s[1])} after the server comes back.` : `a random ${range(s[1], s[2])} after the server comes back.`);
     } else if (s[0] === 'regen' && s[1] === s[2]) {
       // A fixed length: the cycle is that length on every channel, and later waits are exactly it.
       const P = s[1] * 1000, first = P - (Math.floor(Date.now() / 1000) % P);
-      out.push(`It comes back exactly ${dur(s[1])} after the previous one is gone, on every channel.`);
-      out.push(`After maintenance or a restart, the first one comes after ${dur(s[1])} − (the Unix time in seconds when the server started, mod ${P.toLocaleString('en-US')}) milliseconds. ` +
-        `(The game counts the Unix seconds as if they were milliseconds.) If the server had started right now, that would be ${dur(Math.round(first / 1000))}.`);
+      L('Next appearance:', `exactly ${dur(s[1])} after the previous one is gone, on every channel.`);
+      L('After maintenance or a restart:', `${dur(s[1])} − (the Unix time in seconds when the server started, mod ${P.toLocaleString('en-US')}) milliseconds.`);
+      L('Unix time:', 'the game counts the Unix seconds as if they were milliseconds.');
+      L('Started right now:', `the first one would come after ${dur(Math.round(first / 1000))}.`);
     } else if (s[0] === 'regen') {
       // A cycle P per channel (s[4] = [Channel 1, Channel 2] seconds). The first wait after a restart comes
       // from the clock; later waits stay about that long (plus the minimum when the first was shorter than
@@ -4300,16 +4982,21 @@
       const ps = s[4] || [], mn = s[1], mx = s[2];
       const firstWait = P => { const ms = P * 1000; return (ms - (Math.floor(Date.now() / 1000) % ms)) / 1000; };
       const laterWait = w => Math.min(w < mn ? w + mn : w, mx);
-      if (mn < 86400) out.push(`About ${pctText(100 * (mx - 86400) / (mx - mn))} of the time the next one follows the rule below; otherwise it's simply a random ${hm(mn)}–24 h after the previous one is gone.`);
-      out.push(`After maintenance or a restart, the first one comes after: P − (the Unix time in seconds when the server started, mod P in milliseconds). (The game counts the Unix seconds as if they were milliseconds.) P is the channel's cycle: ` +
-        (ps.length ? ps.map((p, i) => `Channel ${i + 1}: ${hm(p)}`).join(', ') + '.' : 'it differs per channel.'));
-      out.push(`After that, each one comes about as long after the previous one is gone as that first wait (if the first wait was under ${hm(mn)}, ${hm(mn)} longer), about 2 minutes sooner each time, and never more than ${hm(mx)}. So the gap stays roughly the same until the next restart.`);
-      if (ps.length) out.push('If the server had restarted just now: ' + ps.map((p, i) => { const f = firstWait(p); return `Channel ${i + 1}: first in ${hm(f)}, then about every ${hm(laterWait(f))}`; }).join('; ') + '.');
+      if (mn < 86400) L('Usually:', `about ${pctText(100 * (mx - 86400) / (mx - mn))} of the time the rules below apply; otherwise a random ${hm(mn)}–24 h after the previous one is gone.`);
+      L('After maintenance or a restart:', 'P − (the Unix time in seconds when the server started, mod P in milliseconds).');
+      L('P (the channel\'s cycle):', ps.length ? ps.map((p, i) => `Channel ${i + 1} ${hm(p)}`).join(', ') + '.' : 'it differs per channel.');
+      L('Unix time:', 'the game counts the Unix seconds as if they were milliseconds.');
+      L('After that:', 'each gap after the previous one is gone is about as long as that first wait, about 2 minutes shorter each time.');
+      L('Limits:', `a first wait under ${hm(mn)} is ${hm(mn)} longer; never more than ${hm(mx)}.`);
+      out.push('So the gap stays roughly the same until the next restart.');
+      if (ps.length) for (const [i, p] of ps.entries()) { const f = firstWait(p); L(`Restarted just now, Channel ${i + 1}:`, `first in ${hm(f)}, then about every ${hm(laterWait(f))}.`); }
     } else if (s[0] === 'fixed') {
-      out.push(`Once a week on ${DAY_NAMES[s[1]] || 'its day'}, at one minute between ${s[2]} and ${s[3]} (server time). The minute is picked fresh each week, but it's the same minute on every channel.`);
-      out.push('It appears once per server start: if it has already been and gone (or the server restarted that day after its time), the next one is the following week.');
+      L('Next appearance:', `once a week on ${DAY_NAMES[s[1]] || 'its day'}, at one minute between ${s[2]} and ${s[3]} (server time).`);
+      L('The minute:', 'picked fresh each week, but the same minute on every channel.');
+      L('Once per server start:', 'if it has already been and gone, the next one is the following week.');
+      L('Restarted that day after its time:', 'the next one is the following week too.');
     } else if (s[0] === 'period') {
-      out.push('Every hour, on the hour (server time), while its event is on.');
+      L('Next appearance:', 'every hour, on the hour (server time), while its event is on.');
     }
     return out;
   }
@@ -4442,7 +5129,7 @@
     if ((r.s || []).length) {
       const rows = r.s.slice().sort((a, b) => String(a[4]).localeCompare(String(b[4])) || b[1] - a[1]).map(([race, n, lo, hi, place, when]) => [
         raceLink(race), n, place || '—', hi ? (lo === hi ? `${lo} s` : `${lo}–${hi} s`) : '—', when ? cap(when) : '—']);
-      sections.push({ heading: 'Monsters', blocks: [{ kind: 'table', columns: ['Monster', 'At most', 'Where', 'Respawn', 'When'], rows },
+      sections.push({ heading: 'Monsters', blocks: [{ kind: 'table', columns: ['Monster', 'Most at once', 'Where', 'Respawn', 'When'], rows },
         { kind: 'note', text: 'Counts are the most there at once; usually about half are out.' }] });
     }
     if ((r.b || []).length) sections.push({ heading: 'Field bosses', blocks: [{ kind: 'table', columns: ['Boss', 'Where', BOSS_CHANCE, 'When it appears', 'Leaves after'],
@@ -4450,7 +5137,7 @@
         b.c != null ? pctText(b.c) : '—', bossWhen(b), leavesAfter(b)]).map(row => [row.map(plain0).join('|'), row])).values()] }] });
     // Props that stand here.
     const here = [...propPages().values()].map(p => [p, (p.w.find(w => String(w[0]) === String(id)) || [])[1]]).filter(x => x[1]);
-    if (here.length) sections.push({ heading: 'Props', blocks: [{ kind: 'table', columns: ['Prop', 'Placed', 'Gives'],
+    if (here.length) sections.push({ heading: 'Props', blocks: [{ kind: 'table', columns: ['Prop', 'Times placed', 'Gives'],
       rows: here.sort((a, b) => b[1] - a[1]).map(([p, n]) => [{ t: 'prop', id: p.id, label: p.name }, n,
         { lines: [[].concat(...[...new Set(p.r.filter(x => !x[8] || String(x[8]) === String(id)).map(x => x[0]))].slice(0, 6).map((it, i) => (i ? [', '] : []).concat([itemRef(it)])))], sep: '' }]) }] });
     const rel = [];
@@ -4526,11 +5213,14 @@
     if (df.length) {
       const tabs = df.map(d => {
         const kv = [['Exp', d.x.toLocaleString('en-US')], ['Gold', gold(d.g)]];
-        if (d.lv) kv.unshift(['Total level', `${d.lv.toLocaleString('en-US')} or higher`]);
+        // lv: [from, to] (to empty on the hardest), or one number.
+        const lvs = [].concat(d.lv || []).filter(x => x != null && x !== ''), lvn = x => num(x).toLocaleString('en-US');
+        if (lvs.length) kv.unshift(['Total level', lvs.length > 1 ? `${lvn(lvs[0])}–${lvn(lvs[1])}` : `${lvn(lvs[0])} or higher`]);
         if (d.s) kv.push(['Monsters', `${d.s[0]}× life, ${d.s[1]}× attack`]);
         const blocks = [{ kind: 'kv', rows: kv }];
+        // "When" comes in words (rank, entry hour, quest step); anything still in the script's own terms is masked.
         if ((d.i || []).length) blocks.push({ kind: 'table', columns: ['Item', 'Chance', 'Chest', 'When'], rows: d.i.slice().sort((a, b) => b[1] - a[1]).map(([it, ch, n, pre, suf, chest, when]) =>
-          [lineCell([itemRef(it, typeof n === 'number' ? n : 1), typeof n === 'string' && n !== '1' ? ` ×${n}` : '', ...enchantBits(pre, suf)]), ch >= 0 ? pctText(ch) : '—', chest ? cap(chest) : '—', when ? cap(eventText(when)) : '—']) });
+          [lineCell([itemRef(it, typeof n === 'number' ? n : 1), typeof n === 'string' && n !== '1' ? ` ×${n}` : '', ...enchantBits(pre, suf)]), ch >= 0 ? pctText(ch) : '—', chest ? cap(chest) : '—', when ? (/cChar\.|_player\.|==|`/i.test(when) ? 'Depends on your progress' : cap(eventText(when))) : '—']) });
         return { label: d.n || 'Normal', blocks };
       });
       // At a glance: exp and gold from Basic to the hardest, and the kinds of items its chests hold.
@@ -4581,6 +5271,8 @@
     if (p.nf) info.push(['Name', 'From its internal name (the game has no English one)']);    const placed = p.w.reduce((a, w) => a + w[1], 0);
     if (placed) info.push(['Placed', `${placed.toLocaleString('en-US')} in ${p.w.length} region${p.w.length === 1 ? '' : 's'}`]);
     const sections = [];
+    // The 3D model: the first of its class ids with one (viewer3d.js openProp, from the packs).
+    if (!NO3D && p.ids.length) sections.push({ heading: '3D model', blocks: [{ kind: 'embed', name: 'prop3d', args: { id: p.id, ids: p.ids.join(',') }, caption: MODEL_CAPTION }] });
     // Results that differ by region: a tab per region (with the ones every region shares).
     const regs = [...new Set(p.r.map(r => r[8]).filter(Boolean))];
     if (regs.length) {
@@ -4588,7 +5280,7 @@
       sections.push({ heading: 'Drops and gathering', blocks: [{ kind: 'tabs', label: 'Region', tabs: regs.map(g => ({ label: propRegion(g), blocks: [propResultsTable(shared.concat(p.r.filter(r => r[8] === g)))] })) },
         { kind: 'note', text: 'What it gives depends on the region it stands in.' }] });
     } else sections.push({ heading: 'Drops and gathering', blocks: [propResultsTable(p.r), { kind: 'note', text: 'Hitting it rolls once per hit. Gathering needs the tool in hand and succeeds at the rate shown.' }] });
-    if (p.w.length) sections.push({ heading: 'Where it is', blocks: [{ kind: 'table', columns: ['Region', 'Placed'],
+    if (p.w.length) sections.push({ heading: 'Where it is', blocks: [{ kind: 'table', columns: ['Region', 'Times placed'],
       rows: p.w.map(([g, n]) => [regionById(g) ? { t: 'region', id: String(g), label: propRegion(g) } : propRegion(g), n]) }] });
     return { title: p.name, subtitle: null, icon: null, category: propCat(p), infobox: info, summary: '', sections };
   }
@@ -4598,7 +5290,8 @@
     if (!list.length) return null;
     return { heading: 'From props', blocks: [{ kind: 'table', columns: ['Prop', 'How', 'Chance', 'Where'], rows: list.sort((a, b) => b[1][1] - a[1][1]).map(([p, r]) => [
       { t: 'prop', id: p.id, label: p.name }, cap(r[4].replace('(script)', '').trim()), pctText(r[1]),
-      r[8] ? propRegion(r[8]) : p.w.length ? p.w.slice(0, 3).map(w => propRegion(w[0])).join(', ') + (p.w.length > 3 ? ` and ${p.w.length - 3} more` : '') : '—']) }] };
+      // The first few regions one a line.
+      r[8] ? propRegion(r[8]) : p.w.length ? { lines: p.w.slice(0, 3).map(w => propRegion(w[0])).concat(p.w.length > 3 ? [`and ${p.w.length - 3} more`] : []), sep: '' } : '—']) }] };
   }
   // Regions get their own pages once the region data ships (GAME_SOURCES.regions).
   const regionById = id => (window.GAME_SOURCES && window.GAME_SOURCES.regions && window.GAME_SOURCES.regions[String(id)]) || null;
@@ -5034,7 +5727,7 @@
     const g = String(r.Gender || '').trim();
     if (g === '1' || g === '2') info.push(['Gender', g === '1' ? 'Female' : 'Male']);
     if (isPetMount(p) && petSeats(p) !== null) info.push(['Passengers', petSeats(p)]);
-    if (prd && prd.Exp_Factor !== undefined) info.push(['Experience factor', num(prd.Exp_Factor)]);
+    if (prd && prd.Exp_Factor !== undefined) info.push(['Experience factor', '×' + num(prd.Exp_Factor)]);
     if (r.ClassName) info.push(['Internal name', r.ClassName]);
     const sections = [];
     if (!NO3D && String(r.DefaultMesh || '').trim()) sections.push({ heading: '3D model', blocks: [{ kind: 'embed', name: 'race3d', args: { id: p.id }, caption: MODEL_CAPTION }] });
@@ -5059,11 +5752,14 @@
         ages.map(a => [num(a.Age)].concat(AGE_STATS.map(([k]) => (a[pre + k] === undefined ? '' : num(a[pre + k]))))));
       const ag = stat('Aging_'), lv = stat('LevelUp_');
       const bodyCols = [['Body_Scale', 'Body scale'], ['Head_Scale', 'Head scale'], ['Leg_Scale', 'Leg scale'], ['Food_Min', 'Food min'], ['Stamina_Recovery', 'Stamina recovery']];
-      const body = trimColumns(['Age'].concat(bodyCols.map(c => c[1])), ages.map(a => [num(a.Age)].concat(bodyCols.map(([k]) => (a[k] === undefined ? '' : num(a[k]))))));
+      // The scales are sizes against the model's own (×1), as on the monster pages.
+      const body = trimColumns(['Age'].concat(bodyCols.map(c => c[1])), ages.map(a => [num(a.Age)].concat(bodyCols.map(([k]) => (a[k] === undefined ? '' : /_Scale$/.test(k) ? '×' + num(a[k]) : num(a[k]))))));
+      // Each long table folded under its name and count, shut at first.
+      const fold = (title, t) => ({ kind: 'details', summary: `${title} (${t.rows.length})`, blocks: [{ kind: 'table', columns: t.columns, rows: t.rows }] });
       sections.push({ heading: 'Growth by age', blocks: [
-        { kind: 'table', title: 'Stats gained at each age', columns: ag.columns, rows: ag.rows },
-        { kind: 'table', title: 'Stats gained per level at each age', columns: lv.columns, rows: lv.rows },
-        { kind: 'table', title: 'Body and upkeep at each age', columns: body.columns, rows: body.rows },
+        fold('Stats gained at each age', ag),
+        fold('Stats gained per level at each age', lv),
+        fold('Body and upkeep at each age', body),
       ] });
     }
     // Skills (petskilltable.xml): each rank's number, 999s left out.
@@ -5332,11 +6028,21 @@
       area: r.a || null, npcs: (r.np || []).filter(n => !n[4]).length || null, monsters: new Set((r.s || []).map(s => s[0])).size || null, map: minimapOf(id) ? 'Yes' : null, tags: r.a || '' }));
     INDEX.tool = TOOLS.map(x => ({ id: x.id, name: x.name, icon: null, cat: x.cat, sub: x.sub }));
     INDEX.guide = GUIDES.map(x => ({ id: x.id, name: x.name, icon: null, cat: x.cat, sub: x.sub }));
+    // Trade-ins: what NPCs take in for rewards, by the NPC's town.
+    // A trade-in is found by its other names too (aka: the event that earns its items), shown beside it.
+    INDEX.tradein = turnins().map(x => { const n = npcById(x.npc); return { id: x.k, name: x.title, alt: (x.aka || []).join(' · '), icon: null, cat: slug(tiTown(x)), sub: n ? n.name : '', npc: n ? n.name : null, items: x.i.length,
+      tags: [n ? n.name : '', ...(x.aka || []), ...x.i.flatMap(r => r[0].map(g => (items().get(g[0]) || {}).name || ''))].join(' ') }; });
     INDEX.questline = questChains().map((c, i) => ({ id: c.id, name: c.t, icon: null, cat: qlGroup(c.g), sub: c.g, quests: new Set(c.st.map(s => s[0])).size, order: i,
       tags: c.st.map(s => s[1]).join(' ') }));
-    const cc = catRows(INDEX.craft), qc = catRows(INDEX.quest), dc = catRows(INDEX.dungeon), fc = catRows(INDEX.fishing), prc = catRows(INDEX.prop), mc2 = catRows(INDEX.mission), rc = catRows(INDEX.region);
-    const ic = catRows(INDEX.item), ec = catRows(INDEX.enchant), tc = catRows(INDEX.title), sc = catRows(INDEX.skill), mc = catRows(INDEX.monster);
-    const uc = catRows(INDEX.upgrade), xc = catRows(INDEX.set_effect), nc = catRows(INDEX.npc), pc = catRows(INDEX.pet);
+    // How many rows each item and enchant category holds (a parent counts its children's rows too).
+    const itemCounts = catRows(INDEX.item), enchantCounts = catRows(INDEX.enchant);
+    // A type's categories in the order given, leaving out the empty ones: each with its key, title,
+    // parent (the definition's third entry when the type nests its categories, else none), place in
+    // the list and how many rows it holds.
+    const catList = (defs, type, nested) => {
+      const counts = catRows(INDEX[type]);
+      return defs.filter(c => counts[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: nested ? c[2] : '', order: i, count: counts[c[0]] }));
+    };
     const SET_CATS = [['bonus', 'Bonuses'], ['penalty', 'Penalties']];
     // NPC categories: the towns (in name order) under "Towns", then the rest.
     const towns = [...new Set(nps.map(x => x.town).filter(Boolean))].sort().map(t => ['town/' + slug(t), t, 'town']);
@@ -5344,30 +6050,31 @@
     const cats = {
       // The groups (each item is in one top category, so a group's count is the sum of its own), then
       // the categories under them.
-      item: ITEM_GROUPS.map(g => ({ key: g[0], title: g[1], parent: '', count: g[2].reduce((n, k) => n + (ic[k] || 0), 0), first: g[0] === 'g/equip' || undefined }))
-        .filter(g => g.count).concat(ITEM_CATS.filter(c => ic[c[0]]).map(c => ({ key: c[0], title: c[1], parent: c[2] || itemGroupOf(c[0]), count: ic[c[0]] })))
+      item: ITEM_GROUPS.map(g => ({ key: g[0], title: g[1], parent: '', count: g[2].reduce((n, k) => n + (itemCounts[k] || 0), 0), first: g[0] === 'g/equip' || undefined }))
+        .filter(g => g.count).concat(ITEM_CATS.filter(c => itemCounts[c[0]]).map(c => ({ key: c[0], title: c[1], parent: c[2] || itemGroupOf(c[0]), count: itemCounts[c[0]] })))
         .map((c, i) => Object.assign(c, { order: i })),
       // Prefixes and Suffixes first (what most people look for), a line under them, then the rest A-Z.
-      enchant: Object.values(USAGE).concat([OTHER_USAGE]).filter(u => ec[u[0]]).map((u, i) => Object.assign({ key: u[0], title: u[1], parent: '', order: i, count: ec[u[0]] },
+      enchant: Object.values(USAGE).concat([OTHER_USAGE]).filter(u => enchantCounts[u[0]]).map((u, i) => Object.assign({ key: u[0], title: u[1], parent: '', order: i, count: enchantCounts[u[0]] },
         u[0] === 'prefix' ? { first: true } : u[0] === 'suffix' ? { first: true, divider: true } : {})),
-      upgrade: ITEM_CATS.concat([['none', 'No matching items', ''], ['artisan', 'Artisan upgrades', '']]).filter(c => uc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: c[2], order: i, count: uc[c[0]] })),
-      set_effect: SET_CATS.filter(c => xc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: xc[c[0]] })),
-      title: TITLE_CATS.filter(c => tc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: tc[c[0]] })),
-      skill: SKILL_CATS.filter(c => sc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: sc[c[0]] })),
-      monster: MON_CATS.filter(c => mc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: c[2], order: i, count: mc[c[0]] })),
-      npc: npcCats.filter(c => nc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: c[2], order: i, count: nc[c[0]] })),
-      pet: PET_CATS.filter(c => pc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: c[2], order: i, count: pc[c[0]] })),
-      craft: CRAFT_CATS.filter(c => cc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: cc[c[0]] })),
-      manual: (mc3 => MANUAL_CATS.filter(c => mc3[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: mc3[c[0]] })))(catRows(INDEX.manual)),
-      quest: QUEST_CATS.filter(c => qc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: qc[c[0]] })),
-      dungeon: DUNGEON_CATS.filter(c => dc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: dc[c[0]] })),
-      fishing: FISHING_CATS.filter(c => fc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: fc[c[0]] })),
-      prop: PROP_CATS.filter(c => prc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: prc[c[0]] })),
-      mission: MISSION_CATS.filter(c => mc2[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: mc2[c[0]] })),
-      region: REGION_CATS.filter(c => rc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: rc[c[0]] })),
+      upgrade: catList(ITEM_CATS.concat([['none', 'No matching items', ''], ['artisan', 'Artisan upgrades', '']]), 'upgrade', true),
+      set_effect: catList(SET_CATS, 'set_effect'),
+      title: catList(TITLE_CATS, 'title'),
+      skill: catList(SKILL_CATS, 'skill'),
+      monster: catList(MON_CATS, 'monster', true),
+      npc: catList(npcCats, 'npc', true),
+      pet: catList(PET_CATS, 'pet', true),
+      craft: catList(CRAFT_CATS, 'craft'),
+      manual: catList(MANUAL_CATS, 'manual'),
+      quest: catList(QUEST_CATS, 'quest'),
+      dungeon: catList(DUNGEON_CATS, 'dungeon'),
+      fishing: catList(FISHING_CATS, 'fishing'),
+      prop: catList(PROP_CATS, 'prop'),
+      mission: catList(MISSION_CATS, 'mission'),
+      region: catList(REGION_CATS, 'region'),
       tool: [{ key: 'spirit', title: 'Spirit Weapons Exp', parent: '', order: 0, page: 'spirit-weapon-exp', count: INDEX.tool.filter(x => x.cat === 'spirit').length }],
       guide: GUIDES.map((g, i) => ({ key: g.cat, title: g.name, parent: '', order: i, page: g.id, count: 1 })),
-      questline: (qlc => QL_GROUPS.filter(c => qlc[c[0]]).map((c, i) => ({ key: c[0], title: c[1], parent: '', order: i, count: qlc[c[0]] })))(catRows(INDEX.questline)),
+      questline: catList(QL_GROUPS, 'questline'),
+      tradein: [...new Set(INDEX.tradein.map(r => r.cat))].map((key, i) => ({ key, title: tiTown(turnins().find(x => slug(tiTown(x)) === key)), parent: '', order: i, count: INDEX.tradein.filter(r => r.cat === key).length })),
     };
     const n = Object.values(INDEX).reduce((a, l) => a + l.length, 0);
     const T = (t, d) => Object.assign({ filters: [], count: INDEX[t].length, pages: INDEX[t].length }, d);
@@ -5388,11 +6095,11 @@
         item: T('item', { title: 'Items', route: 'items', view: Object.keys(ICONS).length ? 'grid' : 'table', columns: [{ key: 'price', title: 'Shop price', num: true }, { key: 'size', title: 'Size' }], section: 'items', order: 1 }),
         // Category (Prefix, Suffix...) before the name; no Info column (it'd repeat the rank and category).
         enchant: T('enchant', { title: 'Enchants', route: 'enchants', view: 'table', catFirst: true, noInfo: true,
-          columns: [{ key: 'rank', title: 'Rank' }, { key: 'onto', title: 'Enchants onto' }, { key: 'fxv', title: 'Effects' }, { key: 'from', title: 'Comes from' }], section: 'items', order: 2 }),
+          columns: [{ key: 'rank', title: 'Rank' }, { key: 'onto', title: 'Enchants onto' }, { key: 'fxv', title: 'Effects', wide: true }, { key: 'from', title: 'Comes from' }], section: 'items', order: 2 }),
         upgrade: T('upgrade', { title: 'Upgrades', route: 'upgrades', icon: 'hammer', view: 'table',
           columns: [{ key: 'ep', title: 'Proficiency', num: true }, { key: 'gold', title: 'Gold', num: true }, { key: 'steps', title: 'Steps' }], section: 'items', order: 3 }),
         set_effect: T('set_effect', { title: 'Set effects', route: 'set-effects', icon: 'gem', view: 'table',
-          columns: [{ key: 'at', title: 'Activates at', num: true }, { key: 'items', title: 'Items', num: true }, { key: 'enchants', title: 'Enchants', num: true }], section: 'items', order: 4 }),
+          columns: [{ key: 'at', title: 'Activates at (points)', num: true }, { key: 'items', title: 'Items', num: true }, { key: 'enchants', title: 'Enchants', num: true }], section: 'items', order: 4 }),
         skill: T('skill', { title: 'Skills', route: 'skills', icon: 'zap', view: 'table', columns: [], section: 'skills', order: 1 }),
         // Its rows open the items' own pages (linkAs).
         craft: T('craft', { title: 'Craftables', route: 'crafting', icon: 'hammer', linkAs: 'item', view: Object.keys(ICONS).length ? 'grid' : 'table',
@@ -5414,12 +6121,15 @@
           columns: [{ key: 'floors', title: 'Floors', num: true }, { key: 'boss', title: 'Boss' }], section: 'world', order: 2 }),
         // No Info column: it only repeats Where.
         mission: T('mission', { title: 'Missions', route: 'missions', icon: 'moon', view: 'table', noInfo: true,
-          columns: [{ key: 'where', title: 'Where' }, { key: 'party', title: 'Party' }], section: 'world', order: 3 }),
+          columns: [{ key: 'where', title: 'Where' }, { key: 'party', title: 'Party' }], section: 'quests', order: 1.5 }),
         tool: T('tool', { title: 'Calculators', route: 'tools', icon: 'sliders', view: 'table', columns: [], section: 'tools', order: 1 }),
         guide: T('guide', { title: 'Guides', route: 'guides', icon: 'book', view: 'table', columns: [], section: 'misc', order: 1 }),
         // Questlines in play order within their group (the list keeps INDEX's order unless sorted).
         questline: T('questline', { title: 'Questlines', route: 'questlines', icon: 'scroll', view: 'table', noInfo: true, noId: true,
           columns: [{ key: 'quests', title: 'Quests', num: true }], section: 'quests', order: 2 }),
+        // What NPCs take in for rewards (restored fossils, artifacts, Cor's villagers...), by town.
+        tradein: T('tradein', { title: 'Trade-ins', route: 'trade-ins', icon: 'swap', view: 'table', noInfo: true, noId: true,
+          columns: [{ key: 'npc', title: 'NPC' }, { key: 'items', title: 'Items', num: true }], section: 'quests', order: 3 }),
         // No Info column (here or in any region category).
         region: T('region', { title: 'Regions', route: 'regions', icon: 'map', view: 'table', noInfo: true,
           columns: [{ key: 'area', title: 'Area' }, { key: 'npcs', title: 'NPCs', num: true }, { key: 'monsters', title: 'Monsters', num: true }, { key: 'map', title: 'Map' }], section: 'world', order: 1 }),
@@ -5448,7 +6158,7 @@
     META.types.mission.catColumns = { theatre: META.types.mission.columns.filter(c => c.key !== 'where') };
     // Enchants by rank (the home page's rank panel links to these).
     META.types.enchant.filters = [{ key: 'rank', title: 'Rank', options: ENCHANT_RANKS.map(r => [r, r]) },
-      { key: 'ontoKinds', title: 'Equipment', any: 'Any equipment', options: ONTO_KINDS.map(k => [k[0], k[0]]) }];
+      { key: 'ontoKinds', title: 'Equipment', any: 'All', options: ONTO_KINDS.map(k => [k[0], k[0]]).concat([[ANY_EQUIP, ANY_EQUIP]]) }];
     META.home = homeMeta(cats, n);
   }
 
@@ -5458,7 +6168,8 @@
   const TOOLS = [{ id: 'spirit-weapon-exp', name: 'Spirit Weapon EXP Calculator', cat: 'spirit', sub: 'How much EXP an item or gem gives a spirit weapon' }];
   // The guides (their own type, under Misc in the sidebar): one page each, a category per page.
   const GUIDES = [{ id: 'elements', name: 'Elements', cat: 'elements', sub: 'What a monster\'s elements mean, and how to give your equipment an element' },
-    { id: 'npc-friendship', name: 'NPC Friendship', cat: 'friendship', sub: 'How NPCs come to like you, what it unlocks, and the fastest way there' }];
+    { id: 'npc-friendship', name: 'NPC Friendship', cat: 'friendship', sub: 'How NPCs come to like you, what it unlocks, and the fastest way there' },
+    { id: 'fire-arrows', name: 'Fire Arrows', cat: 'fire-arrows', sub: 'Arrows lit at a campfire: how to light them, what they do, and against which monsters they help' }];
   // Spirit weapon feeding (the server's feed code and db/egoweapon, traced in the G13 server).
   const EGO_STATS = ['Str', 'Int', 'Dex', 'Will', 'Luck', 'Social'];
   const EGO_WEAPONS = ['Blunt Weapon', 'Bow', 'Cylinder', 'Sword', 'Wand'];
@@ -5479,7 +6190,96 @@
     moods: [['Fine (stage 1)', 20], ['Fine (stages 2–3)', 70], ['Unhappy (stages 1–4)', 100], ['Unhappy (stages 5–6)', 80], ['Mad (stages 1–8)', 50], ['Mad (stages 9–10)', 0]],
     moodPoints: p => (p >= 4000 ? 100 : p >= 3000 ? 80 : p >= 2000 ? 60 : p >= 1000 ? 40 : 20),
   };
-  const EGO_GEMS = {"Male":{"Sword":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[96,0,96,0,0,38],"Star Sapphire":[76,76,76,0,0,46],"Emerald":[0,0,0,154,0,30],"Aquamarine":[0,0,0,96,96,38],"Garnet":[0,38,38,58,116,50],"Jasper":[0,96,0,0,96,38],"Ruby":[0,96,96,0,0,38],"Spinel":[154,0,0,0,0,30],"Diamond":[384,384,384,384,384,384],"Peridot":[85,0,85,0,0,34],"Fire Opal":[64,64,64,0,0,38],"Turquoise":[0,0,0,128,0,25],"Amethyst":[0,0,0,85,85,34],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[0,32,32,48,96,41],"Rose Quartz":[0,85,0,0,85,34],"Alexandrite":[0,85,85,0,0,34],"Spodumene":[0,85,85,0,0,34],"Andalusite":[128,0,0,0,0,25]},"Blunt Weapon":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[154,0,0,0,0,30],"Star Sapphire":[96,0,96,0,0,38],"Emerald":[76,76,76,0,0,46],"Aquamarine":[0,0,0,154,0,30],"Garnet":[0,0,0,96,96,38],"Jasper":[0,38,38,58,116,50],"Ruby":[0,96,0,0,96,38],"Spinel":[0,96,96,0,0,38],"Diamond":[384,384,384,384,384,384],"Peridot":[128,0,0,0,0,25],"Fire Opal":[85,0,85,0,0,34],"Turquoise":[64,64,64,0,0,38],"Amethyst":[0,0,0,128,0,25],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[0,0,0,85,85,34],"Rose Quartz":[0,32,32,48,96,41],"Alexandrite":[0,85,0,0,85,34],"Spodumene":[0,85,0,0,85,34],"Andalusite":[0,85,85,0,0,34]},"Wand":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[0,0,0,154,0,30],"Star Sapphire":[0,0,0,96,96,38],"Emerald":[0,38,38,58,116,50],"Aquamarine":[0,96,0,0,96,38],"Garnet":[0,96,96,0,0,38],"Jasper":[154,0,0,0,0,30],"Ruby":[96,0,96,0,0,38],"Spinel":[76,76,76,0,0,46],"Diamond":[384,384,384,384,384,384],"Peridot":[0,0,0,128,0,25],"Fire Opal":[0,0,0,85,85,34],"Turquoise":[0,32,32,48,96,41],"Amethyst":[0,85,0,0,85,34],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[0,85,85,0,0,34],"Rose Quartz":[128,0,0,0,0,25],"Alexandrite":[85,0,85,0,0,34],"Spodumene":[85,0,85,0,0,34],"Andalusite":[64,64,64,0,0,38]},"Bow":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[76,76,76,0,0,46],"Star Sapphire":[0,0,0,154,0,30],"Emerald":[0,0,0,96,96,38],"Aquamarine":[0,38,38,58,116,50],"Garnet":[0,96,0,0,96,38],"Jasper":[0,96,96,0,0,38],"Ruby":[154,0,0,0,0,30],"Spinel":[96,0,96,0,0,38],"Diamond":[384,384,384,384,384,384],"Peridot":[64,64,64,0,0,38],"Fire Opal":[0,0,0,128,0,25],"Turquoise":[0,0,0,85,85,34],"Amethyst":[0,32,32,48,96,41],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[0,85,0,0,85,34],"Rose Quartz":[0,85,85,0,0,34],"Alexandrite":[128,0,0,0,0,25],"Spodumene":[128,0,0,0,0,25],"Andalusite":[85,0,85,0,0,34]},"Cylinder":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Garnet":[154,0,0,0,0,30],"Jasper":[76,76,76,0,0,46],"Ruby":[0,0,0,96,96,38],"Spinel":[96,0,96,0,0,38],"Topaz":[0,38,38,58,116,50],"Star Sapphire":[0,96,0,0,96,38],"Emerald":[0,0,0,154,0,30],"Aquamarine":[0,96,96,0,0,38],"Diamond":[384,384,384,384,384,384]}},"Female":{"Sword":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[0,96,0,0,96,38],"Star Sapphire":[0,96,96,0,0,38],"Emerald":[154,0,0,0,0,30],"Aquamarine":[96,0,96,0,0,38],"Garnet":[76,76,76,0,0,46],"Jasper":[0,0,0,154,0,30],"Ruby":[0,0,0,96,96,38],"Spinel":[0,38,38,58,116,50],"Diamond":[384,384,384,384,384,384],"Peridot":[0,85,0,0,85,34],"Fire Opal":[0,85,85,0,0,34],"Turquoise":[128,0,0,0,0,25],"Amethyst":[85,0,85,0,0,34],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[64,64,64,0,0,38],"Rose Quartz":[0,0,0,128,0,25],"Alexandrite":[0,0,0,85,85,34],"Spodumene":[0,0,0,85,85,34],"Andalusite":[0,32,32,48,96,41]},"Blunt Weapon":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[0,38,38,58,116,50],"Star Sapphire":[0,96,0,0,96,38],"Emerald":[0,96,96,0,0,38],"Aquamarine":[154,0,0,0,0,30],"Garnet":[96,0,96,0,0,38],"Jasper":[76,76,76,0,0,46],"Ruby":[0,0,0,154,0,30],"Spinel":[0,0,0,96,96,38],"Diamond":[384,384,384,384,384,384],"Peridot":[0,32,32,48,96,41],"Fire Opal":[0,85,0,0,85,34],"Turquoise":[0,85,85,0,0,34],"Amethyst":[128,0,0,0,0,25],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[85,0,85,0,0,34],"Rose Quartz":[64,64,64,0,0,38],"Alexandrite":[0,0,0,128,0,25],"Spodumene":[0,0,0,128,0,25],"Andalusite":[0,0,0,85,85,34]},"Wand":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[0,0,0,96,96,38],"Star Sapphire":[0,38,38,58,116,50],"Emerald":[0,96,0,0,96,38],"Aquamarine":[0,96,96,0,0,38],"Garnet":[154,0,0,0,0,30],"Jasper":[96,0,96,0,0,38],"Ruby":[76,76,76,0,0,46],"Spinel":[0,0,0,154,0,30],"Diamond":[384,384,384,384,384,384],"Peridot":[0,0,0,85,85,34],"Fire Opal":[0,32,32,48,96,41],"Turquoise":[0,85,0,0,85,34],"Amethyst":[0,85,85,0,0,34],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[128,0,0,0,0,25],"Rose Quartz":[85,0,85,0,0,34],"Alexandrite":[64,64,64,0,0,38],"Spodumene":[64,64,64,0,0,38],"Andalusite":[0,0,0,128,0,25]},"Bow":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Topaz":[0,96,96,0,0,38],"Star Sapphire":[154,0,0,0,0,30],"Emerald":[96,0,96,0,0,38],"Aquamarine":[76,76,76,0,0,46],"Garnet":[0,0,0,154,0,30],"Jasper":[0,0,0,96,96,38],"Ruby":[0,38,38,58,116,50],"Spinel":[0,96,0,0,96,38],"Diamond":[384,384,384,384,384,384],"Peridot":[0,85,85,0,0,34],"Fire Opal":[128,0,0,0,0,25],"Turquoise":[85,0,85,0,0,34],"Amethyst":[64,64,64,0,0,38],"Cat's Eye":[350,350,350,350,350,350],"Lapis-Lazuli":[0,0,0,128,0,25],"Rose Quartz":[0,0,0,85,85,34],"Alexandrite":[0,32,32,48,96,41],"Spodumene":[0,32,32,48,96,41],"Andalusite":[0,85,0,0,85,34]},"Cylinder":{"Spirit's Blue Liquor":[0,0,0,0,0,1200],"Garnet":[0,38,38,58,116,50],"Jasper":[0,96,96,0,0,38],"Ruby":[96,0,96,0,0,38],"Spinel":[0,96,0,0,96,38],"Topaz":[76,76,76,0,0,46],"Star Sapphire":[0,0,0,154,0,30],"Emerald":[154,0,0,0,0,30],"Aquamarine":[0,0,0,96,96,38],"Diamond":[384,384,384,384,384,384]}}};
+  const EGO_GEMS = {
+    Male: {
+      Sword: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [96, 0, 96, 0, 0, 38], 'Star Sapphire': [76, 76, 76, 0, 0, 46],
+        Emerald: [0, 0, 0, 154, 0, 30], Aquamarine: [0, 0, 0, 96, 96, 38], Garnet: [0, 38, 38, 58, 116, 50],
+        Jasper: [0, 96, 0, 0, 96, 38], Ruby: [0, 96, 96, 0, 0, 38], Spinel: [154, 0, 0, 0, 0, 30],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [85, 0, 85, 0, 0, 34], 'Fire Opal': [64, 64, 64, 0, 0, 38],
+        Turquoise: [0, 0, 0, 128, 0, 25], Amethyst: [0, 0, 0, 85, 85, 34], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [0, 32, 32, 48, 96, 41], 'Rose Quartz': [0, 85, 0, 0, 85, 34], Alexandrite: [0, 85, 85, 0, 0, 34],
+        Spodumene: [0, 85, 85, 0, 0, 34], Andalusite: [128, 0, 0, 0, 0, 25],
+      },
+      'Blunt Weapon': {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [154, 0, 0, 0, 0, 30], 'Star Sapphire': [96, 0, 96, 0, 0, 38],
+        Emerald: [76, 76, 76, 0, 0, 46], Aquamarine: [0, 0, 0, 154, 0, 30], Garnet: [0, 0, 0, 96, 96, 38],
+        Jasper: [0, 38, 38, 58, 116, 50], Ruby: [0, 96, 0, 0, 96, 38], Spinel: [0, 96, 96, 0, 0, 38],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [128, 0, 0, 0, 0, 25], 'Fire Opal': [85, 0, 85, 0, 0, 34],
+        Turquoise: [64, 64, 64, 0, 0, 38], Amethyst: [0, 0, 0, 128, 0, 25], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [0, 0, 0, 85, 85, 34], 'Rose Quartz': [0, 32, 32, 48, 96, 41], Alexandrite: [0, 85, 0, 0, 85, 34],
+        Spodumene: [0, 85, 0, 0, 85, 34], Andalusite: [0, 85, 85, 0, 0, 34],
+      },
+      Wand: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [0, 0, 0, 154, 0, 30], 'Star Sapphire': [0, 0, 0, 96, 96, 38],
+        Emerald: [0, 38, 38, 58, 116, 50], Aquamarine: [0, 96, 0, 0, 96, 38], Garnet: [0, 96, 96, 0, 0, 38],
+        Jasper: [154, 0, 0, 0, 0, 30], Ruby: [96, 0, 96, 0, 0, 38], Spinel: [76, 76, 76, 0, 0, 46],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [0, 0, 0, 128, 0, 25], 'Fire Opal': [0, 0, 0, 85, 85, 34],
+        Turquoise: [0, 32, 32, 48, 96, 41], Amethyst: [0, 85, 0, 0, 85, 34], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [0, 85, 85, 0, 0, 34], 'Rose Quartz': [128, 0, 0, 0, 0, 25], Alexandrite: [85, 0, 85, 0, 0, 34],
+        Spodumene: [85, 0, 85, 0, 0, 34], Andalusite: [64, 64, 64, 0, 0, 38],
+      },
+      Bow: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [76, 76, 76, 0, 0, 46], 'Star Sapphire': [0, 0, 0, 154, 0, 30],
+        Emerald: [0, 0, 0, 96, 96, 38], Aquamarine: [0, 38, 38, 58, 116, 50], Garnet: [0, 96, 0, 0, 96, 38],
+        Jasper: [0, 96, 96, 0, 0, 38], Ruby: [154, 0, 0, 0, 0, 30], Spinel: [96, 0, 96, 0, 0, 38],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [64, 64, 64, 0, 0, 38], 'Fire Opal': [0, 0, 0, 128, 0, 25],
+        Turquoise: [0, 0, 0, 85, 85, 34], Amethyst: [0, 32, 32, 48, 96, 41], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [0, 85, 0, 0, 85, 34], 'Rose Quartz': [0, 85, 85, 0, 0, 34], Alexandrite: [128, 0, 0, 0, 0, 25],
+        Spodumene: [128, 0, 0, 0, 0, 25], Andalusite: [85, 0, 85, 0, 0, 34],
+      },
+      Cylinder: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Garnet: [154, 0, 0, 0, 0, 30], Jasper: [76, 76, 76, 0, 0, 46],
+        Ruby: [0, 0, 0, 96, 96, 38], Spinel: [96, 0, 96, 0, 0, 38], Topaz: [0, 38, 38, 58, 116, 50],
+        'Star Sapphire': [0, 96, 0, 0, 96, 38], Emerald: [0, 0, 0, 154, 0, 30], Aquamarine: [0, 96, 96, 0, 0, 38],
+        Diamond: [384, 384, 384, 384, 384, 384],
+      },
+    },
+    Female: {
+      Sword: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [0, 96, 0, 0, 96, 38], 'Star Sapphire': [0, 96, 96, 0, 0, 38],
+        Emerald: [154, 0, 0, 0, 0, 30], Aquamarine: [96, 0, 96, 0, 0, 38], Garnet: [76, 76, 76, 0, 0, 46],
+        Jasper: [0, 0, 0, 154, 0, 30], Ruby: [0, 0, 0, 96, 96, 38], Spinel: [0, 38, 38, 58, 116, 50],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [0, 85, 0, 0, 85, 34], 'Fire Opal': [0, 85, 85, 0, 0, 34],
+        Turquoise: [128, 0, 0, 0, 0, 25], Amethyst: [85, 0, 85, 0, 0, 34], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [64, 64, 64, 0, 0, 38], 'Rose Quartz': [0, 0, 0, 128, 0, 25], Alexandrite: [0, 0, 0, 85, 85, 34],
+        Spodumene: [0, 0, 0, 85, 85, 34], Andalusite: [0, 32, 32, 48, 96, 41],
+      },
+      'Blunt Weapon': {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [0, 38, 38, 58, 116, 50], 'Star Sapphire': [0, 96, 0, 0, 96, 38],
+        Emerald: [0, 96, 96, 0, 0, 38], Aquamarine: [154, 0, 0, 0, 0, 30], Garnet: [96, 0, 96, 0, 0, 38],
+        Jasper: [76, 76, 76, 0, 0, 46], Ruby: [0, 0, 0, 154, 0, 30], Spinel: [0, 0, 0, 96, 96, 38],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [0, 32, 32, 48, 96, 41], 'Fire Opal': [0, 85, 0, 0, 85, 34],
+        Turquoise: [0, 85, 85, 0, 0, 34], Amethyst: [128, 0, 0, 0, 0, 25], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [85, 0, 85, 0, 0, 34], 'Rose Quartz': [64, 64, 64, 0, 0, 38], Alexandrite: [0, 0, 0, 128, 0, 25],
+        Spodumene: [0, 0, 0, 128, 0, 25], Andalusite: [0, 0, 0, 85, 85, 34],
+      },
+      Wand: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [0, 0, 0, 96, 96, 38], 'Star Sapphire': [0, 38, 38, 58, 116, 50],
+        Emerald: [0, 96, 0, 0, 96, 38], Aquamarine: [0, 96, 96, 0, 0, 38], Garnet: [154, 0, 0, 0, 0, 30],
+        Jasper: [96, 0, 96, 0, 0, 38], Ruby: [76, 76, 76, 0, 0, 46], Spinel: [0, 0, 0, 154, 0, 30],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [0, 0, 0, 85, 85, 34], 'Fire Opal': [0, 32, 32, 48, 96, 41],
+        Turquoise: [0, 85, 0, 0, 85, 34], Amethyst: [0, 85, 85, 0, 0, 34], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [128, 0, 0, 0, 0, 25], 'Rose Quartz': [85, 0, 85, 0, 0, 34], Alexandrite: [64, 64, 64, 0, 0, 38],
+        Spodumene: [64, 64, 64, 0, 0, 38], Andalusite: [0, 0, 0, 128, 0, 25],
+      },
+      Bow: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Topaz: [0, 96, 96, 0, 0, 38], 'Star Sapphire': [154, 0, 0, 0, 0, 30],
+        Emerald: [96, 0, 96, 0, 0, 38], Aquamarine: [76, 76, 76, 0, 0, 46], Garnet: [0, 0, 0, 154, 0, 30],
+        Jasper: [0, 0, 0, 96, 96, 38], Ruby: [0, 38, 38, 58, 116, 50], Spinel: [0, 96, 0, 0, 96, 38],
+        Diamond: [384, 384, 384, 384, 384, 384], Peridot: [0, 85, 85, 0, 0, 34], 'Fire Opal': [128, 0, 0, 0, 0, 25],
+        Turquoise: [85, 0, 85, 0, 0, 34], Amethyst: [64, 64, 64, 0, 0, 38], 'Cat\'s Eye': [350, 350, 350, 350, 350, 350],
+        'Lapis-Lazuli': [0, 0, 0, 128, 0, 25], 'Rose Quartz': [0, 0, 0, 85, 85, 34], Alexandrite: [0, 32, 32, 48, 96, 41],
+        Spodumene: [0, 32, 32, 48, 96, 41], Andalusite: [0, 85, 0, 0, 85, 34],
+      },
+      Cylinder: {
+        'Spirit\'s Blue Liquor': [0, 0, 0, 0, 0, 1200], Garnet: [0, 38, 38, 58, 116, 50], Jasper: [0, 96, 96, 0, 0, 38],
+        Ruby: [96, 0, 96, 0, 0, 38], Spinel: [0, 96, 0, 0, 96, 38], Topaz: [76, 76, 76, 0, 0, 46],
+        'Star Sapphire': [0, 0, 0, 154, 0, 30], Emerald: [154, 0, 0, 0, 0, 30], Aquamarine: [0, 0, 0, 96, 96, 38],
+        Diamond: [384, 384, 384, 384, 384, 384],
+      },
+    },
+  };
   const BLUE_LIQUOR = "Spirit's Blue Liquor";
   // Which stat an item raises (besides Social): a hash of its ID plus the spirit's type (GameSystemD
   // 0x67e24720, Thomas Wang's 64-bit hash), mod 5: Str, Int, Dex, Will, Luck.
@@ -5523,7 +6323,7 @@
   // A guide's page (GUIDES).
   function guidePage(id) {
     const g = GUIDES.find(x => x.id === id);
-    return !g ? null : id === 'elements' ? elementsGuide(g) : id === 'npc-friendship' ? friendshipGuide(g) : null;
+    return !g ? null : id === 'elements' ? elementsGuide(g) : id === 'npc-friendship' ? friendshipGuide(g) : id === 'fire-arrows' ? fireArrowGuide(g) : null;
   }
   // The elements guide: what a monster's make-up means (GAME_SOURCES.elements), the monsters with the
   // most of each element, and how equipment gets one. Equipment elements come from the elemental slot
@@ -5856,8 +6656,8 @@
     ['items', 'Items & gear', 'bag', ['item', 'enchant', 'upgrade', 'set_effect']],
     ['skills', 'Skills & crafting', 'zap', ['skill', 'craft', 'manual']],
     ['characters', 'Characters', 'users', ['monster', 'pet', 'npc', 'title']],
-    ['world', 'World', 'globe', ['region', 'dungeon', 'mission', 'fishing', 'prop']],
-    ['quests', 'Quests', 'scroll', ['quest', 'questline']],
+    ['world', 'World', 'globe', ['region', 'dungeon', 'fishing', 'prop']],
+    ['quests', 'Quests', 'scroll', ['quest', 'mission', 'questline', 'tradein']],
     ['tools', 'Tools', 'sliders', ['tool']],
     ['misc', 'Misc', 'book', ['guide']],
   ];
@@ -5944,7 +6744,7 @@
   // An artisan upgrade's page is its enchant page, under upgrade (where the list has it).
   const isArtisan = id => { const e = enchantById(id); return !!e && e.cat === 'artisan'; };
   const PAGES = { region: regionPage, mission: missionPage, prop: propPage, fishing: fishingPage, dungeon: dungeonPage, quest: questPage, craft: craftPage, manual: manualPage, item: itemPage,
-    enchant: id => (isArtisan(id) ? null : enchantPage(id)), upgrade: id => upgradePage(id) || (isArtisan(id) ? enchantPage(id) : null), tool: toolPage, guide: guidePage, questline: questlinePage, set_effect: setEffectPage, title: titlePage, skill: skillPage, monster: monsterPage, npc: npcPage, pet: petPage };
+    enchant: id => (isArtisan(id) ? null : enchantPage(id)), upgrade: id => upgradePage(id) || (isArtisan(id) ? enchantPage(id) : null), tool: toolPage, guide: guidePage, questline: questlinePage, tradein: tradeinPage, set_effect: setEffectPage, title: titlePage, skill: skillPage, monster: monsterPage, npc: npcPage, pet: petPage };
   const later = fn => new Promise((ok, no) => setTimeout(() => { try { ok(fn()); } catch (e) { no(e); } }, 0));
 
   // ---------- the 3D viewer ----------
@@ -6033,6 +6833,34 @@
     };
   }
 
+  // A prop's model (tree, rock, herb patch, building): viewer3d.js's openProp(container, class ids),
+  // which shows the first of the prop page's class ids with a model.
+  function prop3d(el, args) {
+    el.innerHTML = '<button type="button" class="btn">View in 3D</button><div class="model3d"></div>';
+    const btn = el.querySelector('button'), box = el.querySelector('.model3d');
+    let view = null;
+    btn.onclick = () => {
+      if (view) {
+        if (view.close) view.close();
+        view = null;
+        box.innerHTML = '';
+        btn.textContent = 'View in 3D';
+        return;
+      }
+      btn.disabled = true;
+      loadViewer().then(() => {
+        if (!(window.MabiWikiViewer && window.MabiWikiViewer.openProp)) {
+          box.textContent = "The 3D viewer can't show props yet.";
+          return;
+        }
+        view = window.MabiWikiViewer.openProp(box, String(args.ids || args.id).split(','));
+        btn.textContent = 'Close the 3D view';
+      }, () => {
+        box.textContent = "The 3D viewer couldn't be loaded.";
+      }).then(() => { btn.disabled = false; });
+    };
+  }
+
   // A region to walk around: region3d.js (after viewer3d.js, whose pack reader and folder it uses),
   // full screen over the page.
   let REGION3D = null;
@@ -6049,13 +6877,17 @@
     }
     return REGION3D;
   }
+  // The walker that's open: one at a time (the page under it can still be reached with Tab, and a
+  // second walker on top would draw the region twice).
+  let walker = null;
   function region3d(el, args) {
     el.innerHTML = '<button type="button" class="btn">Walk around in 3D</button>';
     const btn = el.querySelector('button');
     btn.onclick = () => {
+      if (walker) return;
       btn.disabled = true;
       loadRegion3d().then(() => {
-        window.MabiWikiRegion.open(Number(args.id), { title: args.title, onClose: () => btn.focus() });
+        walker = window.MabiWikiRegion.open(Number(args.id), { title: args.title, onClose: () => { walker = null; btn.focus(); } });
       }, () => {
         el.append(document.createTextNode(" The 3D view couldn't be loaded."));
       }).then(() => { btn.disabled = false; });
@@ -6066,7 +6898,7 @@
   // For a copy for hosting with the 3D models (boot.js makeHostable): every model the pages show, read
   // from the packs by viewer3d.js's exportModels, which knows which files a model needs.
 
-  // The models the pages show: [{ kind: 'item' | 'race', id, row }].
+  // The models the pages show: [{ kind: 'item' | 'race' | 'prop', id, row, ids (a prop's class ids) }].
   function modelList() {
     build();
     const out = [], seen = new Set();
@@ -6074,8 +6906,11 @@
       if (Array.isArray(o)) { o.forEach(walk); return; }
       if (!o || typeof o !== 'object') return;
       if (o.kind === 'embed') {
-        const kind = o.name === 'model3d' ? 'item' : o.name === 'race3d' ? 'race' : null, id = String(o.args && o.args.id);
-        if (kind && !seen.has(kind + id)) {
+        const kind = o.name === 'model3d' ? 'item' : o.name === 'race3d' ? 'race' : o.name === 'prop3d' ? 'prop' : null, id = String(o.args && o.args.id);
+        if (kind === 'prop' && !seen.has(kind + id)) {
+          seen.add(kind + id);
+          out.push({ kind, id, ids: String(o.args.ids || id).split(',') });
+        } else if (kind && !seen.has(kind + id)) {
           seen.add(kind + id);
           const row = kind === 'item' ? (items().get(id) || {}).r : raceRows().get(id);
           out.push(row ? { kind, id, row } : { kind, id });
@@ -6084,7 +6919,7 @@
       }
       walk(o.sections); walk(o.blocks); walk(o.tabs);
     };
-    for (const t of ['item', 'monster', 'npc', 'pet']) {
+    for (const t of ['item', 'monster', 'npc', 'pet', 'prop']) {
       for (const r of INDEX[t] || []) {
         try { walk(PAGES[t](r.id)); } catch (e) { /* a page that can't be made shows no model either */ }
       }
@@ -6093,7 +6928,7 @@
   }
 
   window.WIKI_SOURCE = {
-    embed: (name, el, args) => { if (name === 'model3d') model3d(el, args); else if (name === 'race3d') race3d(el, args); else if (name === 'spiritCalc') spiritCalc(el, args); else if (name === 'region3d') region3d(el, args); },
+    embed: (name, el, args) => { if (name === 'model3d') model3d(el, args); else if (name === 'race3d') race3d(el, args); else if (name === 'prop3d') prop3d(el, args); else if (name === 'spiritCalc') spiritCalc(el, args); else if (name === 'region3d') region3d(el, args); },
     models: () => later(modelList),
     meta: () => later(() => {
       if (!D) {
@@ -6118,7 +6953,8 @@
       const out = [];
       // [type, id, name, alt, icon, sub, tags, effects]: effects (enchants') are shown and searched.
       // sub tells same-named entries apart (searchSubs).
-      for (const t of ['item', 'enchant', 'upgrade', 'set_effect', 'skill', 'monster', 'pet', 'npc', 'title', 'quest', 'region', 'dungeon', 'mission', 'fishing', 'prop']) {
+      // Every type with pages of its own (Craftables is a list of items, already searched as items).
+      for (const t of ['item', 'enchant', 'upgrade', 'set_effect', 'skill', 'monster', 'pet', 'npc', 'title', 'quest', 'questline', 'tradein', 'manual', 'region', 'dungeon', 'mission', 'fishing', 'prop', 'guide', 'tool']) {
         const subs = searchSubs(t, INDEX[t]);
         for (const r of INDEX[t]) out.push([t, r.id, r.name, r.alt || '', r.icon || null, subs.has(r) ? subs.get(r) : r.sub || '', r.tags || '', r.fx || '']);
       }
