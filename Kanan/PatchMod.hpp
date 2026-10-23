@@ -40,7 +40,7 @@ namespace kanan {
         bool addPatch(const std::string& location, const std::string& pattern, int offset, std::vector<int16_t> patchBytes, int n = 0);
         void buildConfigName();
 
-    private:
+    protected:
         bool m_isEnabled;
         std::vector<Patch> m_patches;
         bool m_hasFailingPatch;
@@ -48,6 +48,8 @@ namespace kanan {
         std::string m_tooltip;
         std::string m_configName;
         std::string m_category;
+
+    private:
 
         void apply();
 

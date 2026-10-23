@@ -21,7 +21,7 @@ namespace kanan {
         MeditationTint();
         virtual ~MeditationTint();
 
-        std::string getName() override { return "Meditation Tint"; }
+        std::string getName() override { return "Meditation Condition"; }
 
         void onUI() override;
 

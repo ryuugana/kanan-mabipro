@@ -175,6 +175,7 @@
     <ClCompile Include="SkillHotkey.cpp" />
     <ClCompile Include="CharacterHook.cpp" />
     <ClCompile Include="MeditationTint.cpp" />
+    <ClCompile Include="ChainCylinderTint.cpp" />
     <ClCompile Include="CpuScheduling.cpp" />
     <ClCompile Include="ThreadPriority.cpp" />
     <ClCompile Include="OverlayDetection.cpp" />
@@ -208,6 +209,7 @@
     <ClCompile Include="TargetProps.cpp" />
     <ClCompile Include="TimeAlarm.cpp" />
     <ClCompile Include="MabiTrackers.cpp" />
+    <ClCompile Include="MabiWiki.cpp" />
     <ClCompile Include="UserCommands.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Kanan.cpp" />
@@ -226,6 +228,7 @@
     <ClCompile Include="PatchMod.cpp" />
     <ClCompile Include="RangedAttackSwap.cpp" />
     <ClCompile Include="SecondaryPassword.cpp" />
+    <ClCompile Include="SelectiveNakedMode.cpp" />
     <ClCompile Include="StatusUI.cpp" />
     <ClCompile Include="TickTracker.cpp" />
     <ClCompile Include="TTFFontSize.cpp" />
@@ -271,6 +274,7 @@
     <ClInclude Include="SkillHotkey.hpp" />
     <ClInclude Include="CharacterHook.hpp" />
     <ClInclude Include="MeditationTint.hpp" />
+    <ClInclude Include="ChainCylinderTint.hpp" />
     <ClInclude Include="CpuScheduling.hpp" />
     <ClInclude Include="ThreadPriority.hpp" />
     <ClInclude Include="OverlayDetection.hpp" />
@@ -304,6 +308,7 @@
     <ClInclude Include="TargetProps.hpp" />
     <ClInclude Include="TimeAlarm.hpp" />
     <ClInclude Include="MabiTrackers.hpp" />
+    <ClInclude Include="MabiWiki.hpp" />
     <ClInclude Include="UserCommands.hpp" />
     <ClInclude Include="UIScaleFilter.h" />
     <ClInclude Include="UIScaleXbr.h" />
@@ -342,6 +347,7 @@
     <ClInclude Include="PatchMod.hpp" />
     <ClInclude Include="RangedAttackSwap.hpp" />
     <ClInclude Include="SecondaryPassword.hpp" />
+    <ClInclude Include="SelectiveNakedMode.hpp" />
     <ClInclude Include="StatusUI.hpp" />
     <ClInclude Include="TTFFontSize.hpp" />
     <ClInclude Include="UseDataFolder.hpp" />
@@ -353,6 +359,19 @@
     <CopyFileToFolders Include="Patches.json">
       <FileType>Document</FileType>
     </CopyFileToFolders>
+  </ItemGroup>
+  <!-- The Mabinogi Wiki's page, made from its source in MabiWiki\ on every build where one of those
+       files changed: Release\MabiWiki_Standalone.html, which the release puts in the game folder and
+       Kanan opens (MabiWiki.cpp). -->
+  <ItemGroup>
+    <CustomBuild Include="MabiWiki\make-standalone.ps1">
+      <FileType>Document</FileType>
+      <Command>powershell -NoProfile -ExecutionPolicy Bypass -File "%(FullPath)" -Out "$(OutDir)MabiWiki_Standalone.html"</Command>
+      <Message>Making MabiWiki_Standalone.html</Message>
+      <AdditionalInputs>MabiWiki\hostable.html;MabiWiki\app.css;MabiWiki\app.js;MabiWiki\datasource.js;MabiWiki\sources.js;MabiWiki\viewer3d.js;MabiWiki\region3d.js;MabiWiki\packs.js;MabiWiki\images.js;MabiWiki\sinks.js;MabiWiki\prepare.js;MabiWiki\boot.js;MabiWiki\lib\three-bundle.min.js;MabiWiki\lib\three-LICENSE.txt</AdditionalInputs>
+      <Outputs>$(OutDir)MabiWiki_Standalone.html</Outputs>
+      <LinkObjects>false</LinkObjects>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Kanan.rc" />

@@ -30,6 +30,7 @@
 #include "EntityHP.hpp"
 #include "SkillHotkey.hpp"
 #include "MeditationTint.hpp"
+#include "ChainCylinderTint.hpp"
 #include "UIScale.hpp"
 #include "FieldOfView.hpp"
 #include "StatusUI.hpp"
@@ -59,9 +60,11 @@
 #include "TimeAlarm.hpp"
 #include "UserCommands.hpp"
 #include "MabiTrackers.hpp"
+#include "MabiWiki.hpp"
 #include "AutoMute.hpp"
 #include "DisableFlashy.h"
 #include "FontStyle.hpp"
+#include "SelectiveNakedMode.hpp"
 
 // Message Mods
 #include "AutoLoginChannel.hpp"
@@ -189,6 +192,7 @@ namespace kanan {
         addPatchMod(ui, make_unique<NameColoring>(), "", "Colors character names by type (player, NPC, pet, enemy).");
         addPatchMod(ui, make_unique<LargeClockText>(), "", "Shows the in-game clock in large text.");
         addPatchMod(fun, make_unique<FarDiceThrow>(), "", "Throw dice much farther away.");
+        addPatchMod(fun, make_unique<SelectiveNakedMode>(), "", "Keeps Face and Hair clothed while making all other equipment slots naked.");
         addPatchMod(ui, make_unique<ShowCombatPower>(), "", "Shows the combat power and max HP numbers next to character names.");
         addPatchMod(ui, make_unique<ShowExplorationPercent>(), "",
             "Shows your exploration level and percent in the character window.");
@@ -237,6 +241,8 @@ namespace kanan {
         addMod(make_unique<EntityHP>(), ui, "Entity HP", "Shows HP numbers over monsters and characters.");
         addMod(make_unique<MeditationTint>(), ui, "Meditation Tint",
             "Tints characters that are meditating and shows a Meditation condition icon.");
+        addMod(make_unique<ChainCylinderTint>(), ui, "Chain Cylinder Tint",
+            "Tints characters that have Chain Cylinder enabled.");
         //addMod(make_unique<UIScale>(), ui, "UI Scale", "Makes the game's interface bigger, with sharp or smooth text.");
         //addMod(make_unique<StatusUI>());
         addMod(make_unique<AutoSetMTU>(), system, "Auto Set MTU", "Sets your network MTU when you log in or change channels.");
@@ -256,6 +262,8 @@ namespace kanan {
         addMod(make_unique<TimeAlarm>(), convenience, "Time Alarm", "Alarms at in-game times, like transformation time.");
         addMod(make_unique<MabiTrackers>(), convenience, "Erinn Tracker",
             "The weather forecast for every region, where the moon gates lead, today's shadow missions, and the schedules of Price, Rua, Fleta and Tarlach, with countdowns, opened in your browser.");
+        addMod(make_unique<MabiWiki>(), convenience, "Mabinogi Wiki",
+            "Opens the wiki of the game's items, enchants, skills and more (MabiWiki_Standalone.html in your Mabinogi folder) in your browser; works offline.");
         addMod(make_unique<CpuScheduling>(), system, "CPU Scheduling",
             "Fixes freezes on Intel CPUs with performance and efficiency cores; power throttling.");
         addMod(make_unique<ThreadPriority>(), system, "Thread Priority",

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Make Standalone Wiki</title>
+<!-- Makes MabiWiki_Standalone.html from this folder (MabiWiki_Hostable): the wiki as one file, the
+     page players keep in their Mabinogi folder. It runs in any browser on any system, from disk,
+     with nothing to install: choose this folder, and the page downloads. The code, and what it does
+     to index.html, is in lib/make-standalone.js. -->
+<style>
+:root { color-scheme: light; --bg: #f7f5f0; --surface: #fffdf8; --text: #23211c; --muted: #6b665c; --line: #ddd6c8; --accent: #1f5fbf; --accent-text: #fff; --bad: #b3261e; }
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; --bg: #15161a; --surface: #1d1f24; --text: #e7e5df; --muted: #a09c93; --line: #34373e; --accent: #8f9bff; --accent-text: #11131a; --bad: #ff8a80; }
+}
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 620px; margin: 48px auto; padding: 0 16px; }
+h1 { font-size: 24px; margin: 0 0 8px; }
+p, li { color: var(--muted); }
+b, code { color: var(--text); }
+code { font: 13px ui-monospace, Consolas, monospace; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-top: 20px; }
+ol { padding-left: 20px; margin: 0 0 16px; }
+button { font: 600 15px system-ui, sans-serif; padding: 10px 18px; border-radius: 8px; border: 0; background: var(--accent); color: var(--accent-text); cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; }
+#msg { margin: 14px 0 0; color: var(--text); min-height: 1.5em; }
+#msg.bad { color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Make the standalone wiki</h1>
+  <p>This packs the wiki in this folder (<code>index.html</code>, <code>app.css</code>, the scripts and
+    <code>lib/</code>) into one file, <b>MabiWiki_Standalone.html</b>: the page players keep in their
+    Mabinogi folder, which sets itself up from their game files. Change the code here, then make the
+    standalone page from it.</p>
+  <div class="card">
+    <ol>
+      <li>Click <b>Choose folder</b> and pick this folder (<b>MabiWiki_Hostable</b>). Your browser may
+        call it an upload: nothing leaves your computer.</li>
+      <li><b>MabiWiki_Standalone.html</b> downloads. Put it in the Mabinogi folder (the one with the
+        <b>package</b> folder in it).</li>
+    </ol>
+    <input type="file" id="dir" webkitdirectory multiple hidden>
+    <button type="button" id="pick">Choose folder</button>
+    <p id="msg" role="status"></p>
+  </div>
+</main>
+<script src="lib/make-standalone.js"></script>
+</body>
+</html>

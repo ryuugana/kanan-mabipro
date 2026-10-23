@@ -132,6 +132,9 @@
     <ClCompile Include="MeditationTint.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="ChainCylinderTint.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="CpuScheduling.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -238,6 +241,9 @@
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
     <ClCompile Include="SecondaryPassword.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
+    <ClCompile Include="SelectiveNakedMode.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
     <ClCompile Include="StatusUI.cpp">
@@ -422,6 +428,9 @@
     <ClInclude Include="MeditationTint.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
+    <ClInclude Include="ChainCylinderTint.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
     <ClInclude Include="CpuScheduling.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
@@ -534,6 +543,9 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="SecondaryPassword.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="SelectiveNakedMode.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="FontData.hpp">

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cwctype>
+#include <sstream>
 #include <vector>
 
 #include <imgui.h>
@@ -9,6 +10,7 @@
 #include "Log.hpp"
 #include "UserCommands.hpp"
 #include "MabiTrackers.hpp"
+#include "MabiWiki.hpp"
 
 using namespace std;
 
@@ -468,7 +470,8 @@ namespace kanan {
                 L".price .rua .fleta .tarlach - where they are and how long until that changes\n"
                 L".sm - today's shadow missions in Taillteann and Tara\n"
                 L".weather - the weather where you are and what comes next\n"
-                L".tracker - opens the Erinn Tracker in your browser: the weather everywhere, where the moon gates lead, and when Price, Rua, Fleta and Tarlach are where"
+                L".tracker - opens the Erinn Tracker in your browser: the weather everywhere, where the moon gates lead, and when Price, Rua, Fleta and Tarlach are where\n"
+                L".wiki - opens the Mabinogi Wiki in your browser (MabiWiki_Standalone.html in your Mabinogi folder)"
             );
         }
         else if (command == L"tracker") {
@@ -480,6 +483,21 @@ namespace kanan {
             }
             else if (tracker->open(error)) {
                 printToChat(L"Opened the Erinn Tracker in your browser.");
+            }
+            else {
+                printToChat(error);
+            }
+        }
+        else if (command == L"wiki") {
+            // Opens MabiWiki_Standalone.html, or says it wasn't found.
+            auto wiki = MabiWiki::instance();
+            wstring error;
+
+            if (wiki == nullptr) {
+                printToChat(L"The Mabinogi Wiki is not available.");
+            }
+            else if (wiki->open(error)) {
+                printToChat(L"Opened the Mabinogi Wiki in your browser.");
             }
             else {
                 printToChat(error);
@@ -628,7 +646,8 @@ namespace kanan {
                 ".price .rua .fleta .tarlach - where they are and how long until that changes\n"
                 ".sm - today's shadow missions in Taillteann and Tara\n"
                 ".weather - the weather where you are and what comes next\n"
-                ".tracker - opens the Erinn Tracker: the weather everywhere, moon gates, and NPC schedules");
+                ".tracker - opens the Erinn Tracker: the weather everywhere, moon gates, and NPC schedules\n"
+                ".wiki - opens the Mabinogi Wiki (MabiWiki_Standalone.html in your Mabinogi folder)");
         }
     }
 
