@@ -249,8 +249,8 @@
       zip: ['Download the files', `As ${ZIP_NAME}, to extract into the folder this page is in${inFolder}. The wiki then opens instantly in any browser.`],
     };
     const no3d = HOSTABLE ? !!root.MABIWIKI_NO3D : B ? B.models === false : false;
-    const yes3d = HOSTABLE ? 'Every model the pages show goes into data/models (about 520 MB in 24,000 files), so visitors can view items, monsters and regions in 3D once the site is hosted. Processing takes longer with them.'
-      : `Items, monsters and regions can be viewed in 3D. The 3D views read the models from your game files when you open one${has.folderPick ? '' : ' (your browser asks for the folder once per visit)'}.`;
+    const yes3d = HOSTABLE ? 'Every model the pages show goes into data/models (528 MB in 24,962 files), so visitors can view items, monsters and props in 3D once the site is hosted. Processing takes longer with them.'
+      : `Items, monsters, props and regions can be viewed in 3D. The 3D views read the models from your game files when you open one${has.folderPick ? '' : ' (your browser asks for the folder once per visit)'}.`;
     const c = card(el, `
       <h1>${update ? 'Update from your game files' : 'Set up the wiki from your game files'}</h1>
       <p>The wiki is made from your own Mabinogi game files, on this computer. Nothing is uploaded.</p>
@@ -289,12 +289,15 @@
     let found = null;
 
     // The size follows the 3D choice: the hostable folder copies the models into data/models; the
-    // standalone page reads them from the game files, so they add nothing here.
+    // standalone page reads them from the game files, so they add nothing here. The figures (MB as
+    // 2^20 bytes, like gb()) were measured on the October 2026 game files: the data folder 182,972,692
+    // bytes in 9,364 files; exportModels over models() (15,791 items, 2,623 races, 276 props)
+    // 553,247,458 bytes in 24,962 files, of which the props add 10,117,839 bytes in 697 files.
     const showSize = () => {
       const yes = c.querySelector('input[name="mw-3d"]:checked').value === 'yes';
-      $('.mw-size').textContent = !yes ? 'About 175 MB of pictures and data.'
-        : HOSTABLE ? 'About 695 MB: 175 MB of pictures and data, plus 520 MB of 3D models.'
-        : 'About 175 MB of pictures and data. The 3D models aren\'t copied: they stay in your game files.';
+      $('.mw-size').textContent = !yes ? '174 MB of pictures and data.'
+        : HOSTABLE ? '702 MB: 174 MB of pictures and data, plus 528 MB of 3D models.'
+        : '174 MB of pictures and data. The 3D models aren\'t copied: they stay in your game files.';
     };
     c.querySelectorAll('input[name="mw-3d"]').forEach(r => r.addEventListener('change', showSize));
     showSize();

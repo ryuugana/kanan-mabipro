@@ -254,6 +254,13 @@ a.pill:hover, button.pill:hover { color: var(--text); border-color: var(--line-2
 .tone-gold { color: var(--gold-text); }
 /* An enchant's effects in its list: a bonus in the accent blue, a penalty in red. */
 .tone-pos { color: var(--pos); }
+/* Secondary text in a cell (a row's note): quieter than the values beside it. */
+.tone-muted { color: var(--muted); font-size: 13px; }
+/* A table whose first column says what each row is for (a tier, a condition). */
+/* Not ".lead": that's the page's summary paragraph (its gold edge and margin). */
+table.t.leadcol td:first-child { font-weight: 600; color: var(--text); }
+/* A grouped table's next group (Glewyas's next dish). */
+table.t tr.grp > td { border-top: 2px solid var(--line-2); }
 .tone-neg { color: var(--bad); }
 /* A skill or set effect named in an effect line: underlined, so it stands out from the blue text. */
 .vline:has(.tone-pos, .tone-neg) a.ln { text-decoration: underline; text-underline-offset: 2px; }
@@ -364,6 +371,17 @@ details.vfold > summary::before { content: '›'; display: inline-block; width: 
 details.vfold[open] > summary::before { transform: rotate(90deg); }
 details.vfold > summary:focus-visible { outline: 2px solid var(--gold-text); outline-offset: 2px; border-radius: var(--r-sm); }
 details.vfold .vfoldbody { margin-top: 4px; padding-left: .8em; }
+/* A column whose lines never break (a table's nowrap option): the others wrap to make room. */
+table.t td.keep .vline, table.t td.keep { white-space: nowrap; }
+/* A table that never scrolls sideways (fit): its long columns wrap rather than holding a minimum width. */
+table.t.fit td.long { min-width: 0; }
+/* Steps in a cell: numbered, a gap between them; the number starts at the cell's edge, in line with
+   plain text, and wrapped lines line up after it. */
+ol.vsteps { margin: 0; padding: 0; list-style: none; counter-reset: vstep; }
+ol.vsteps > li { display: grid; grid-template-columns: auto 1fr; column-gap: .45em; line-height: 1.5; counter-increment: vstep; }
+ol.vsteps > li::before { content: counter(vstep) "."; color: var(--gold-text); font-weight: 600; }
+ol.vsteps > li + li { margin-top: 10px; }
+ol.vsteps + .vline { margin-top: 10px; }
 .vline.rule { padding: 6px 0; }
 .vline.rule + .vline.rule { border-top: 1px solid var(--line-2); }
 .vtag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--gold-text);
@@ -571,6 +589,13 @@ table.t td.ptg { display: none; }
 .t td.nw { white-space: nowrap; }
 .t td { overflow-wrap: break-word; }
 .t td.long { min-width: 10em; }
+/* A value on its own (a set effect's effect): its main line set off, the details under it quieter. */
+.fxval > .vline:first-child { font-weight: 600; font-size: 15.5px; }
+.fxval > .vline + .vline { margin-top: 2px; }
+/* A list's wide column (an enchant's effects): room first, so its lines don't wrap into a narrow strip. */
+.t th.cwide, .t td.cwide { min-width: 22em; }
+.t th.cwide { width: 38%; } /* and the larger share of any room left over */
+@media (max-width: 760px) { .t th.cwide, .t td.cwide { min-width: 14em; } }
 .tmore { padding: 10px 12px; border-top: 1px solid var(--line); }
 .rng { display: flex; align-items: center; gap: 10px; justify-content: flex-end; white-space: nowrap; }
 .rng .bar { position: relative; width: 84px; height: 6px; border-radius: 3px; background: var(--surface-2); flex: none;
@@ -660,11 +685,60 @@ a.gcard:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line))
 .body { min-width: 0; }
 .lead { font-size: 17px; line-height: 1.6; color: var(--text-2); margin: 0 0 var(--s6); padding-left: var(--s4);
   border-left: 2px solid var(--gold-line); white-space: pre-line; overflow-wrap: anywhere; }
-.sec { margin-bottom: var(--s6); min-width: 0; scroll-margin-top: calc(var(--top) + 12px); }
+/* A page section is a card: one bordered unit per section, so where one ends and the next begins is
+   plain at a glance. Its heading is a bar across the top that stays in view (sticky, under the top bar)
+   while the card scrolls past, so a reader deep in a long table still sees which section it's in. */
+.sec { margin-bottom: var(--s5); min-width: 0; scroll-margin-top: calc(var(--top) + 12px);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-sm); }
 .wide-secs { margin-top: var(--s2); min-width: 0; } /* sections with wide: true, below the article and infobox */
-.sec > h2 { display: flex; align-items: center; gap: var(--s3); margin-bottom: var(--s4); }
-.sec > h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.sec > h2 { display: flex; align-items: center; gap: var(--s3); margin: 0; padding: 12px 18px;
+  position: sticky; top: var(--top); z-index: 5; font-size: 20px;
+  background: var(--surface-2); border-bottom: 1px solid var(--line); border-radius: var(--r-md) var(--r-md) 0 0; }
+/* A section's tip: an (i) after its heading, its note in a bubble on hover, tap or focus. */
+.htip { position: relative; display: inline-grid; place-items: center; width: 22px; height: 22px; color: var(--muted); cursor: help; border-radius: 50%; }
+.htip svg { width: 16px; height: 16px; }
+.htip:hover, .htip:focus-visible { color: var(--text); }
+.htip:hover::after, .htip:focus::after { content: attr(data-tip); position: absolute; left: 0; top: calc(100% + 6px); z-index: 20; width: max-content; max-width: 280px;
+  padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--line-2); box-shadow: var(--shadow-md);
+  font: 400 13px/1.45 var(--font); color: var(--text); letter-spacing: 0; text-transform: none; white-space: normal; }
 .sec > h2 .orn-d { width: 7px; height: 7px; transform: rotate(45deg); background: var(--gold); flex: none; border-radius: 1px; }
+.secbody { --pad: 18px; padding: var(--pad); min-width: 0; }
+/* Inside a section: a sub-heading reads as one (sentence case, the text's own colour), not like the
+   small uppercase labels of table columns and fields, and it gets room above it. */
+.secbody .blk > h3 { text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: var(--s2);
+  padding-left: 10px; border-left: 3px solid var(--gold); line-height: 1.25; }
+.secbody > .blk + .blk { margin-top: var(--s6); }
+/* The boxes inside a card are quieter than the card: no shadow, a lighter edge. */
+.secbody .tablebox, .secbody details.more, .secbody .fml { box-shadow: none; }
+/* A fold on its own in a section is a row of the card, edge to edge (an accordion), not a box inside
+   the card's padding: a section of only folds is its header bar and one line per fold. Rows after
+   other content, or after each other, are set off by a line. */
+.secbody > .blk:has(> details.more:only-child) { margin-left: calc(-1 * var(--pad)); margin-right: calc(-1 * var(--pad)); }
+.secbody > .blk:has(> details.more:only-child):first-child { margin-top: calc(-1 * var(--pad)); }
+.secbody > .blk:has(> details.more:only-child):last-child { margin-bottom: calc(-1 * var(--pad)); }
+.secbody > .blk:has(> details.more:only-child) + .blk:has(> details.more:only-child) { margin-top: 0; }
+.secbody > .blk > details.more:only-child { border: 0; border-radius: 0; padding: 0; margin: 0; }
+.secbody > .blk:not(:first-child) > details.more:only-child { border-top: 1px solid var(--line); }
+.secbody > .blk > details.more:only-child > summary { padding: 13px var(--pad); }
+.secbody > .blk > details.more:only-child > summary:hover { background: var(--hover); }
+.secbody > .blk > details.more:only-child > .morebody { padding: 2px var(--pad) 12px; }
+/* A note goes with the block above it (a table's "chances are per kill"), close under it. */
+.secbody > .blk + .blk:has(> .note:only-child) { margin-top: var(--s3); }
+.secbody > .blk:last-child > details.more:only-child > summary { border-radius: 0 0 var(--r-md) var(--r-md); }
+.secbody > .blk:last-child > details.more[open]:only-child > summary { border-radius: 0; }
+/* A fold's count, a badge at the right of its row. */
+details.more > summary .cnt { margin-left: auto; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--text-2); background: var(--surface-2); border: 1px solid var(--line); }
+@media (max-width: 600px) {
+  .sec > h2 { padding: 10px 14px; font-size: 18px; }
+  .secbody { --pad: 14px; }
+  /* A two-column table (three or more turn into cards here) fits the card: its long cells wrap
+     rather than holding a minimum width that pushes the table past the card's edge. */
+  .secbody .t td.long { min-width: 0; }
+  .secbody .t th { white-space: normal; }
+  /* Room inside the card: tighter cells, and a folded box's own padding less. */
+  .secbody .t th, .secbody .t td { padding-left: 8px; padding-right: 8px; }
+}
 .blk + .blk { margin-top: var(--s5); }
 .blk > h3:first-child { margin-top: 0; }
 .kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s6); margin: 0; }
@@ -675,6 +749,10 @@ a.gcard:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line))
 .kv dt { color: var(--muted); flex: none; max-width: 50%; }
 .kv dd { margin: 0; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
 .kv.one dt { flex: 0 1 auto; max-width: 40%; }
+/* A sentence-long value: under its label, read like text. */
+.kv > div.prose { flex-direction: column; gap: 3px; grid-column: 1 / -1; }
+.kv > div.prose dt { max-width: none; }
+.kv > div.prose dd { text-align: left; font-weight: 400; line-height: 1.55; color: var(--text); }
 .kv .gold, .infobox .gold { color: var(--gold-text); }
 .txt p { margin: 0 0 var(--s3); white-space: pre-line; overflow-wrap: anywhere; }
 .txt p:last-child { margin-bottom: 0; }
@@ -684,6 +762,30 @@ a.gcard:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line))
 .ticks li svg.i { width: 15px; height: 15px; color: var(--good); }
 .ticks.no li svg.i { color: var(--warn); }
 .ticks li .dia { width: 6px; height: 6px; margin: 0 3px; transform: rotate(45deg); background: var(--gold); border-radius: 1px; flex: none; }
+/* Calculations (kind 'formulas'): one card each, what's worked out above the working. */
+.fmls { display: grid; gap: 10px; }
+.fml { padding: 10px 14px 11px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--r-sm);
+  background: var(--surface-2); min-width: 0; }
+.fml .fn { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.fml .fx { font-size: 14.5px; line-height: 1.6; color: var(--text); overflow-wrap: anywhere; }
+.fml .vtag, ul.lst .vtag { margin-left: 8px; vertical-align: 1px; }
+/* A sum at a glance (kind 'sum'): tiles joined by + and =. */
+.sumrow { display: flex; align-items: stretch; gap: var(--s2); flex-wrap: wrap; }
+.sumt { flex: 1 1 150px; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--line);
+  border-radius: var(--r); background: var(--surface-2); min-width: 0; }
+.sumt .sl { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sumt b { font-size: 19px; font-weight: 650; color: var(--text); line-height: 1.25; }
+.sumt small { font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+.sumt.res { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+.sumrow .op { align-self: center; font-size: 20px; font-weight: 600; color: var(--muted); flex: none; }
+.sumfoot { margin: var(--s2) 0 0; font-size: 13px; color: var(--muted); }
+@media (max-width: 640px) { .sumrow { flex-direction: column; } .sumrow .op { align-self: center; line-height: 1; } }
+/* A checklist of longer items (a list with an icon). */
+ul.checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+ul.checks li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.55; overflow-wrap: anywhere; }
+ul.checks li svg.i { width: 16px; height: 16px; flex: none; margin-top: 3px; color: var(--good); }
+ul.checks.no li svg.i { color: var(--warn); }
+ul.lst li b, ul.checks li b { color: var(--text); font-weight: 600; }
 ul.lst { margin: 0; padding-left: 20px; }
 ul.lst li { margin: 4px 0; overflow-wrap: anywhere; }
 ul.lst li::marker { color: var(--gold); }
@@ -697,7 +799,6 @@ ol.lst.steps li::marker { color: var(--gold-text); font-weight: 600; }
 .note.warn { background: var(--warn-soft); }
 .note.warn svg.i { color: var(--warn); }
 .more { margin-top: var(--s3); }
-.sec .tablebox { box-shadow: none; }
 
 /* 3D stage: the data source's embed draws inside (a button, then its viewer). */
 .stage { position: relative; min-height: 260px; border-radius: var(--r-lg); border: 1px solid var(--line); overflow: hidden;
@@ -729,7 +830,7 @@ ol.lst.steps li::marker { color: var(--gold-text); font-weight: 600; }
 .stage:has(.mwv) .embed > .btn:hover { border-color: var(--accent); color: var(--accent-text); background: var(--surface); }
 .stage .mwv { position: relative; gap: 0; min-height: 0; color: var(--text); }
 .stage .mwv-bar { position: absolute; z-index: 3; top: 12px; left: 12px; max-width: calc(100% - 24px); padding: 6px 12px; gap: 6px 12px;
-  border-radius: 999px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-sm);
+  border-radius: 18px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-sm);
   font-size: 12.5px; color: var(--text-2); }
 .stage .mwv-bar:empty { display: none; }
 .stage .mwv-bar select, .stage .mwv-bar button { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); padding: 2px 8px; color: var(--text); }
@@ -748,9 +849,11 @@ ol.lst.steps li::marker { color: var(--gold-text); font-weight: 600; }
 
 /* infobox */
 .aside { position: sticky; top: calc(var(--top) + var(--s5)); display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
-.infobox { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; box-shadow: var(--shadow-md); }
+/* The info box matches the section cards beside it: the same edge, corners and shadow, and its picture
+   on the cards' header colour (a faint gold glow behind it), not a darker panel of its own. */
+.infobox { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; box-shadow: var(--shadow-sm); }
 .infobox .art { position: relative; display: grid; place-items: center; border-bottom: 1px solid var(--line); padding: var(--s4);
-  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--gold) 12%, var(--surface)) 0%, var(--surface-2) 60%, var(--sunken) 100%); }
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--gold) 8%, var(--surface-2)) 0%, var(--surface-2) 70%); }
 .infobox .art.item { height: 280px; }
 .infobox .art.skill { height: 180px; }
 .infobox .art.skill .ibox { width: 96px; height: 96px; border-radius: var(--r-lg); }
@@ -812,10 +915,18 @@ ol.lst.steps li::marker { color: var(--gold-text); font-weight: 600; }
 .rcards { margin-bottom: var(--s5); }
 .rcards b { font-size: 19px; white-space: pre-line; }
 .rcards > div.full b, .rcards > div.wide b { font-size: 16px; }
-.rsub { margin-bottom: var(--s4); }
+/* The picked rank's panel: headed by the rank, its stat cards and its parts (description, effect,
+   training) inside, each part set off by a line so they read as that rank's sections. */
+.rpanel { margin: var(--s4) 0; border: 1px solid var(--line); border-radius: var(--r-md); background: color-mix(in srgb, var(--surface-2) 45%, var(--surface)); }
+.rpanel-h { padding: 9px 16px; border-bottom: 1px solid var(--line); background: var(--surface-2); border-radius: var(--r-md) var(--r-md) 0 0;
+  font: 600 15px/1.3 var(--font); color: var(--gold-text); }
+.rpanel-b { padding: 16px; }
+.rpanel .rcards { margin-bottom: 0; }
+.rsub { margin-top: var(--s4); }
+.rsub > .blk + .blk { margin-top: var(--s4); padding-top: var(--s4); border-top: 1px solid var(--line); }
+.rsub > .blk + .blk:has(> .note:only-child) { margin-top: var(--s3); padding-top: 0; border-top: 0; } /* a note goes with the part above it */
 .rsub .blk h3 { margin-bottom: var(--s2); }
-/* A skill rank's effect: one size for short and long effects alike. */
-.effect { font: 19px/1.4 var(--display); color: var(--text); }
+@media (max-width: 600px) { .rpanel-b { padding: 12px; } }
 .ranks > .linkbtn { margin-top: var(--s2); }
 .rtable { margin-top: var(--s3); }
 .ranks tr.on td { background: var(--gold-soft); }
@@ -990,12 +1101,20 @@ h3, .brand small, .nav-h, .tg-h, .t th, .kv dt, .tablab, .rgroup > span, .bcost 
 .filter:has(input:focus-visible), .facet:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tabbar .tab:focus-visible { outline-offset: 1px; } /* a gap from the chosen tab's own fill, inside the bar */
 pre.formula { margin: 0; padding: 12px 14px; overflow-x: auto; background: var(--hover); border: 1px solid var(--line); border-radius: var(--r-sm);
-  font: 12.5px/1.6 var(--mono); color: var(--text); white-space: pre; }
+  font: 12.5px/1.6 var(--mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; } /* wraps on a phone, indents kept */
 details.more { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 0 14px; }
-details.more > summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: var(--text-2); list-style: none; display: flex; align-items: center; gap: 8px; }
+/* A fold reads as a control: its chevron in a small button that turns when it opens, its name in the
+   text's colour, and "Show" / "Hide" in the link colour at the row's right end. */
+details.more > summary { cursor: pointer; padding: 10px 0; font-weight: 600; color: var(--text); list-style: none; display: flex; align-items: center; gap: 10px; }
 details.more > summary::-webkit-details-marker { display: none; }
-details.more > summary::before { content: '›'; display: inline-block; width: 1em; color: var(--gold-text); transition: transform .15s; }
+details.more > summary::before { content: '›'; flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; padding-bottom: 2px; box-sizing: border-box;
+  border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface-2); color: var(--gold-text); font-size: 16px; line-height: 1; transition: transform .15s, border-color .15s; }
 details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > summary::after { content: 'Show'; flex: none; font-size: 12.5px; font-weight: 600; color: var(--accent-text); }
+details.more[open] > summary::after { content: 'Hide'; }
+details.more > summary:not(:has(.cnt))::after { margin-left: auto; }
+details.more > summary:hover::before { border-color: var(--gold-text); }
+details.more > summary:hover::after { text-decoration: underline; text-underline-offset: 2px; }
 details.more > summary:focus-visible { outline: 2px solid var(--gold-text); outline-offset: 2px; border-radius: var(--r-sm); }
 details.more .morebody { padding-bottom: 12px; }
 /* Phones: a table of three or more columns shows each row as a card, one "column: value" line per
@@ -1011,6 +1130,11 @@ details.more .morebody { padding-bottom: 12px; }
   table.t.stack td:first-child { justify-content: flex-start; text-align: left; font-weight: 600; padding-bottom: 4px; }
   table.t.stack td:first-child::before { display: none; }
   table.t.stack td.blank { display: none; }
+  /* A long value (a sentence, steps) goes under its label, left-aligned like text, rather than wrapping
+     against the right edge. */
+  table.t.stack td.long:not(:first-child), table.t.stack td:has(ol.vsteps) { display: block; text-align: left; padding: 5px 0; }
+  table.t.stack td.long:not(:first-child)::before, table.t.stack td:has(ol.vsteps)::before { display: block; max-width: none; margin-bottom: 3px; }
+  table.t.stack td.long:not(:first-child) .cv, table.t.stack td:has(ol.vsteps) .cv { text-align: left; }
   /* phone-fold (a table's phone option): the lead columns first, the folded ones behind the row's button. */
   table.t.stack.phone-fold tr { display: flex; flex-direction: column; }
   table.t.stack.phone-fold td.pl { order: -1; }
@@ -1019,6 +1143,32 @@ details.more .morebody { padding-bottom: 12px; }
   table.t.stack.phone-fold td.ptg { display: flex; justify-content: flex-start; padding-top: 4px; }
   table.t.stack td .cv { min-width: 0; text-align: right; }
   table.t.stack td:first-child .cv { text-align: left; }
+}
+
+/* A table that never scrolls sideways (fit) turns into the phone cards when its own box is too narrow
+   for its columns (a narrow window with the menu showing, a split screen), whatever the window's width. */
+.tablebox:has(> .scroll > table.t.fit) { container: tbl / inline-size; }
+@container tbl (max-width: 680px) {
+  table.t.fit.stack, table.t.fit.stack tbody, table.t.fit.stack tr, table.t.fit.stack td { display: block; width: auto; }
+  table.t.fit.stack thead { display: none; }
+  table.t.fit.stack tr { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  table.t.fit.stack tbody tr:last-child { border-bottom: 0; }
+  table.t.fit.stack tbody tr:hover td { background: none; }
+  table.t.fit.stack td { display: flex; gap: 12px; justify-content: space-between; align-items: baseline; padding: 3px 0; border: 0; text-align: right; white-space: normal; }
+  table.t.fit.stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .03em; color: var(--muted); }
+  table.t.fit.stack td:first-child { justify-content: flex-start; text-align: left; font-weight: 600; padding-bottom: 4px; }
+  table.t.fit.stack td:first-child::before { display: none; }
+  table.t.fit.stack td.blank { display: none; }
+  table.t.fit.stack td.long:not(:first-child), table.t.fit.stack td:has(ol.vsteps) { display: block; text-align: left; padding: 5px 0; }
+  table.t.fit.stack td.long:not(:first-child)::before, table.t.fit.stack td:has(ol.vsteps)::before { display: block; max-width: none; margin-bottom: 3px; }
+  table.t.fit.stack td.long:not(:first-child) .cv, table.t.fit.stack td:has(ol.vsteps) .cv { text-align: left; }
+  table.t.fit.stack.phone-fold tr { display: flex; flex-direction: column; }
+  table.t.fit.stack.phone-fold td.pl { order: -1; }
+  table.t.fit.stack.phone-fold td.pf { display: none; }
+  table.t.fit.stack.phone-fold tr.open td.pf:not(.blank) { display: flex; }
+  table.t.fit.stack.phone-fold td.ptg { display: flex; justify-content: flex-start; padding-top: 4px; }
+  table.t.fit.stack td .cv { min-width: 0; text-align: right; }
+  table.t.fit.stack td:first-child .cv { text-align: left; }
 }
 
 /* ---------- setting the wiki up from the game's files (boot.js) ---------- */

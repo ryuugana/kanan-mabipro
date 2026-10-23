@@ -100,7 +100,8 @@ namespace kanan {
             mz_zip_archive_file_stat fileStat;
             if (mz_zip_reader_file_stat(&zipArchive, i, &fileStat)) {
                 std::string outputPath = outputDir + "/" + fileStat.m_filename;
-                // Folders the zip has (MabiWiki_Hostable\lib) are made here, as extracting doesn't.
+                // Folders a release adds that the game folder doesn't have yet are made here, as
+                // extracting doesn't.
                 std::error_code ec;
                 if (fileStat.m_is_directory) {
                     std::filesystem::create_directories(outputPath, ec);

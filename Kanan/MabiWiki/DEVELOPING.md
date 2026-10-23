@@ -11,6 +11,11 @@ the game's own files the first time `index.html` is opened from disk (see [Updat
 data](#updating-the-game-data)); after that the folder can be uploaded to any static web host as it
 is. `README.txt` says the same for people who only want to host it.
 
+This folder is also where the other version of the wiki comes from: `MabiWiki_Standalone.html`, the
+same wiki as one file that players keep in their Mabinogi folder. Change the code here, then make
+the standalone page from it with `make-standalone.html` (see [The standalone
+page](#the-standalone-page)).
+
 | File | What it is |
 |---|---|
 | `index.html` | the page: loads everything below with plain `<script>` and `<link>` tags |
@@ -20,8 +25,10 @@ is. `README.txt` says the same for people who only want to host it.
 | `sources.js` | what the game's files don't say: where things come from, shops, quests... |
 | `README.txt` | how to set the folder up and host it |
 | `DEVELOPING.md` | this file |
+| `make-standalone.html` | makes `MabiWiki_Standalone.html` from this folder, in any browser |
+| `make-standalone.ps1` | the same, from a command line (PowerShell); Kanan's build runs it |
 | `.nojekyll` | an empty file that keeps GitHub Pages from leaving out folders whose names start with "_" |
-| `lib/` | the 3D viewer (`viewer3d.js`, `region3d.js`, `packs.js`, `three-bundle.min.js`, `three-LICENSE.txt`) and the setup (`boot.js`, `images.js`, `sinks.js`, `prepare.js`) |
+| `lib/` | the 3D viewer (`viewer3d.js`, `region3d.js`, `packs.js`, `three-bundle.min.js`, `three-LICENSE.txt`), the setup (`boot.js`, `images.js`, `sinks.js`, `prepare.js`) and `make-standalone.js` (`make-standalone.html`'s code) |
 | `data/` | only once set up: the game's files, picture lists, pictures, `site.js` and, with 3D, `models/` |
 
 ## Contents
@@ -36,6 +43,7 @@ is. `README.txt` says the same for people who only want to host it.
 8. [sources.js reference](#sourcesjs-reference): every table in it, and how to edit it by hand
 9. [How to check your change](#how-to-check-your-change)
 10. [Updating the game data](#updating-the-game-data)
+11. [The standalone page](#the-standalone-page): the one-file version, and making it from here
 
 ## How it works
 
@@ -82,14 +90,18 @@ The wiki is built in the visitor's browser every time the page opens:
    go in `data/` (the setup rewrites it): put it next to `index.html`, like `sources.js`.
 2. `app.css` styles everything. Colors are tokens on `:root` (light) with a dark set under
    `prefers-color-scheme: dark` and `[data-theme="dark"]`; components use only the tokens.
-3. `lib/`: the 3D viewer, `viewer3d.js` (items and monsters in 3D), `region3d.js` (walking around a
+3. `lib/`: the 3D viewer, `viewer3d.js` (items, monsters and props in 3D; how a prop's model is
+   found and drawn lives here, and `region3d.js` uses the same code), `region3d.js` (walking around a
    region), `packs.js` (reads the game's file formats) and `three-bundle.min.js` (three.js), which
    load only when a reader opens a 3D view; and the setup, `boot.js` (above), `prepare.js` (makes
    `data/` from the game's files), `images.js` (the pictures) and `sinks.js` (where the files are
    written: the folder, or a zip). With the 3D models, they are in `data/models/`, with
    `data/models/index.json` listing them, and are read with `fetch`: they show once the site is
    hosted (or served by a local web server); opened from disk, a 3D view may ask for the visitor's
-   own Mabinogi folder instead.
+   own Mabinogi folder instead. Both 3D views draw through `frameRate.loop` in `viewer3d.js`: at
+   most 60 frames a second by default, with a "Frame rate" picker (30, 60, Monitor rate) kept in
+   the browser's `localStorage`; anything that moves on its own scales with the time between
+   frames, so it looks the same at any rate. A model viewer scrolled out of sight draws nothing.
 
 Every code file starts with comments on how it works, and the comments through the files explain
 the game's data formats where they're read. Read the top of `app.js` and `datasource.js` first.
@@ -280,7 +292,9 @@ when you add or change anything.
   `questlinePage`). When you change a shape, change the comment.
 - Keep functions small and named for what they build (`fishingSection`, `npcGiftBlocks`,
   `missionPage`). Sections return `null` (or `[]` for block lists) when they have nothing to show,
-  and the page builder skips them.
+  and the page builder skips them. The page builders (`itemPage`, `monsterPage`...) are the long
+  exception: a flat list of sections, one after another; a new section goes in its own function,
+  called from there.
 - Match the surrounding style: compact lines, `const` arrow helpers, comments in sentences.
 - Anything heavy that several pages need (a lookup by item or race) is built once, on first use,
   and cached in a module variable (`let FISH_BY_ITEM = null` and the function that fills it).
@@ -301,7 +315,8 @@ Six places in `datasource.js` make one; all of them are needed:
 
 `T(type, fields)` adds `filters: []` and the counts. `order` is the type's place inside its group;
 `icon` is one of the icon names in `app.js`'s `P` table. Optional fields on a type: `filters`,
-`catColumns`, `catFilters`, `catFirst`, `noInfo`, `noId` (see the top of `app.js`). A row's `cat`
+`catColumns`, `catFilters`, `catFirst`, `noInfo`, `noId` (each is explained where `app.js` reads
+it: search `app.js` for the name). A row's `cat`
 is a category key or a list of them ("a/b" is a child of "a"); `sub` is the grey line under the
 name in lists and search.
 
@@ -873,8 +888,9 @@ The game data in `data/` is made from the game's own files, in the browser, by t
    With data already there, click "Update from your game files" at the bottom of the sidebar (it is only shown when the
    page is opened from disk).
 2. Choose your Mabinogi folder (or the `package` folder inside it).
-3. Include 3D models: Yes or No. Yes adds every model the pages show to `data/models/` (about
-   520 MB in about 24,000 files, and processing takes longer); No leaves the pages without 3D views.
+3. Include 3D models: Yes or No. Yes adds every model the pages show (items, monsters and props) to
+   `data/models/` (528 MB in 24,962 files, and processing takes longer); No leaves the pages
+   without 3D views.
 4. Where: "Into this folder" writes `data/` next to `index.html` (the browser asks you to choose
    the folder, to allow it), or "Download the data" gives a zip of `data/` to extract into the
    folder. Firefox can't write into a folder, so it gets only the zip.
@@ -888,3 +904,53 @@ shows "This wiki isn't ready yet".
 
 After an update (a game patch, say), run the "build every page" check above: a patch can change
 the files the wiki reads.
+
+## The standalone page
+
+The wiki comes in two versions, made from the same code (this folder's):
+
+| | `MabiWiki_Standalone.html` | `MabiWiki_Hostable` (this folder) |
+|---|---|---|
+| For | a player, on their own computer | a website |
+| Shape | one file, kept in the Mabinogi folder (Kanan's "Mabinogi Wiki" button and `.wiki` open it) | a folder of files |
+| Its data | `MabiWiki/data/` next to the page, or kept in the browser | `data/` in this folder |
+| 3D models | read from the player's game files when a 3D view opens: nothing is copied | copied into `data/models/` (528 MB), or no 3D views |
+
+The 3D models are why they differ. The standalone page runs next to the game, so it reads one model
+straight out of the game's `.pack` files when a 3D view opens (`lib/packs.js` reads them). A
+website's visitors don't have the game files, and a website can't read files from a visitor's
+computer anyway, so a hosted copy has to carry its own models. Both copy the rest (the game's data
+files, icons, portraits and minimaps, 174 MB), as every page needs them at once.
+
+### Making it
+
+1. Open `make-standalone.html` from this folder, in any browser, on any system (nothing to
+   install).
+2. Click "Choose folder" and pick this folder. The browser may call it an upload: nothing leaves
+   the computer, and `data/` is never read.
+3. `MabiWiki_Standalone.html` downloads. It's the page players get: put it in the Mabinogi folder.
+
+Or from a command line, on any system with PowerShell (built into Windows; PowerShell 7 elsewhere):
+`powershell -ExecutionPolicy Bypass -File make-standalone.ps1 -Out MabiWiki_Standalone.html` in this
+folder (`pwsh -File ...` with PowerShell 7). Both make the same file byte for byte.
+
+In the Kanan repository this folder's files are in `Kanan/MabiWiki/` (the page is `hostable.html`
+there, and most of `lib/` sits next to it), and Kanan's build runs `make-standalone.ps1` itself
+(`Kanan.vcxproj`): every build where a wiki file changed writes `Release/MabiWiki_Standalone.html`,
+which the release puts in the game folder. So a change to the wiki's code reaches players with the
+next Kanan release, with no step to remember.
+
+It packs `index.html`, `app.css`, the scripts and `lib/` into the one page: the steps are at the top
+of `lib/make-standalone.js` and `make-standalone.ps1`. The page sets `MABIWIKI_BASE = "MabiWiki/"` without
+`MABIWIKI_HOSTED`, so `boot.js` treats it as the standalone (it offers to keep the data in the
+browser, and reads the 3D models from the game files). For it to keep working:
+
+- Keep the tags in `index.html` written as they are (one per line, as they appear): the converter
+  finds them by their text and stops with "index.html has no ..." when one has changed.
+- A new code file needs its tag in `index.html` and a line in both `lib/make-standalone.js` (the
+  `build()` list) and `make-standalone.ps1`, or it won't be in the standalone page. Then make the
+  page both ways and check the two files are the same (`certutil -hashfile FILE SHA256` on Windows,
+  `shasum -a 256 FILE` elsewhere). In the Kanan repository, also add it to `AdditionalInputs` in
+  `Kanan.vcxproj`, so a change to it remakes the page.
+- A file whose text has `<!--` and then `<script` (with no `-->` between) can't go inside a page;
+  the converter says so. Write such text another way (`'<' + '!--'`).

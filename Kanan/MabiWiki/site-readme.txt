@@ -14,8 +14,8 @@ hosted. If it has none yet (or after a game update):
 2. Choose your Mabinogi folder (or the package folder inside it), whether to include the 3D
    models, and click Process. With data already there, click "Update from your game files" at
    the bottom of the sidebar first.
-3. The data folder is written into this folder: about 175 MB, or about 695 MB with the 3D models
-   (which also take longer to process).
+3. The data folder is written into this folder: 174 MB, or 702 MB with the 3D models (which also
+   take longer to process).
 
 Nothing is uploaded while you do this; the folder is then ready to upload as it is.
 
@@ -29,8 +29,8 @@ Upload this whole folder as it is:
 - Your own web server (nginx, Apache, IIS...): copy the folder into the site's folder.
 
 Check the folder's size and file count against your host's limits (GitHub Pages: 1 GB;
-Cloudflare Pages: 20,000 files and 25 MB a file). Without the 3D models the data is about
-175 MB in about 9,000 files; the models add about 520 MB in about 24,000 files.
+Cloudflare Pages: 20,000 files and 25 MB a file). Without the 3D models the data is 174 MB in
+9,364 files; the models (items, monsters and props) add 528 MB in 24,962 files.
 
 Visitors only ever see the wiki: a hosted copy never asks them for game files. A copy uploaded
 without its data folder tells them it isn't ready yet.
@@ -47,7 +47,10 @@ data/              made by the setup: the game's files (game-data.js, which load
                    npc-images.js, maps.js), the pictures (icons/, portraits/, maps/), the 3D
                    models (models/, when included) and site.js (whether it has the 3D models)
 lib/               the 3D viewer (viewer3d.js, region3d.js, packs.js, three.js) and the setup
-                   (boot.js, which also starts the wiki, and images.js, sinks.js, prepare.js)
+                   (boot.js, which also starts the wiki, and images.js, sinks.js, prepare.js),
+                   and make-standalone.js
+make-standalone.html  makes MabiWiki_Standalone.html from this folder (below)
+make-standalone.ps1   the same, from a command line (PowerShell)
 DEVELOPING.md      how the code works and how to change it
 
 3D models
@@ -64,3 +67,10 @@ The code is plain JavaScript and CSS with no build step: change app.css, app.js 
 datasource.js, save, and refresh the page. Each file starts with notes on how it works, and
 DEVELOPING.md explains the rest. Setting the data up again only writes data/, so your changes
 stay.
+
+The standalone page
+-------------------
+MabiWiki_Standalone.html is this same wiki as one file, for players to keep in their Mabinogi
+folder (it reads the 3D models from their game files instead of copying them). To make it from
+this folder, with your changes: open make-standalone.html in any browser, click "Choose folder",
+pick this folder, and MabiWiki_Standalone.html downloads.
