@@ -503,7 +503,11 @@
   // withSkin: each mesh also gets skin (per vertex: the skin entry's weight, or -1 without one).
   // skel may be a function of the file's parts that picks the skeleton. A part whose bone the
   // skeleton lacks (boneKey) is left out and counted in hidden: its place is relative to that bone.
-  async function convertMesh(packs, path, skel, out, withSkin) {
+  // statics (props, setStatics): { flags: Map(lower-case part name -> .set mesh-record flag), posed:
+  // Map(bone key -> posed world) }. A part whose record has flag 0 is a static mesh: the game places it
+  // once, on its bone's pose in the prop's animation at time zero (posed x minor), not the bind pose.
+  // Like every part it needs its bone: with none in the skeleton it is left out (the game never links it).
+  async function convertMesh(packs, path, skel, out, withSkin, statics) {
     const d = await packs.read(path);
     if (!d) return null;
     const { parts, problem, dv } = parsePmg(d);
@@ -525,8 +529,11 @@
       const n = m.vertexCount;
       const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = new Uint8Array(n * 4);
       // Placed as the game places it (CTransformer::Calc): BoneWorld x minor, or BoneWorld alone
-      // when the minor is the identity. Without a skeleton (dropped), minor alone.
-      const X = skel ? mul4(skel.get(key), Float64Array.from(m.minor)) : unturn ? mul4(unturn, Float64Array.from(m.minor)) : Float64Array.from(m.minor);
+      // when the minor is the identity. Without a skeleton (dropped), minor alone. A static part
+      // (statics): its bone's time-zero pose x minor.
+      const posed = skel && statics && statics.flags.get(m.name.toLowerCase()) === 0 ? statics.posed.get(key) : null;
+      const X = posed ? mul4(posed, Float64Array.from(m.minor))
+        : skel ? mul4(skel.get(key), Float64Array.from(m.minor)) : unturn ? mul4(unturn, Float64Array.from(m.minor)) : Float64Array.from(m.minor);
       // Left out too: a part whose matrix isn't finite (NaN minors: female_3rd_newbie_bss_flat),
       // and a part whose texture name is garbage bytes (13th-anniversary wings' black plane002).
       if (!X.every(Number.isFinite) || (m.texture && /[^\x20-\x7e]/.test(m.texture))) { hidden++; continue; }
@@ -562,7 +569,8 @@
         const g = t.info && t.info.rs && t.info.rs.gloss;
         if (g && !(('gloss:' + g) in out.textures)) out.textures['gloss:' + g] = await glossTexture(packs, out.bases, g);
       }
-      const mesh = { name: m.name, bone: m.bone, boneKey: key, stat: m.stat, part: m.part, colormap: m.colormap, texture: m.texture,
+      // A static part follows no animation after it is placed (boneKey null).
+      const mesh = { name: m.name, bone: m.bone, boneKey: posed ? null : key, stat: m.stat, part: m.part, colormap: m.colormap, texture: m.texture,
         key1: m.key1, key2: m.key2, sub: m.sub, pos, nrm, uv, col, idx: Uint16Array.from(tri), verts: n, tris: tri.length / 3 };
       // Welding entries (pleione::welding, 16 bytes: u16 vertex, pad, i32 group, f32 weight,
       // i32 smooth): skin[v] is the weight (-1 for none), weld[v] 1 when it takes part (group 0),
@@ -1210,6 +1218,84 @@
     return out;
   }
   const PF = [0x70, 0x66, 0x21, 0x00];
+
+  // A prop's .set mesh-record flags (section 2, read by the game's FUN_100b115b): "set\0", version 2.2,
+  // u32 file size, u8 multi-state, u32 state count; per state: u32 2, the state name (UTF-16, 0-ended),
+  // u16 record count, 208-byte records (part name char[128] at +4, u32 flag at +0xc8). Returns
+  // Map(lower-case part name -> flag) for `state` (multi-state sets) or the first state; the first
+  // record of a name wins. Null when the section can't be read.
+  function setMeshRecordFlags(d, state) {
+    if (!d || d.length < 15 || d[0] !== 0x73 || d[1] !== 0x65 || d[2] !== 0x74 || d[3] !== 0 || d[4] !== 2 || d[5] !== 2) return null;
+    const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+    const multi = d[10] !== 0, count = dv.getUint32(11, true);
+    const want = (state || 'single').toLowerCase();
+    let at = 15, first = null;
+    for (let i = 0; i < count; i++) {
+      if (at + 4 > d.length || dv.getUint32(at, true) !== 2) return first;
+      at += 4;
+      const start = at;
+      while (at + 1 < d.length && (d[at] | (d[at + 1] << 8))) at += 2;
+      const name = new TextDecoder('utf-16le').decode(d.subarray(start, at)).toLowerCase();
+      at += 2;
+      if (at + 2 > d.length) return first;
+      const n = dv.getUint16(at, true);
+      at += 2;
+      if (at + n * 208 > d.length) return first;
+      const flags = new Map();
+      for (let r = 0; r < n; r++, at += 208) {
+        const part = cstr(d, at + 4, 128).toLowerCase();
+        if (!flags.has(part)) flags.set(part, dv.getUint32(at + 0xc8, true));
+      }
+      if (!first) first = flags;
+      if (multi && name === want) return flags;
+    }
+    return first;
+  }
+
+  // A prop's static parts (convertMesh's statics) for a state, or null when its .set has no mesh-record
+  // flags. The game (Renderer2 CSettingClass::CreateInstance) links the state's animation before its
+  // mesh group and starts it at time zero; LinkMeshgroup passes each record's `flag == 0`, and the joint
+  // attacher files flag-0 meshes as static: transformed once, with their bone's pose at that time
+  // (CFramework::_Transform), not every frame. So a flag-0 part sits on its bone's time-zero pose. The
+  // embedded resources (Renderer2 FUN_10130390): the u32 at +6 points to a resource count; each resource
+  // is u32 type (1000 framework "pf!", 1001 animation "pa!"), u32 byte length, the resource name and the
+  // state name (UTF-16, 0-ended), then the payload. The framework and animation are picked by state name
+  // as setSkeletons picks skeletons (the state's, else 'single', else the first; a later one of a name
+  // wins). Without an animation the bind pose. posed: Map(bone key -> posed world).
+  function setStatics(d, state) {
+    const flags = setMeshRecordFlags(d, state);
+    if (!flags) return null;
+    const frameworks = {}, animations = {};
+    const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+    let at = dv.getUint32(6, true);
+    const count = at >= 11 && at + 4 <= d.length ? dv.getUint32(at, true) : 0;
+    at += 4;
+    const str = () => {
+      const s = at;
+      while (at + 1 < d.length && (d[at] | (d[at + 1] << 8))) at += 2;
+      at += 2;
+      return new TextDecoder('utf-16le').decode(d.subarray(s, at - 2)).toLowerCase();
+    };
+    for (let i = 0; i < count && at + 8 <= d.length; i++) {
+      const type = dv.getUint32(at, true), length = dv.getUint32(at + 4, true);
+      at += 8;
+      str();
+      const st = str() || 'single';
+      if (at + length > d.length) break;
+      const payload = d.subarray(at, at + length);
+      at += length;
+      if (type === 1000) frameworks[st] = payload;
+      else if (type === 1001) animations[st] = payload;
+      else break;
+    }
+    const pick = (o) => o[(state || 'single').toLowerCase()] || o.single || Object.values(o)[0] || null;
+    const bones = parseSkeleton(pick(frameworks)), anim = pick(animations);
+    const posed = new Map();
+    const pose = anim && bones.length ? poseMatrices(bones, parseAni(anim)) : null;
+    bones.forEach((b, i) => posed.set(b.key, pose ? mul4(pose[i], b.world) : b.world));
+    return { flags, posed };
+  }
+
   function indexOf(d, pat, from) {
     outer: for (let i = from; i + pat.length <= d.length; i++) {
       for (let k = 0; k < pat.length; k++) if (d[i + k] !== pat[k]) continue outer;
@@ -1262,10 +1348,11 @@
       const sceneFirst = (list) => (list || []).slice().sort((a, b) => (!a.startsWith('gfx/scene/')) - (!b.startsWith('gfx/scene/')) || cmp(a, b));
       for (const p of scene(bases.pmg.get(cls.name))) {
         const setPath = p.slice(0, -4) + '.set';
-        const skels = packs.has(setPath) ? setSkeletons(await packs.read(setPath)) : {};
+        const setD = packs.has(setPath) ? await packs.read(setPath) : null;
+        const skels = setD ? setSkeletons(setD) : {};
         const skel = skels[state] || skels.single || Object.values(skels)[0] || null;
         if (skel) skel.path = setPath;
-        const m = await convertMesh(packs, p, skel && skel.size ? skel : null, out);
+        const m = await convertMesh(packs, p, skel && skel.size ? skel : null, out, false, setD && setStatics(setD, state));
         if (m && m.meshes.length) return m;
       }
       for (const setPath of sceneFirst(bases.set.get(cls.name))) {
@@ -1278,10 +1365,11 @@
         // Each model from the .set's own folder when it has one there.
         const dir = setPath.slice(0, setPath.lastIndexOf('/') + 1);
         const all = { file: null, meshes: [], hidden: 0, skeleton: skel && skel.path || null };
+        const statics = setStatics(d, st);
         for (const name of models[st]) {
           const paths = sceneFirst(bases.pmg.get(name));
           const p = paths.find((q) => q.startsWith(dir) && !q.slice(dir.length).includes('/')) || paths[0];
-          const m = p && await convertMesh(packs, p, skel && skel.size ? skel : null, out);
+          const m = p && await convertMesh(packs, p, skel && skel.size ? skel : null, out, false, statics);
           if (!m) continue;
           all.file = all.file || p;
           all.meshes.push(...m.meshes);
@@ -2649,6 +2737,6 @@ html.mwv-lock,html.mwv-lock body{overflow:hidden!important}
     ready: packsLib, // packs.js loaded
     core: { get Packs() { return P().Packs; }, get HostedPacks() { return packClasses().HostedPacks; }, mtLowBytes, parsePmg, parseFrm, decodeDds, convertItem, findRow, slotOf, summarizeRenderState,
       convertRace, raceRow, parseRaceScript, parseSkeleton, parseAni, poseMatrices, posePart, poseModel, loadPose, racePoses, motionIndex, findMotion,
-      convertMesh, byBase, materials, texture, applyRS, ensureThree, asText, propClasses, setSkeletons, propModel, convertProp, propMaterial, partColor },
+      convertMesh, byBase, materials, texture, applyRS, ensureThree, asText, propClasses, setSkeletons, setStatics, propModel, convertProp, propMaterial, partColor },
   };
 })(typeof window !== 'undefined' ? window : globalThis);

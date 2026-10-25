@@ -395,12 +395,42 @@
   const PROPS = [
     ['Repaired by', [['smith_repairable', 'Blacksmiths'], ['magicsmith_repairable', 'Magic craftsmen'], ['magic_school_repairable', 'Magic schools'],
       ['misc_repairable', 'General shops'], ['not_repairable', "Can't be repaired"], ['no_abrasion', "Doesn't wear down"]]],
-    ['Trading', [['not_given', "Can't be traded"], ['not_dropable', "Can't be dropped"], ['nodrop_at_knockdown', 'Kept when knocked out']]],
     ['Customizing', [['not_enchantable', "Can't be enchanted"], ['not_dyeable', "Can't be dyed"], ['fixedcolor_dyeable', 'Fixed colors only'], ['not_bless', "Can't be blessed"]]],
     ['Usable by', [['human_only', 'Humans'], ['elf_only', 'Elves'], ['giant_only', 'Giants'], ['human_elf_only', 'Humans and elves'],
       ['human_giant_only', 'Humans and giants'], ['marriage_only', 'Married characters']]],
     ['Other', [['expiring', 'Expires'], ['destroyable', 'Can be destroyed'], ['not_ego', "Can't be fed to spirit weapons"], ['not_feed', "Can't be fed to pets"]]],
   ];
+  // Attr_ActionFlag 1-14 -> the item's rule bits (MakeAttrFlag's table; other values: none). What the
+  // server checks each bit for: 0x10 or 0x80 no trade
+  // (nor personal shop or mail), 0x2000 trade only while it has trades left (trade_limit; never
+  // mailed), 0x800 trade and mail within its guild anyway, 0x20 no drop, 0x1 no bank, 0x2 bank only
+  // to its own character's tabs, pets take it with 0x80 or else without 0x10/0x2000/0x1, 0x100 not
+  // burned, 0x503 (all four) a dungeon item (no personal shop or mail), 0x200 only its owner picks
+  // it up, 0x400 left on the ground on leaving the area. 0x40 has no server check.
+  const ACTION_BITS = [0, 0x200, 0x333, 0x210, 0x503, 0x212, 0x413, 0x3, 0x253, 0x213, 0xa32, 0, 0x280, 0x332, 0x2200];
+  const orList = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' or ' + a[a.length - 1] : a[0];
+  // The infobox's "Restrictions" lines: only what the item can't do (none: no row).
+  function restrictions(r, t) {
+    const f = ACTION_BITS[num(r.Attr_ActionFlag)] || 0, trades = num(tagAttrs(r.XML, 'xml').trade_limit);
+    const noTrade = (f & 0x90) || ((f & 0x2000) && !trades) || t.has('not_given'), noDrop = (f & 0x20) || t.has('not_dropable');
+    const no = [], lines = [];
+    if (noTrade) no.push('traded');
+    if (noDrop) no.push('dropped');
+    if (f & 1) no.push('stored in the bank');
+    if (!(f & 0x80) && (f & 0x2011)) no.push("put in a pet's inventory");
+    if (!noTrade && (f & 0x503) === 0x503) no.push('sold in a personal shop');
+    if (!noTrade && ((f & 0x503) === 0x503 || (f & 0x2000))) no.push('mailed');
+    // Burning at a campfire also needs an item that can be dropped.
+    if ((f & 0x100) || noDrop) no.push('burned');
+    if (!noTrade && (f & 0x2000)) lines.push(trades === 1 ? 'Can be traded only once' : `Can be traded only ${trades} times`);
+    if (no.length) lines.push("Can't be " + orList(no));
+    if (noTrade && (f & 0x800)) lines.push('Guild members can still trade it');
+    if ((f & 2) && !(f & 1)) lines.push("Can't go to another character's bank tab");
+    if (f & 0x400) lines.push('Dropped when you leave the area');
+    if (f & 0x200) lines.push('Only its owner can pick it up');
+    if (t.has('nodrop_at_knockdown')) lines.push("Never dropped when you're knocked out");
+    return lines;
+  }
   // Par_AttackSpeed 0-4: the client's five labels (msg.item_attackspeed_* in client.japan.txt),
   // fastest first. Bows, crossbows and atlatls use values above 4 ("<speed> Ranged Weapon" in the
   // tooltip), and the game's files don't say which label those get, so they're left out.
@@ -429,16 +459,16 @@
     prot: { key: 'prot', title: 'Protection', num: true, card: true, short: 'Prot' },
     restores: { key: 'restores', title: 'Restores', card: true, short: '' },
     hunger: { key: 'hunger', title: 'Fills hunger', num: true, card: true, short: 'Hunger' },
-    price: { key: 'price', title: 'Shop price', num: true },
     // The set effects it gives (setsOf), one to a line; only where some item on the page has one.
     sets: { key: 'sets', title: 'Set effects', lines: true },
   };
-  const MELEE = [COL.dmg, COL.crit, COL.bal, COL.speed, COL.hits, COL.sets, COL.price];
-  const RANGED = [COL.dmg, COL.crit, COL.bal, COL.range, COL.sets, COL.price];
-  const ARMOR = [COL.def, COL.prot, COL.sets, COL.price];
-  const ITEM_COLS = { weapon: MELEE, 'weapon/bow': RANGED, 'weapon/crossbow': RANGED, 'weapon/atlatl': RANGED, ammo: [COL.dmg, COL.crit, COL.price],
-    instrument: [COL.dmg, COL.crit, COL.bal, COL.price], shield: ARMOR, armor: ARMOR, robe: ARMOR, headgear: ARMOR, gloves: ARMOR, footwear: ARMOR,
-    accessory: ARMOR, potion: [COL.restores, COL.price], food: [COL.hunger, COL.price] };
+  // No shop price column in the item lists (an item's page has it in its infobox).
+  const MELEE = [COL.dmg, COL.crit, COL.bal, COL.speed, COL.hits, COL.sets];
+  const RANGED = [COL.dmg, COL.crit, COL.bal, COL.range, COL.sets];
+  const ARMOR = [COL.def, COL.prot, COL.sets];
+  const ITEM_COLS = { weapon: MELEE, 'weapon/bow': RANGED, 'weapon/crossbow': RANGED, 'weapon/atlatl': RANGED, ammo: [COL.dmg, COL.crit],
+    instrument: [COL.dmg, COL.crit, COL.bal], shield: ARMOR, armor: ARMOR, robe: ARMOR, headgear: ARMOR, gloves: ARMOR, footwear: ARMOR,
+    accessory: ARMOR, potion: [COL.restores], food: [COL.hunger] };
   const MIN = (key, title) => ({ kind: 'min', key, title });
   // The copy for hosting (MabiWiki_Hostable) sets MABIWIKI_HOSTED, and MABIWIKI_NO3D when made
   // without the models (no 3D sections then) or MABIWIKI_MODELS when made with them.
@@ -532,20 +562,22 @@
     }
     return (it.stats = o);
   }
-  // The stat bar under an item's title: Damage, Critical, Balance, Speed (with the combo's hits
-  // under it) or Range, then Defense and Protection (and the magic ones) while the bar has room.
-  // covers: the Combat / Defense rows it shows (they aren't repeated in the sections).
+  // The stat bar under an item's description: Damage and its injury rate, Critical, Balance, Speed (with
+  // the combo's hits under it) or Range, then Defense and Protection and the magic ones. Every combat
+  // and defense number is here (the bar wraps to a second line), so the page has no Combat or Defense
+  // section. covers: the rows it shows.
   function statBar(s) {
     const rows = [], covers = [];
     const add = (label, v, small, ...rowNames) => { rows.push(small != null ? [label, v, small] : [label, v]); covers.push(...rowNames); };
     if (s.dmg !== undefined) add('Damage', s.dmg, null, 'Damage');
+    if (s.wMax !== undefined) add('Injury rate', `${s.wMin}~${s.wMax}%`, null, 'Injury rate');
     if (s.crit !== undefined) add('Critical', s.crit, null, 'Critical');
     if (s.bal !== undefined) add('Balance', s.bal, null, 'Balance');
     if (s.speed !== undefined) add('Speed', s.speed, s.hits !== undefined ? s.hits + '-hit' : null, 'Attack speed', 'Hits per combo');
     else if (s.hits !== undefined) add('Hits per combo', s.hits, null, 'Hits per combo');
     if (s.range !== undefined) add('Range', s.range, null, 'Range');
     for (const [k, label] of [['def', 'Defense'], ['prot', 'Protection'], ['mdef', 'Magic Defense'], ['mprot', 'Magic Protection']]) {
-      if (s[k] !== undefined && rows.length < 6) add(label, s[k], null, label);
+      if (s[k] !== undefined) add(label, s[k], null, label);
     }
     return { rows, covers };
   }
@@ -597,11 +629,14 @@
       const on = list.filter(([k]) => t.has(k)).map(p => p[1]);
       if (on.length && !(label === 'Usable by' && who)) info.push([label, on.length > 1 ? { lines: on } : on[0]]);
     }
+    // On every item, last in the box, so a missing row is never a question: None when nothing is blocked.
+    const rules = restrictions(r, t);
+    info.push(['Item restrictions', !rules.length ? 'None' : rules.length > 1 ? { lines: rules, divide: true } : rules[0]]);
     const sections = [];
     // The 3D model, read from the player's own packs when they ask (viewer3d.js).
     if (!NO3D && MESH_FIELDS.some(k => (r[k] || '').trim())) sections.push({ heading: '3D model', blocks: [{ kind: 'embed', name: 'model3d', args: { id: String(id) }, caption: MODEL_CAPTION }] });
-    // Combat and Defense. The main numbers go in the stat bar under the title (page.stats); the
-    // sections keep what the bar doesn't show (the injury rate).
+    // Combat and Defense: every number is in the stat bar (page.stats); a section only for one the bar
+    // doesn't show (none today).
     const s = itemStats(it), bar = statBar(s);
     const combat = [];
     if (s.dmgMax !== undefined) combat.push(['Damage', s.dmg]);
@@ -662,38 +697,53 @@
     // Every way to max out its upgrades, under them.
     const paths = upg && upgradePathsSection(it, upgradesFor((r.Category || '').toLowerCase()));
     if (paths) sections.push(paths);
+    // A special upgrade that only names its stones goes in Upgrades, under the upgrade list and its note.
     const special = specialUpgradeSection(id);
-    if (special) sections.push(special);
+    if (special && special.stones && upg) upg.blocks.splice(2, 0, { ...special.blocks[0], title: 'Special upgrade' }, ...special.blocks.slice(1));
+    else if (special) sections.push(special);
     const repairs = repairSection(id);
     if (repairs) sections.push(repairs);
     const ench = enchants().filter(e => e.r.ScrollId === String(id));
     const rel = [];
-    if (ench.length) rel.push({ kind: 'links', title: 'Enchant', items: ench.map(enchantLink) });
-    const ml = monsterLinks(), from = ml.gathered.get(String(id)), worn = ml.gear.get(String(id));
+    // A scroll that carries several enchants (the Exclusive Enchant Scroll) lists them in a table like the
+    // enchant list's (kind, rank, what it goes on, its effects); one enchant is a link with the rest.
+    if (ench.length > 1) {
+      const er = new Map((INDEX.enchant || []).map(x => [x.id, x]));
+      sections.push({ heading: 'Enchants', wide: true, blocks: [{ kind: 'details', summary: `Enchants this scroll can carry (${ench.length})`, blocks: [{ kind: 'table',
+        columns: ['Enchant', 'Kind', 'Rank', 'Enchants onto', 'Effects'], nowrap: ['Rank'],
+        rows: ench.map(e => { const x = er.get(e.id) || {}; return [{ t: 'enchant', id: e.id, label: e.name }, usageOf(e.r)[2] || '—', e.rank || '—', x.onto || '—', x.fxv || '—']; }) }] }] });
+    } else if (ench.length) rel.push({ kind: 'links', title: 'Enchant', items: ench.map(enchantLink) });
+    const from = monsterLinks().gathered.get(String(id));
     if (from) rel.push({ kind: 'links', title: 'Gathered from', items: monsterChips(from) });
-    if (worn) rel.push({ kind: 'links', title: 'Monsters that carry it', items: monsterChips(worn) });
     const called = monsterById(x.raceid || x.sm_race || '');
     if (called) rel.push({ kind: 'links', title: 'Calls', items: [{ t: 'monster', id: called.id, label: called.name }] });
     rel.push(...itemPetBlocks(id));
     // Tempering potions: pet_training="lifemax:1~50, will:0~10" (the stat and its range).
     const training = String(x.pet_training || '').split(',').map(s => s.split(':').map(v => v.trim())).filter(a => a[0] && a[1]);
     if (training.length) sections.push({ heading: 'Pet training', blocks: [{ kind: 'kv', rows: training.map(([k, v]) => [statName(k), v]) }] });
+    // How it's made, under the upgrades and ahead of Where to get it (full width like both, so the order holds).
+    const craft = craftingSection(id);
+    if (craft) sections.push({ ...craft, wide: true });
+    // What breaking it down gives (Fragmentation), under the upgrades and right above Where to get it.
+    sections.push(...randomUseSections(id).map(s => ({ ...s, wide: true })));
+    // Fishing and the trade-ins that give it go in with the other ways, ahead of the note on drop chances.
+    const folds = [fishingFold(id), turninFold(id)].filter(Boolean), has = sourcesOf('items', id).length;
     // A plain enchant scroll comes with whatever enchant its source gives: those are on the enchants' pages.
-    if (it.cat === 'enchant' && !ench.length && !sourcesOf('items', id).length) {
-      sections.push({ heading: 'Where to get it', blocks: [{ kind: 'note', text: 'Each enchant\'s page lists where its scroll comes from.' },
+    if (it.cat === 'enchant' && !ench.length && !has) {
+      sections.push({ heading: 'Where to get it', wide: true, blocks: [...folds, { kind: 'note', text: 'Each enchant\'s page lists where its scroll comes from.' },
         { kind: 'links', style: 'rows', items: [{ t: 'enchant', label: 'All enchants', glyph: 'scroll' }] }] });
-    } else if (sourcesOf('items', id).length || !(fishedAt(id).length || propsGiving(id).length)) sections.push(sourcesSection('items', id));
+    } else if (has || folds.length || !propsGiving(id).length) {
+      const where = has || !folds.length ? sourcesSection('items', id) : { heading: 'Where to get it', wide: true, blocks: [] };
+      const n = where.blocks.findIndex(b => b.kind === 'note');
+      where.blocks.splice(n < 0 ? where.blocks.length : n, 0, ...folds);
+      sections.push(where);
+    }
     const versions = variantsSection(id);
     if (versions) sections.push(versions);
-    const fished = fishingSection(id);
-    if (fished) sections.push(fished);
     const fromProps = propSection(id);
     if (fromProps) sections.push(fromProps);
     const book = collectionSection(id);
     if (book) sections.push(book);
-    const craft = craftingSection(id);
-    if (craft) sections.push(craft);
-    sections.push(...randomUseSections(id));
     const turnin = itemTurninSection(id);
     if (turnin) sections.push(turnin);
     const asked = questRefs().need.get(String(id));
@@ -1024,7 +1074,8 @@
   // keep: an optional filter over the sources (a manual form's page keeps the shops selling that one).
   function sourcesSection(table, id, keep) {
     const all = keep ? sourcesOf(table, id).filter(keep) : sourcesOf(table, id);
-    if (!all.length) return { heading: 'Where to get it', blocks: [{ kind: 'note', text: 'N/A: no known source.' }] };
+    // Full width like the section with sources, so it keeps its place below the upgrades.
+    if (!all.length) return { heading: 'Where to get it', wide: true, blocks: [{ kind: 'note', text: 'N/A: no known source.' }] };
     const cell = sourceRef;
     const placeIsSource = s => !s.n && !(s.t && s.id) && s.w;
     const SHOWN = 40;
@@ -1077,11 +1128,14 @@
     };
     // Each difficulty with its own chance on a line of its own.
     const kindOf = s => { const k = SOURCE_KINDS[s.k] || 'Other', d = diffsOf(s); return d ? { lines: [[k], ...d.map(x => [x])], sep: '' } : k; };
-    const notesOf = (s, price = true) => ({ lines: [...new Set([...(placeIsSource(s) ? [] : String(s.w || '').split(/;\s+/)), s.a ? '×' + s.a : '', ...String(s.cn || '').split(/;\s+/), price && priceOf(s) ? priceOf(s).toLocaleString('en-US') + ' G' : '']
+    // A drop of a generic manual or pattern (s.mf: its form) leads with which one it is, unless the page is
+    // that manual's own.
+    const formOf = s => s.mf && !keep && recipes().byForm.get(String(s.mf));
+    const notesOf = (s, price = true) => ({ lines: [...(formOf(s) ? [[formLink(formOf(s))]] : []), ...[...new Set([...(placeIsSource(s) ? [] : String(s.w || '').split(/;\s+/)), s.a ? '×' + s.a : '', ...String(s.cn || '').split(/;\s+/), price && priceOf(s) ? priceOf(s).toLocaleString('en-US') + ' G' : '']
       .filter(x => !(diffsOf(s) && (DIFF.test(String(x).trim()) || /^shadow missions?$/i.test(String(x).trim()))))
       .map(x => bossNote(noWeight(sumNote(notSelf(s, String(x || '').trim()))).trim())))]
       .filter(x => x && !(s.c != null && /^[\d,]+ in [\d,]+$/.test(x)))
-      .map(clarifyChest).filter(Boolean).flatMap(diffNoteLines).flatMap(asideLines).map(capFirst).map(noteLinks), sep: '' });
+      .map(clarifyChest).filter(Boolean).flatMap(diffNoteLines).flatMap(asideLines).map(capFirst).map(noteLinks)], sep: '' });
     // One table per way to get it: shops apart from drops, and so on. In each, the likeliest first (a
     // common item drops from hundreds of monsters), then the sources without a chance (a sure way).
     const GROUPS = [['Shops', ['shop']], ['Monster drops', ['monster', 'boss']], ['Dungeons and shadow missions', ['chest', 'puzzle', 'dungeon', 'shadow_mission']],
@@ -1371,7 +1425,8 @@
     const link = v => { const x = items().get(v); return x ? itemLink(v, x.name) : 'Item ' + v; };
     const n = E.byN.get(String(id)), sr = E.bySR.get(String(id));
     if (n) {
-      return { heading: 'Special upgrade', blocks: [
+      // (stones: just which stone makes which version, so an item's Upgrades section can hold it)
+      return { heading: 'Special upgrade', stones: true, blocks: [
         { kind: 'table', columns: ['Stone', 'Becomes'], rows: [[stone('S'), link(n.S)], [stone('R'), link(n.R)]] },
         { kind: 'note', text: 'Only a weapon that already has a gem upgrade can be special upgraded. The first stone makes it the S or R version at level 1; the levels after are on that version\'s page.' },
       ] };
@@ -1506,7 +1561,7 @@
       if (t.has('combatpower_weaken')) add('Effect lasts', minutes(num(top.duration)));
       else if ([...t].some(x => /^(fast_casting_potion|boost_attack_potion|production_rate_modify|itemexp_rate_up|itemdrop_rate_up|fishingdrop_booster)/.test(x))) add('Effect lasts', seconds(num(top.duration)));
     }
-    if (num(top.trade_limit)) add('Can be traded', `${num(top.trade_limit)} more time${num(top.trade_limit) === 1 ? '' : 's'}`);
+    // trade_limit: in the infobox's Restrictions (it only counts on items whose Attr_ActionFlag sets 0x2000).
     // Gear that only works with a skill at a rank.
     if (num(top.fit_skillid)) add('Works only with', `${skillName(top.fit_skillid)} ${skillRank(num(top.fit_skilllevel_min))} or higher`);
     // Production and skill bonuses.
@@ -1623,9 +1678,12 @@
         return [sec, m ? [...m[1].matchAll(new RegExp('<' + tag + '\\b([^>]*)/?>', 'g'))].map(x => attrsOf(x[1])) : []];
       });
     };
+    // Old duplicate forms no shop sells or monster drops, whose item a sold form makes (GAME_SOURCES.crafting.unsourced:
+    // the old Tailoring 1-22, Blacksmith 20001-20009) are left out: no page, no list row, not among the item's recipes.
+    const unsourced = new Set((((window.GAME_SOURCES || {}).crafting || {}).unsourced) || []);
     for (const [sec, rowsM] of sections('db/manualform.xml', 'ManualForm')) {
       for (const r of rowsM) {
-        if (!r.ProductItemID) continue;
+        if (!r.ProductItemID || unsourced.has(String(r.FormID))) continue;
         // form: the FormID, this manual's own recipe (its page). Two forms can make one item from
         // different materials under the same name (Blacksmith Manual - Dagger 20002 and 20102).
         const rec = { kind: 'manual', skill: CRAFT_SKILLS[sec] || sec, job: sec === 'Tailoring_Arbeit', manual: r.ManualItemID, name: tr(r.ManualNameLocal).trim() || r.ManualNameEng || '',
@@ -1651,9 +1709,12 @@
     for (const [result, count, mats, rates] of S.synthesis || []) {
       add(byProduct, String(result), { kind: 'synthesis', skill: 'Synthesis', product: String(result), count, rates, mats: mats.map(([id, n]) => [nameOf(id), n, String(id)]) });
     }
-    const actions = new Map(rows('db/cookingaction.xml', 'action').map(a => [a.name, tr(a.localname).trim()]));
+    // Each cooking method opens at a Cooking rank (min_skill_level: Mixing at Novice ... Pie Making at 6); a
+    // dish needs its method's rank.
+    const actRows = rows('db/cookingaction.xml', 'action');
+    const actions = new Map(actRows.map(a => [a.name, tr(a.localname).trim()])), actLv = new Map(actRows.map(a => [a.name, num(a.min_skill_level)]));
     for (const [result, action, ess, add2] of S.cooking || []) {
-      add(byProduct, String(result), { kind: 'cooking', skill: 'Cooking', product: String(result), action: actions.get(action) || titleCase(words(action)),
+      add(byProduct, String(result), { kind: 'cooking', skill: 'Cooking', product: String(result), action: actions.get(action) || titleCase(words(action)), lv: actLv.has(action) ? actLv.get(action) : null,
         ess: ess.map(([id, pct, lo, hi]) => [nameOf(id), pct, String(id), lo, hi]), extra: add2.map(([id, pct, lo, hi]) => [nameOf(id), pct, String(id), lo, hi]) });
     }
     return (RECIPES = { byProduct, byManual, byForm });
@@ -1683,17 +1744,25 @@
   // The Manuals & patterns list: one entry per form.
   const MANUAL_CATS = [['blacksmithing', 'Blacksmithing manuals'], ['tailoring', 'Tailoring patterns'], ['tailoring-job', 'Part-time job patterns']];
   const manualCat = r => (r.skill === 'Blacksmithing' ? 'blacksmithing' : r.job ? 'tailoring-job' : 'tailoring');
+  // The rank a manual or pattern is made from (a CRAFT_RANKS index): its difficulty, or Blacksmithing's gate
+  // rank when that's higher (below the gate every attempt fails). Below the difficulty most can still be
+  // finished by grinding at much worse odds, but that isn't the rank it's made at.
+  const formRank = r => { const f = (((window.GAME_SOURCES || {}).crafting || {}).forms || {})[String(r.form)];
+    return f ? Math.max(f[0], r.skill === 'Blacksmithing' ? f[2] : 0) : null; };
   function manualRows() {
     const out = [];
     for (const [form, r] of recipes().byForm) {
       const p = items().get(r.product);
       if (!p) continue;
       const sold = (formSellers().get(form) || []).length;
-      // diff: the recipe's difficulty as a rank ("Rank D"), sorted by diffLv; equip: the made item's
-      // category, for the list's Equipment filter.
-      const f = (((window.GAME_SOURCES || {}).crafting || {}).forms || {})[form];
+      // diff: the rank it's made from ("Rank D"; also the Min. rank filter's value), sorted by diffLv;
+      // equip: the made item's category, for the Equipment filter.
+      const lv = formRank(r);
+      // mats, fin: the materials to 100% and the finishing choices, as on the Craftables list.
+      const fin = (r.finish || []).filter(a => a.length);
       out.push({ id: form, name: formName(r), icon: itemIcon(r.manual), cat: [manualCat(r)], sub: `Makes ${p.name}`, makes: p.name, skill: r.skill,
-        price: r.price || null, sold: sold ? 'Yes' : null, tags: p.name, diff: f ? 'Rank ' + CRAFT_RANKS[f[0]] : null, diffLv: f ? f[0] : null,
+        mats: matsCell(r.mats.map(materialCell)), fin: fin.length ? finishCell(fin) : '—',
+        price: r.price || null, sold: sold ? 'Yes' : null, tags: p.name, diff: lv != null ? CRAFT_RANK_LABELS[lv] : null, diffLv: lv,
         equip: ITEM_CAT_TITLE[p.cat] || null });
     }
     return out;
@@ -1714,7 +1783,7 @@
     const pct = (a, b) => { const lo = Math.round(a * mp * 100), hi = Math.round(b * mp * 100);
       return lo >= 100 ? 'finishes it in one try' : hi >= 100 ? `+${lo}% to +100% (can finish it)` : `+${lo}% to +${hi}%`; };
     const loss = Math.min(100, Math.round(mp * 50));
-    const kv = [['Difficulty', 'Rank ' + CRAFT_RANKS[lv]], ['Progress per attempt', { lines: [[`Best: ${pct(1, 1.5)}`], [`Good: ${pct(0.5, 1)}`], [`Bad: ${pct(0, 0.5)}`],
+    const kv = [['Difficulty', CRAFT_RANK_LABELS[lv]], ['Progress per attempt', { lines: [[`Best: ${pct(1, 1.5)}`], [`Good: ${pct(0.5, 1)}`], [`Bad: ${pct(0, 0.5)}`],
       [loss ? `Worst: takes away up to ${loss}% (progress can go back, but not below 0%)` : 'Worst: no progress']], sep: '' }]];
     if (r.skill === 'Blacksmithing') kv.push(['Rank needed', gate ? `${CRAFT_RANKS[gate]} or higher (below that every attempt fails)` : 'Any']);
     const table = { kind: 'table', title: 'By your rank', columns: ['Your rank', 'Best', 'Good', 'Bad', 'Worst', 'Attempts to finish (about)'],
@@ -1728,6 +1797,7 @@
         { lead: 'Finished', text: 'when its progress reaches 100%.' },
         { lead: 'Each attempt', text: 'uses one set of the materials.' },
         { lead: 'Materials', text: '(which ones, and their quality) don\'t change the progress.' },
+        { lead: 'The finishing material', text: 'only sets the color (a colored ingot colors the metal). None makes a better item: the quality comes from the finishing minigame.' },
         { lead: 'Dex above 20', text: 'turns some Good results into Best.' },
         { lead: 'Making Mastery', text: 'cuts the failures.' },
         { lead: 'Rain', text: 'adds a little to each attempt.' }] }];
@@ -1811,24 +1881,19 @@
     if (making.length) sections.push({ heading: 'Making it', blocks: making });
     const finished = manualQualityBlocks(r);
     if (finished.length) sections.push({ heading: 'The finished item', blocks: finished });
-    // Where to get it: the manual item's sources (GAME_SOURCES.items), keeping the shop lines that sell
-    // this one by name ("Gilmore shop, Blacksmithing tab (BlackSmith Manual - Dagger)"; two forms with one
-    // name share them) and every drop: a monster or chest drops the manual item, and the data doesn't say
-    // which manual it is.
-    // A shop line counts only when that NPC sells this very form (the shop list knows the form; two
-    // forms can share a name), at the price the shop list gives.
+    // Where to get it: the manual item's sources (GAME_SOURCES.items) that give this very form. A drop
+    // names its form (s.mf, the drop table's manual:N); a shop line counts only when that NPC sells this
+    // form (the shop list knows it; two forms can share a name), at the price the shop list gives.
     const eng = String((rowsByForm().get(String(id)) || {}).ManualNameEng || '').toLowerCase();
     const sold = new Map((formSellers().get(String(id)) || []).map(([npc, p]) => [npc, p]));
-    const where = r.manual && sourcesSection('items', r.manual, s => s.k !== 'shop' || (sold.has(s.id) && eng && String(s.w || '').toLowerCase().includes('(' + eng + ')')));
-    const drops = where && sourcesOf('items', r.manual).some(s => s.k !== 'shop');
+    const where = r.manual && sourcesSection('items', r.manual, s => (s.k !== 'shop' ? s.mf === String(id) : sold.has(s.id) && eng && String(s.w || '').toLowerCase().includes('(' + eng + ')')));
     const sellers = sellerLinks(id);
     if (where && where.blocks.some(b => b.table)) {
       const shopT = (where.blocks.find(b => b.group === 'Shops') || {}).table;
       if (shopT) shopT.rows.forEach(row => { const npc = row[0] && row[0].id, p = sold.get(npc); if (p) row[2] = gold(p); });
-      if (drops) where.blocks.unshift({ kind: 'note', text: `Drops and rewards give a ${(m && m.name) || 'manual'} whose recipe isn't fixed in the data; ${sold.size ? 'the shops below sell this one.' : 'no shop sells this one.'}` });
       sections.push(Object.assign(where, { wide: false }));
     } else sections.push({ heading: 'Where to get it', blocks: sellers.length ? [{ kind: 'links', title: 'Sold by', items: sellers }]
-      : [{ kind: 'note', text: 'No shop sells this one; it comes from elsewhere (a quest, an event or another player).' }] });
+      : [{ kind: 'note', text: 'No shop sells this one and no monster drops it.' }] });
     const others = (recipes().byProduct.get(r.product) || []).filter(x => x.kind === 'manual' && x.form && x.form !== String(id));
     if (others.length) sections.push({ heading: 'Other manuals for this item', blocks: [{ kind: 'table', columns: ['Manual', 'Materials', 'Sold by'],
       rows: others.map(x => [formLink(x), matsCell(x.mats.map(materialCell)), sellerLinks(x.form).length ? sellerLinks(x.form) : '—']) }] });
@@ -1848,13 +1913,15 @@
     const of = k => list.filter(r => r.kind === k), man = of('manual'), prod = of('production'), syn = of('synthesis'), cook = of('cooking');
     if (man.length) {
       // Each manual links to its own form's page (two can share a name), with who sells that one.
-      // Difficulty: the recipe's rank (the manual's page has the odds and attempts by your rank).
-      const diff = r => { const f = (((window.GAME_SOURCES || {}).crafting || {}).forms || {})[String(r.form)]; return f ? 'Rank ' + CRAFT_RANKS[f[0]] : '—'; };
+      // Difficulty: the rank it's made from, as on the lists (the manual's page has the odds and attempts by your rank).
+      const diff = r => { const k = formRank(r); return k != null ? CRAFT_RANK_LABELS[k] : '—'; };
       blocks.push({ kind: 'table', title: 'From a pattern or manual', columns: ['Skill', 'Pattern or manual', 'Difficulty', 'Materials', 'To finish', 'Sold by'],
         rows: man.map(r => {
           const m = items().get(r.manual), sold = r.form ? sellerLinks(r.form) : [];
           return [skillByName(r.skill), r.form ? formLink(r) : m ? itemLink(r.manual, r.name || m.name) : r.name, diff(r), matsCell(r.mats.map(materialCell)), finishCell(r.finish), sold.length ? sold : '—'];
         }) });
+      // Several finishing choices: which one doesn't matter for the stats.
+      if (man.some(r => (r.finish || []).filter(a => a.length).length > 1)) blocks.push({ kind: 'note', text: 'The finishing choices only change the color: none makes a better item. The quality comes from the finishing minigame.' });
       // What it comes out as, from the worst quality to the best (with rank 1's bonus); forms with the
       // same result once.
       const it = items().get(String(id)), seen = new Set();
@@ -1884,8 +1951,8 @@
         rows: syn.map(r => [skillByName(r.skill), matsCell(r.mats.map(materialCell)), String(r.count), successText(r.rates)]) });
     }
     if (cook.length) {
-      blocks.push({ kind: 'table', title: 'Cooking', columns: ['Skill', 'Method', 'Ingredients', 'Optional'],
-        rows: cook.map(r => [skillByName(r.skill), r.action, matsCell(ingredientCells(r.ess)), matsCell(r.extra.map(extraCell))]) });
+      blocks.push({ kind: 'table', title: 'Cooking', columns: ['Skill', 'Method', 'Rank needed', 'Ingredients', 'Optional'],
+        rows: cook.map(r => [skillByName(r.skill), r.action, r.lv != null ? CRAFT_RANK_LABELS[r.lv] : '—', matsCell(ingredientCells(r.ess)), matsCell(r.extra.map(extraCell))]) });
       blocks.push({ kind: 'note', text: 'Each ingredient\'s share of the dish: the closer the mix is to it, the better the dish. An optional extra added makes it better or worse.' });
     }
     // What the producing skills can give at random (random synthesis, Fragmentation, finds).
@@ -1901,8 +1968,12 @@
   // The Crafting list: everything a recipe makes, by skill (an item made several ways is under each).
   const CRAFT_CATS = [['tailoring', 'Tailoring'], ['blacksmithing', 'Blacksmithing'], ['weaving', 'Weaving'], ['refining', 'Refining'], ['milling', 'Milling'],
     ['potion-making', 'Potion Making'], ['handicraft', 'Handicraft'], ['magic-craft', 'Magic Craft'], ['metal-conversion', 'Metal Conversion'], ['carpentry', 'Carpentry'],
-    ['synthesis', 'Synthesis'], ['cooking', 'Cooking'], ['theatre-mission-pass', 'Make Theatre Mission Pass']];
+    ['synthesis', 'Synthesis'], ['fragmentation', 'Fragmentation'], ['cooking', 'Cooking'], ['theatre-mission-pass', 'Make Theatre Mission Pass']];
   const craftCat = skill => (CRAFT_CATS.find(c => c[1] === skill) || [slug(skill)])[0];
+  // How Synthesis makes an item, for the Synthesis list's Recipe column and filter: a fixed recipe,
+  // random synthesis, or both (synthWays: the filter's values).
+  const SYNTH_FIXED = 'Fixed recipe', SYNTH_RANDOM = 'Random';
+  const synthWay = (fixed, random) => (fixed && random ? 'Fixed or random' : fixed ? 'Fixed' : random ? 'Random' : '');
   function craftRows() {
     const out = [], at = new Map();
     for (const [id, list] of recipes().byProduct) {
@@ -1910,21 +1981,85 @@
       if (!it) continue;
       const sk = [...new Set(list.map(r => r.skill))];
       at.set(id, out.push({ id, name: it.name, alt: it.local, icon: itemIcon(id), cat: sk.map(craftCat), sub: sk.join(', '), skills: sk.join(', '),
-        recipes: list.length, tags: it.base }) - 1);
+        recipes: list.length, tags: it.base, synthFixed: sk.includes('Synthesis') }) - 1);
     }
     // What the producing skills can give at random (random synthesis, Fragmentation, finds), under their skill.
     const R = randomIndex();
     for (const [id, hits] of R.made) {
       const it = items().get(id);
       if (!it) continue;
-      const sk = [...new Set(hits.map(h => skillName(h.t.s)).filter(Boolean))];
+      const sk = [...new Set(hits.map(h => skillName(h.t.s)).filter(Boolean))], synthRandom = sk.includes('Synthesis');
       if (at.has(id)) {
         const row = out[at.get(id)], all = [...new Set(row.skills.split(', ').concat(sk))];
-        Object.assign(row, { cat: [...new Set(row.cat.concat(sk.map(craftCat)))], sub: all.join(', '), skills: all.join(', ') });
-      } else out.push({ id, name: it.name, alt: it.local, icon: itemIcon(id), cat: sk.map(craftCat), sub: sk.join(', '), skills: sk.join(', '), recipes: 0, tags: it.base });
+        Object.assign(row, { cat: [...new Set(row.cat.concat(sk.map(craftCat)))], sub: all.join(', '), skills: all.join(', '), synthRandom });
+      } else out.push({ id, name: it.name, alt: it.local, icon: itemIcon(id), cat: sk.map(craftCat), sub: sk.join(', '), skills: sk.join(', '), recipes: 0, tags: it.base, synthRandom });
+    }
+    for (const r of out) {
+      r.synth = synthWay(r.synthFixed, r.synthRandom);
+      r.synthWays = [...(r.synthFixed ? [SYNTH_FIXED] : []), ...(r.synthRandom ? [SYNTH_RANDOM] : [])];
+      // Each skill category's Recipe column (rec_<category>): that skill's recipes for it.
+      Object.assign(r, craftRecipeCells(r.id));
     }
     return out;
   }
+  // The Craftables list's Recipe column, per skill category: each recipe the skill has for the item, one
+  // under another with a line between them, every material on its own line. A pattern or manual's
+  // materials to 100% go in it (titled Materials) and its finishing ones in a Finishing materials column
+  // beside it (fin_<cat>, one entry per recipe in the same order, "—" for a recipe without one, so the two
+  // columns line up); production, synthesis and cooking show what goes in; a random source says where it
+  // comes from.
+  function craftRecipeCells(id) {
+    const recipe = lines => ({ lines: lines.filter(Boolean), sep: '' });
+    const by = new Map(), fins = new Map(), hasFin = new Set();
+    const add = (cat, v, fin = '—') => {
+      if (!by.has(cat)) { by.set(cat, []); fins.set(cat, []); }
+      by.get(cat).push(v); fins.get(cat).push(fin);
+    };
+    // The lowest rank (CRAFT_RANKS index) that can make it, per category: production and synthesis, the
+    // first rank with a success chance; a pattern or manual, the rank it's made from (formRank); a dish,
+    // its cooking method's rank. Random sources have none.
+    const low = new Map(), lowest = (cat, k) => { if (k != null && k >= 0 && (!low.has(cat) || k < low.get(cat))) low.set(cat, k); };
+    for (const r of recipes().byProduct.get(String(id)) || []) {
+      const cat = craftCat(r.skill), made = r.count > 1 ? `Makes ${r.count}` : '';
+      if (r.rates) lowest(cat, r.rates.findIndex(v => v > 0));
+      if (r.form) lowest(cat, formRank(r));
+      if (r.kind === 'cooking') lowest(cat, r.lv);
+      // Every material on a line of its own.
+      if (r.kind === 'manual') {
+        const fin = (r.finish || []).filter(a => a.length);
+        if (fin.length) hasFin.add(cat);
+        // Finishing choices as on the item's page: each choice's materials one under another, a line
+        // between choices.
+        add(cat, matsCell(r.mats.map(materialCell)), fin.length ? finishCell(fin) : '—');
+      } else if (r.kind === 'cooking') {
+        // The method, then its ingredients one a line; a little space, then the optional extras.
+        const group = (head, cells) => (cells.length ? [{ lines: [[head], ...cells.map(c => [c])], sep: '' }] : null);
+        add(cat, { lines: [group(`${r.action}:`, ingredientCells(r.ess)), group('Optional:', r.extra.map(extraCell))].filter(Boolean), sep: '', gap: true });
+      } else {
+        add(cat, recipe([...r.mats.map(m => [materialCell(m)]), made ? [made] : null]));
+      }
+    }
+    // Random sources (random synthesis, Fragmentation, finds): the list it's in, or the item it comes from.
+    const seen = new Set();
+    for (const h of randomIndex().made.get(String(id)) || []) {
+      const cat = craftCat(skillName(h.t.s)), key = cat + '|' + (h.from || h.t.title);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      add(cat, h.from ? recipe([['From ', itemRef(h.from), h.uses > 1 ? ` (${h.uses} at a time)` : '']]) : recipe([[h.t.title]]));
+    }
+    const cells = {}, column = list => (list.length > 1 ? { lines: list.map(x => [x]), divide: true } : list[0]);
+    for (const [cat, list] of by) {
+      cells['rec_' + cat] = column(list);
+      if (hasFin.has(cat)) cells['fin_' + cat] = column(fins.get(cat));
+    }
+    // rank_<cat>: the label (also the Min. rank filter's value); rankN_<cat>: its index, to sort by.
+    for (const [cat, k] of low) {
+      cells['rank_' + cat] = CRAFT_RANK_LABELS[k];
+      cells['rankN_' + cat] = k;
+    }
+    return cells;
+  }
+  const CRAFT_RANK_LABELS = CRAFT_RANKS.map(r => (r === 'Novice' || /^Dan/.test(r) ? r : 'Rank ' + r));
   // How many Craftables a skill (by name) has in its list.
   const craftCount = name => cached('craftCount', () => {
     const n = new Map();
@@ -2079,8 +2214,8 @@
   // one bag item per entry: SItemUpgradeDesc::IsAvailableGem (StandardD 0x10296822) walks need_gem (a
   // multimap size -> gem id, built by BuildDesc 0x10296a90), takes for each entry the smallest bag item
   // of that id at size - 0.005 or more, and passes only when every entry found one; the upgrade
-  // (GameSystemD 0x67dfef40) then deletes each of them (unicorn canary: 3,008 cases, 0 mismatches;
-  // docs/mabipro_wiki.md "Gem upgrades take every gem listed"). Gems (and fish) are unstackable and each
+  // (GameSystemD 0x67dfef40) then deletes each of them (unicorn canary: 3,008 cases, 0 mismatches).
+  // Gems (and fish) are unstackable and each
   // one has its own size (base_size: the average); stackables (Cat's Eye, Bamboo Pearl, Magic Diamond)
   // and parts such as the Bronze Blade show as ×1 (one is taken; every such entry's number is 1).
   const gemSized = gid => {
@@ -2268,7 +2403,7 @@
     }
     const shown = PATH_STATS.filter(([k]) => P.paths.some(p => JSON.stringify(pathVal(p.st, k)) !== JSON.stringify(pathVal(P.base, k))) || (k === 'dmg' && P.base.dmgMax !== undefined));
     // The final cell: the item's main numbers always, others only where this path changes them, one
-    // stat a line, then the proficiency and gold.
+    // stat a line, then the path's total proficiency and gold.
     const MAIN = new Set(['dmg', 'crit', 'bal', 'dur', 'def', 'prot']);
     const cells = new Map();
     const stepCell = o => cells.get(o) || cells.set(o, { lines: [[{ t: 'upgrade', id: o.id, label: o.label }], [`${o.ep} proficiency`], [gold(o.gold)]], sep: '' }).get(o);
@@ -2300,7 +2435,7 @@
     // Both tables fold: the best paths (open at first) and every path (shut).
     // On a phone: the goal and the final stats first, the upgrades behind a button (phone).
     const nSteps = steps.length, stepIdx = (from) => Array.from({ length: nSteps }, (_, i) => from + i);
-    const blocks = [{ kind: 'details', summary: `Best paths (${best.size})`, open: true, blocks: [{ kind: 'table', columns: ['For', ...steps, 'Final stats · Proficiency / Gold'],
+    const blocks = [{ kind: 'details', summary: `Best paths (${best.size})`, open: true, blocks: [{ kind: 'table', columns: ['For', ...steps, 'Final stats'],
       phone: { lead: [0, nSteps + 1], fold: stepIdx(1), label: 'upgrades' },
       rows: [...best].map(([p, names]) => [{ lines: names.map(n => [n]), sep: '' }, ...p.seq.map(stepCell), finalCell(p)]) }] }];
     // Every path, laid out like the best ones, under a tab per goal that orders them by it (the same
@@ -2308,7 +2443,7 @@
     const all = P.paths;
     if (all.length <= PATH_LIST) {
       const row = new Map(all.map(p => [p, [...p.seq.map(stepCell), finalCell(p)]]));
-      const tabs = goals.map(([name], gi) => ({ label: name.replace(/^Highest /, '').replace(/^Most /, '').replace(/^./, c => c.toUpperCase()), blocks: [{ kind: 'table', columns: [...steps, 'Final stats · Proficiency / Gold'],
+      const tabs = goals.map(([name], gi) => ({ label: name.replace(/^Highest /, '').replace(/^Most /, '').replace(/^./, c => c.toUpperCase()), blocks: [{ kind: 'table', columns: [...steps, 'Final stats'],
         phone: { lead: [nSteps], fold: stepIdx(0), label: 'upgrades' },
         rows: all.slice().sort(order(gi)).map(p => row.get(p)) }] }));
       blocks.push({ kind: 'details', summary: `All ${all.length.toLocaleString('en-US')} path${all.length === 1 ? '' : 's'}`, blocks: [{ kind: 'tabs', style: 'line', label: 'Sort by', tabs }] });
@@ -4316,17 +4451,23 @@
     return { heading: 'Trade-ins', blocks };
   }
   // An item's page: who takes it in (and for what), and the turn-ins that give it.
+  // The trade-in under its NPC; one with no NPC page (a chest) is the trade-in alone, not an internal name.
+  const tiTo = x => (npcById(x.npc) ? { lines: [[tiNpc(x)], [tiLink(x)]], sep: '' } : tiLink(x));
+  const tiRows = list => list.map(([x, r]) => [tiTo(x), tiGive(r[0]), tiGet(r[1])]);
+  // What an item can be turned in for.
   function itemTurninSection(id) {
-    const k = String(id), take = [], give = [];
-    for (const x of turnins()) for (const r of x.i) {
-      if (r[0].some(g => g[0] === k)) take.push([x, r]);
-      if (r[1].some(g => g[0] === 'item' && g[1] === k)) give.push([x, r]);
-    }
-    if (!take.length && !give.length) return null;
-    const blocks = [];
-    if (take.length) blocks.push({ kind: 'table', title: 'Turn it in', columns: ['To', 'Bring', 'You get'], rows: take.map(([x, r]) => [{ lines: [[tiNpc(x)], [tiLink(x)]], sep: '' }, tiGive(r[0]), tiGet(r[1])]) });
-    if (give.length) blocks.push({ kind: 'table', title: 'Get it by turning in', columns: ['To', 'Bring', 'You get'], rows: give.map(([x, r]) => [{ lines: [[tiNpc(x)], [tiLink(x)]], sep: '' }, tiGive(r[0]), tiGet(r[1])]) });
-    return { heading: 'Trade-ins', blocks };
+    const k = String(id), take = [];
+    for (const x of turnins()) for (const r of x.i) if (r[0].some(g => g[0] === k)) take.push([x, r]);
+    if (!take.length) return null;
+    return { heading: 'Trade-ins', blocks: [{ kind: 'table', title: 'Turn it in', columns: ['To', 'Bring', 'You get'], rows: tiRows(take) }] };
+  }
+  // The trade-ins that give an item: a fold of Where to get it.
+  function turninFold(id) {
+    const k = String(id), give = [];
+    for (const x of turnins()) for (const r of x.i) if (r[1].some(g => g[0] === 'item' && g[1] === k)) give.push([x, r]);
+    if (!give.length) return null;
+    const table = { kind: 'table', columns: ['To', 'Bring', 'You get'], rows: tiRows(give) };
+    return { kind: 'details', summary: `Trade-ins (${give.length.toLocaleString('en-US')})`, blocks: [table], table, group: 'Trade-ins' };
   }
   function npcPage(id) {
     const n = npcById(id);
@@ -4855,16 +4996,16 @@
     return { title: g.name, subtitle: null, icon: null, category: g.k, infobox: info, summary: '', sections };
   }
   // The item page's fishing section: where it's caught, and its size.
-  function fishingSection(id) {
+  // Where an item is caught: a fold of Where to get it, beside its shops and drops.
+  function fishingFold(id) {
     const at = fishedAt(id);
     if (!at.length) return null;
     const size = fishingData().f[String(id)];
-    // The places fold away under their count, shut at first, like the tables in Where to get it.
     const table = { kind: 'table', columns: ['Where', 'Chance', 'When'], rows: at.sort((a, b) => b[1] - a[1]).map(([g, ch]) =>
       [{ t: 'fishing', id: g.id, label: g.name }, pctText(ch), g.t || (g.k === 'spot' ? 'Always' : '—')]) };
-    const blocks = [{ kind: 'details', summary: `Where it's caught (${at.length.toLocaleString('en-US')})`, blocks: [table], table }];
+    const blocks = [table];
     if (size) blocks.push({ kind: 'note', text: `Caught at ${size[0]} to ${size[1]} cm.` });
-    return { heading: 'Fishing', blocks };
+    return { kind: 'details', summary: `Fishing (${at.length.toLocaleString('en-US')})`, blocks, table, group: 'Fishing' };
   }
 
   // What a monster drops: the item sources (GAME_SOURCES.items and .sets, the enchant scrolls) turned
@@ -6092,7 +6233,7 @@
           count: types.reduce((a, t) => a + INDEX[t].length, 0) })),
       ],
       types: {
-        item: T('item', { title: 'Items', route: 'items', view: Object.keys(ICONS).length ? 'grid' : 'table', columns: [{ key: 'price', title: 'Shop price', num: true }, { key: 'size', title: 'Size' }], section: 'items', order: 1 }),
+        item: T('item', { title: 'Items', route: 'items', view: Object.keys(ICONS).length ? 'grid' : 'table', columns: [{ key: 'size', title: 'Size' }], section: 'items', order: 1 }),
         // Category (Prefix, Suffix...) before the name; no Info column (it'd repeat the rank and category).
         enchant: T('enchant', { title: 'Enchants', route: 'enchants', view: 'table', catFirst: true, noInfo: true,
           columns: [{ key: 'rank', title: 'Rank' }, { key: 'onto', title: 'Enchants onto' }, { key: 'fxv', title: 'Effects', wide: true }, { key: 'from', title: 'Comes from' }], section: 'items', order: 2 }),
@@ -6100,19 +6241,27 @@
           columns: [{ key: 'ep', title: 'Proficiency', num: true }, { key: 'gold', title: 'Gold', num: true }, { key: 'steps', title: 'Steps' }], section: 'items', order: 3 }),
         set_effect: T('set_effect', { title: 'Set effects', route: 'set-effects', icon: 'gem', view: 'table',
           columns: [{ key: 'at', title: 'Activates at (points)', num: true }, { key: 'items', title: 'Items', num: true }, { key: 'enchants', title: 'Enchants', num: true }], section: 'items', order: 4 }),
-        skill: T('skill', { title: 'Skills', route: 'skills', icon: 'zap', view: 'table', columns: [], section: 'skills', order: 1 }),
+        // noInfo: the Category column says enough.
+        skill: T('skill', { title: 'Skills', route: 'skills', icon: 'zap', view: 'table', noInfo: true, columns: [], section: 'skills', order: 1 }),
         // Its rows open the items' own pages (linkAs).
-        craft: T('craft', { title: 'Craftables', route: 'crafting', icon: 'hammer', linkAs: 'item', view: Object.keys(ICONS).length ? 'grid' : 'table',
-          columns: [{ key: 'skills', title: 'Skills' }, { key: 'recipes', title: 'Recipes', num: true }], section: 'skills', order: 2 }),
-        // Difficulty sorts by its rank number; the Equipment filter is the made item's category.
-        manual: T('manual', { title: 'Manuals & patterns', route: 'manuals', icon: 'scroll', view: 'table', noInfo: true,
-          columns: [{ key: 'makes', title: 'Makes' }, { key: 'diff', title: 'Difficulty', sort: 'diffLv', card: true, short: '' }, { key: 'price', title: 'Price', num: true }, { key: 'sold', title: 'In a shop' }],
-          filters: [{ key: 'equip', title: 'Equipment', options: [...new Set(INDEX.manual.map(r => r.equip).filter(Boolean))].sort().map(e => [e, e]) }], section: 'skills', order: 3 }),
+        // Craftables: the skills that make an item are its categories (the Category column lists them all).
+        craft: T('craft', { title: 'Craftables', route: 'crafting', icon: 'hammer', linkAs: 'item', view: Object.keys(ICONS).length ? 'grid' : 'table', noInfo: true,
+          columns: [], section: 'skills', order: 2 }),
+        // Min. rank sorts by its rank number, and its filter shows the manuals first made at that rank; the
+        // Equipment filter is the made item's category. The name says what it makes, so no Makes column; the
+        // Name column is narrow and wraps (nameWidth) to leave the materials room.
+        manual: T('manual', { title: 'Manuals & patterns', route: 'manuals', icon: 'scroll', view: 'table', noInfo: true, nameWidth: true,
+          columns: [{ key: 'diff', title: 'Min. rank', sort: 'diffLv', card: true, short: '' }, { key: 'mats', title: 'Materials' }, { key: 'fin', title: 'Finishing materials' },
+            { key: 'price', title: 'Price', num: true }, { key: 'sold', title: 'In a shop' }],
+          filters: [{ key: 'diff', title: 'Min. rank', any: 'Any rank', options: CRAFT_RANK_LABELS.filter(l => INDEX.manual.some(r => r.diff === l)).map(l => [l, l]) },
+            { key: 'equip', title: 'Equipment', options: [...new Set(INDEX.manual.map(r => r.equip).filter(Boolean))].sort().map(e => [e, e]) }], section: 'skills', order: 3 }),
         // No Info column: it only repeats the Category column.
         title: T('title', { title: 'Titles', route: 'titles', view: 'table', noInfo: true, columns: [{ key: 'stats', title: 'Effects' }], section: 'characters', order: 4 }),
-        monster: T('monster', { title: 'Monsters', route: 'monsters', icon: 'skull', view: 'table',
+        // No Kind (monster or boss) filter or Info column (it said the same): one race can be either,
+        // depending on where it appears.
+        monster: T('monster', { title: 'Monsters', route: 'monsters', icon: 'skull', view: 'table', noInfo: true,
           columns: [{ key: 'hostile', title: 'Disposition' }], section: 'characters', order: 1,
-          filters: [{ key: 'kind', title: 'Kind', options: [['Monster', 'Monster'], ['Boss', 'Boss']] }, { key: 'hostile', title: 'Disposition', options: [['Hostile', 'Hostile'], ['Peaceful', 'Peaceful']] }] }),
+          filters: [{ key: 'hostile', title: 'Disposition', options: [['Hostile', 'Hostile'], ['Peaceful', 'Peaceful']] }] }),
         npc: T('npc', { title: 'NPCs', route: 'npcs', icon: 'user', view: 'table',
           columns: [], section: 'characters', order: 3 }),
         quest: T('quest', { title: 'Quests', route: 'quests', icon: 'scroll', view: 'table',
@@ -6157,6 +6306,21 @@
     // Theatre missions are all in Avon: their list has no Where column.
     META.types.mission.catColumns = { theatre: META.types.mission.columns.filter(c => c.key !== 'where') };
     // Enchants by rank (the home page's rank panel links to these).
+    // In a skill's category: the lowest rank that can make each item and the Recipe column (that skill's
+    // recipes for it, craftRecipeCells), with a Min. rank filter (the items first made at that rank).
+    // Skills whose recipes have no rank (Fragmentation) get neither rank column nor filter. The
+    // Synthesis list also filters by fixed or random recipe.
+    // A skill with a finishing stage (Tailoring, Blacksmithing): Materials, then To finish beside it.
+    const ranked = new Set(CRAFT_CATS.map(([k]) => k).filter(k => INDEX.craft.some(r => r['rankN_' + k] != null)));
+    const finishes = new Set(CRAFT_CATS.map(([k]) => k).filter(k => INDEX.craft.some(r => r['fin_' + k] != null)));
+    META.types.craft.catColumns = Object.fromEntries(CRAFT_CATS.map(([k]) => [k, META.types.craft.columns.concat([
+      ...(ranked.has(k) ? [{ key: 'rank_' + k, title: 'Min. rank', sort: 'rankN_' + k }] : []),
+      { key: 'rec_' + k, title: finishes.has(k) ? 'Materials' : 'Recipe', wide: true },
+      ...(finishes.has(k) ? [{ key: 'fin_' + k, title: 'Finishing materials', wide: true }] : [])])]));
+    const rankFilter = k => ({ key: 'rank_' + k, title: 'Min. rank', any: 'Any rank', options: CRAFT_RANK_LABELS.filter(l => INDEX.craft.some(r => r['rank_' + k] === l)).map(l => [l, l]) });
+    META.types.craft.catFilters = Object.fromEntries(CRAFT_CATS.filter(([k]) => ranked.has(k)).map(([k]) => [k, [rankFilter(k)]]));
+    (META.types.craft.catFilters.synthesis = META.types.craft.catFilters.synthesis || [])
+      .push({ key: 'synthWays', title: 'Synthesis recipe', any: 'All', options: [[SYNTH_FIXED, SYNTH_FIXED], [SYNTH_RANDOM, SYNTH_RANDOM]] });
     META.types.enchant.filters = [{ key: 'rank', title: 'Rank', options: ENCHANT_RANKS.map(r => [r, r]) },
       { key: 'ontoKinds', title: 'Equipment', any: 'All', options: ONTO_KINDS.map(k => [k[0], k[0]]).concat([[ANY_EQUIP, ANY_EQUIP]]) }];
     META.home = homeMeta(cats, n);

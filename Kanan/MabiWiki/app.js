@@ -419,7 +419,8 @@
         // sets them apart. stack: each choice's items one under another (materials, one per line).
         const line = l => (!Array.isArray(l) ? val(l) : v.rule ? `<span class="llist${v.stack ? ' stack' : ''}">${l.filter(x => x !== '' && x != null).map(x => `<span>${val(x)}</span>`).join('')}</span>`
           : joinVals(l.filter(x => x !== '' && x != null), v.sep != null ? v.sep : ', '));
-        return v.lines.map(l => `<div class="vline${v.rule ? ' rule' : ''}${v.divide ? ' divide' : ''}">${line(l)}</div>`).join('');
+        // gap: a little space between the lines (a cooking recipe's ingredients, then its optional extras).
+        return v.lines.map(l => `<div class="vline${v.rule ? ' rule' : ''}${v.divide ? ' divide' : ''}${v.gap ? ' gap' : ''}">${line(l)}</div>`).join('');
       }
       if ('text' in v) {
         const t = esc(v.text).replace(/\n/g, '<br>');
@@ -463,7 +464,7 @@
   function shell() {
     document.getElementById('app').innerHTML = `
       <header class="top">
-        <button class="iconbtn menubtn" id="menubtn" aria-label="Menu">${svg('menu')}</button>
+        <button class="iconbtn menubtn" id="menubtn" aria-label="Show or hide the sidebar" title="Show or hide the sidebar">${svg('menu')}</button>
         <a class="brand" href="#/"><span class="bt">${esc(wikiName())}</span><small>${esc((S.meta && S.meta.badge) || 'local')}</small></a>
         <button class="searchbtn" id="searchbtn">${svg('search')}<span>Search items, monsters, skills…</span><kbd>Ctrl K</kbd></button>
         <span class="spacer"></span>
@@ -473,7 +474,18 @@
       <nav class="side" id="side"></nav>
       <div class="scrim" id="scrim"></div>
       <main class="main"><div class="wrap" id="view"></div></main>`;
-    $('#menubtn').onclick = () => document.body.classList.toggle('nav-open');
+    // The menu button: on a phone it slides the sidebar over the page; on a wide screen it hides or shows
+    // it (side-closed, kept in the browser) and the page takes the room.
+    const narrow = matchMedia('(max-width: 760px)');
+    document.body.classList.toggle('side-closed', !!store.get('side-closed', false));
+    $('#menubtn').onclick = () => {
+      if (narrow.matches) { document.body.classList.toggle('nav-open'); return; }
+      store.set('side-closed', document.body.classList.toggle('side-closed'));
+      relayout();
+    };
+    // Once the page has its new width, what fits itself to the width (the split recipe cells, rank rows) does it again.
+    const relayout = () => { const b = $('#lres'); if (b) alignSplits(b); dispatchEvent(new Event('resize')); };
+    $('.main').addEventListener('transitionend', e => { if (e.target.classList.contains('main') && e.propertyName === 'margin-left') relayout(); });
     $('#scrim').onclick = () => document.body.classList.remove('nav-open');
     $('#searchbtn').onclick = () => palette.open();
     $('#searchicon').onclick = () => palette.open();
@@ -927,6 +939,7 @@
         const box = $('#lres');
         if (!filtered.length) box.innerHTML = emptyState({ title: `Nothing matches${state.query ? ` “${state.query}”` : ''}.`, text: 'Try fewer words, or clear the filters.' });
         else box.innerHTML = (state.layout === 'grid' ? gridView(t, slice, cols) : tableView(t, cols, slice, state)) + pager(state.page, pages);
+        alignSplits(box);
         for (const th of $$('th.s', box)) th.onclick = () => {
           cycleSort(state, th.dataset.k, descFirst(th.dataset.k));
           state.page = 1; sync(); run();
@@ -1001,10 +1014,30 @@
     if (c.lines && Array.isArray(v)) return v.map(x => `<div class="vline">${tonesHtml(String(x))}</div>`).join('');
     return val(v);
   }
+  // Cells of one row split into the same number of entries (a craftable's recipes: Materials beside
+  // To finish, one entry each) line up: the row sits at the top, and each entry is as tall as its tallest
+  // counterpart. Redone when the window's width changes, since the entries wrap.
+  function alignSplits(box) {
+    for (const tr of $$('tbody tr', box)) {
+      const cells = [...tr.children].map(td => [...td.children].filter(e => e.classList.contains('divide'))).filter(l => l.length > 1);
+      if (cells.length < 2 || cells.some(l => l.length !== cells[0].length)) continue;
+      tr.classList.add('aligned');
+      for (const l of cells) for (const e of l) e.style.minHeight = '';
+      for (let i = 0; i < cells[0].length; i++) {
+        const h = Math.max(...cells.map(l => l[i].getBoundingClientRect().height));
+        for (const l of cells) l[i].style.minHeight = h + 'px';
+      }
+    }
+    if (alignSplits.on) return;
+    alignSplits.on = true;
+    let w = innerWidth;
+    addEventListener('resize', () => { if (innerWidth === w) return; w = innerWidth; const b = $('#lres'); if (b) alignSplits(b); });
+  }
   function tableView(t, cols, rows, state) {
     // The Info column only when it says something the rows don't all share, and isn't just each
     // row's category again (a quest's "Normal" next to Category "Normal").
-    const hasCat = new Set(rows.map(r => r._c[0] || '')).size > 1;
+    // Category shows when the rows' categories differ, counting every category a row is in.
+    const hasCat = new Set(rows.flatMap(r => (r._c.length ? r._c : ['']))).size > 1;
     // Columns no row on this page fills aren't shown.
     cols = (cols || []).filter(c => rows.some(r => r[c.key] != null && r[c.key] !== ''));
     // Nor is Info when, in every row, it only repeats the category or another column (a dungeon's altar).
@@ -1022,18 +1055,22 @@
     for (const c of cols) if (c.bar) tops[c.key] = rows.reduce((m, r) => Math.max(m, +r[c.key + 'Max'] || 0), 0);
     // noId: a type whose ids are only slugs (questlines) shows no ID column.
     const showId = !td.noId;
-    let h = `<div class="tablebox"><div class="scroll"><table class="t"><thead><tr>${showId ? th('id', 'ID', idCls) : ''}${hasCat && catFirst ? th('cat', 'Category', 'hide-sm') : ''}${th('name', 'Name', 'nmh')}`;
+    // nameWidth: a narrow Name column whose names wrap (the Manuals list, for its materials' room).
+    const nmFix = td.nameWidth ? ' nmfix' : '';
+    let h = `<div class="tablebox"><div class="scroll"><table class="t"><thead><tr>${showId ? th('id', 'ID', idCls) : ''}${hasCat && catFirst ? th('cat', 'Category', 'hide-sm') : ''}${th('name', 'Name', 'nmh' + nmFix)}`;
     // A column with wide: true (an enchant's effects) gets room first: a minimum width, the others wrap.
     for (const c of cols) h += th(c.key, c.title || c.key, (c.num || c.bar ? 'num' : '') + (c.wide ? ' cwide' : ''));
     if (hasSub) h += th('sub', 'Info');
     if (hasCat && !catFirst) h += th('cat', 'Category', 'hide-sm');
     h += '</tr></thead><tbody>';
     const on = k => (state.sortKey === k ? ' on' : '');
-    const catTd = r => `<td class="hide-sm${on('cat')}">${r._c[0] ? `<a href="${listHref(t, { cat: r._c[0] })}">${esc(catTitle(t, r._c[0]))}</a>` : ''}</td>`;
+    // Every category a row is in (a craftable made by several skills), one a line, each linking to its
+    // list; keys that aren't a category of the list are left out.
+    const catTd = r => `<td class="hide-sm${on('cat')}">${r._c.filter(c => (S.catT[t] || {})[c]).map(c => `<div class="vline"><a href="${listHref(t, { cat: c })}">${esc(catTitle(t, c))}</a></div>`).join('')}</td>`;
     for (const r of rows) {
       h += '<tr>' + (showId ? `<td class="${idCls} id copy${on('id')}" ${copyAttr(r.id)}><span class="idchip">${textIds ? esc(r.id).replace(/_/g, '_<wbr>') : esc(r.id)}</span></td>` : '');
       if (hasCat && catFirst) h += catTd(r);
-      h += `<td class="nm${on('name')}"><span class="nmw">${hasIcon ? ibox(r.icon, 32, t) : ''}<span class="nmt"><a href="${href(td.linkAs || t, r.id)}">${esc(r.name || r.id)}</a>${r.alt && r.alt !== r.name ? `<small>${esc(r.alt)}</small>` : ''}</span></span></td>`;
+      h += `<td class="nm${nmFix}${on('name')}"><span class="nmw">${hasIcon ? ibox(r.icon, 32, t) : ''}<span class="nmt"><a href="${href(td.linkAs || t, r.id)}">${esc(r.name || r.id)}</a>${r.alt && r.alt !== r.name ? `<small>${esc(r.alt)}</small>` : ''}</span></span></td>`;
       for (const c of cols) h += `<td class="${c.num || c.bar ? 'num' : ''}${c.bar || c.meter ? ' nw' : ''}${c.wide ? ' cwide' : ''}${on(c.key)}">${r[c.key] == null || r[c.key] === '' ? '' : cell(c, r, tops[c.key])}</td>`;
       if (hasSub) h += `<td class="${on('sub').trim()}">${r.sub ? val(r.sub) : ''}</td>`;
       if (hasCat && !catFirst) h += catTd(r);
@@ -1123,6 +1160,9 @@
     const secHtml = (s, i) => `<section class="sec${s.wide ? ' wide' : ''}" id="sec-${secKeys[i]}"><h2><span class="orn-d"></span>${esc(s.heading || '')}${htip(s)}${slink(s, i)}</h2>` +
       `<div class="secbody">${(s.blocks || []).map(b => block(b, blocks)).join('')}${s.empty ? `<div class="blk">${emptyState(s.empty)}</div>` : ''}</div></section>`;
     const sectionsHtml = secs.map((s, i) => (s.wide ? '' : secHtml(s, i))).join('');
+    // The 3D model leads the sections, right under the description, the item's numbers (stat bar) after it.
+    const i3d = secs.findIndex(s => !s.wide && s.heading === '3D model');
+    const firstHtml = i3d >= 0 ? secHtml(secs[i3d], i3d) : '', restHtml = secs.map((s, i) => (s.wide || i === i3d ? '' : secHtml(s, i))).join('');
     const wideHtml = secs.map((s, i) => (s.wide ? secHtml(s, i) : '')).join('');
     const info = p.infobox || [];
     const kind = iconKind(p.icon);
@@ -1136,7 +1176,10 @@
       else art = `<div class="art paint">${img(p.icon, /\/icons\/npcs\//.test(p.icon) ? 320 : 260, p.title)}</div>`;
     }
     const more = isObj(p.more) && target(p.more) ? `<a class="more" href="${esc(target(p.more))}">${esc(p.more.label || 'More')} →</a>` : '';
-    const aside = (info.length || art) ? `<div class="infobox">${art}${info.length ? `<dl>${info.map(r => `<div><dt>${esc(plain(r[0]))}</dt><dd${isGold(r[1]) ? ' class="gold"' : ''}>${valRow(r[0], r[1])}</dd></div>`).join('')}</dl>` : ''}${more}</div>` : '';
+    // A long value (a sentence, several lines) goes under its label, left-aligned across the box, rather
+    // than wrapping in a narrow column against the right edge: shorter, and easier to read.
+    const ibStack = v => plain(v).length > 26 || (isObj(v) && Array.isArray(v.lines) && v.lines.length > 1 && plain(v).length > 20);
+    const aside = (info.length || art) ? `<div class="infobox">${art}${info.length ? `<dl>${info.map(r => `<div${ibStack(r[1]) ? ' class="stack"' : ''}><dt>${esc(plain(r[0]))}</dt><dd${isGold(r[1]) ? ' class="gold"' : ''}>${valRow(r[0], r[1])}</dd></div>`).join('')}</dl>` : ''}${more}</div>` : '';
     const stats = (Array.isArray(p.stats) ? p.stats : []).filter(s => Array.isArray(s) && s.length >= 2);
     // Tags under the title (an item's Category tags: {href, label}), each a link to its list.
     const tagList = (Array.isArray(p.tags) ? p.tags : []).filter(x => isObj(x) && x.label);
@@ -1148,11 +1191,12 @@
     const jumps = secs.length >= 4 ? `<nav class="jumps" aria-label="On this page">${order.map(i => `<a href="${esc(href(t, id) + '?sec=' + secKeys[i])}" data-sec="${esc(secKeys[i])}">${esc(secs[i].heading || '')}</a>`).join('')}</nav>` : '';
     view.innerHTML = `${crumbs(cr)}
       <div class="phead">${headIcon}<div class="t"><h1>${esc(p.title)}</h1>${p.subtitle && p.subtitle !== p.title ? `<div class="sub">${esc(p.subtitle)}</div>` : ''}${p.noMeta ? '' : `<div class="meta">${meta.join('')}</div>`}${ptags}</div></div>
-      ${statbar}${jumps}
+      ${jumps}
+      ${p.summary ? `<div class="lead">${esc(p.summary)}</div>` : ''}
       <div class="article${aside ? '' : ' solo'}${p.capTables ? ' capt' : ''}">
         <div class="body">
-          ${p.summary ? `<div class="lead">${esc(p.summary)}</div>` : ''}
-          ${sectionsHtml || wideHtml || (p.summary ? '' : emptyState(p._entryOnly ? { title: 'This entry has no page of its own.', text: 'What the list knows about it is in the box.' } : 'Nothing more is known about this yet.'))}
+          ${firstHtml}${statbar}${sectionsHtml ? restHtml : ''}
+          ${sectionsHtml ? '' : wideHtml || (p.summary ? '' : emptyState(p._entryOnly ? { title: 'This entry has no page of its own.', text: 'What the list knows about it is in the box.' } : 'Nothing more is known about this yet.'))}
         </div>
         ${aside ? `<aside class="aside">${aside}</aside>` : ''}
       </div>
