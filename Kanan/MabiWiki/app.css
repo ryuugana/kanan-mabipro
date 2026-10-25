@@ -118,6 +118,17 @@ mark { background: color-mix(in srgb, var(--gold) 28%, transparent); color: inhe
   border: 1px solid transparent; background: none; color: var(--text-2); cursor: pointer; flex: none; }
 .iconbtn:hover { background: var(--hover); color: var(--text); }
 .menubtn, .searchicon { display: none; }
+/* On a wide screen the menu button hides and shows the sidebar (body.side-closed) and the page takes the room;
+   the brand keeps its whole name beside the button. */
+@media (min-width: 761px) {
+  .menubtn { display: grid; margin-left: -8px; }
+  .brand { width: auto; margin-right: var(--s4); }
+  .side { transition: transform .2s ease, visibility .2s; }
+  .main { transition: margin-left .2s ease; }
+  body.side-closed .side { transform: translateX(-100%); visibility: hidden; }
+  body.side-closed .main { margin-left: 0; }
+}
+@media (min-width: 761px) and (prefers-reduced-motion: reduce) { .side, .main { transition: none; } }
 body.is-home .top .searchbtn { visibility: hidden; }
 .scrim { display: none; }
 
@@ -265,6 +276,12 @@ table.t tr.grp > td { border-top: 2px solid var(--line-2); }
 /* A skill or set effect named in an effect line: underlined, so it stands out from the blue text. */
 .vline:has(.tone-pos, .tone-neg) a.ln { text-decoration: underline; text-underline-offset: 2px; }
 .vline.divide + .vline.divide { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line); }
+/* A list row whose cells are split into matching entries (alignSplits): top-aligned, so they line up. */
+tr.aligned > td { vertical-align: top; }
+/* Finishing choices inside a recipe entry start and end flush, level with the entry beside them. */
+.vline.divide > .vline.rule:first-child { padding-top: 0; }
+.vline.divide > .vline.rule:last-child { padding-bottom: 0; }
+.vline.gap + .vline.gap { margin-top: 6px; }
 .figmap { margin: 0; }
 .figmap .figbox { position: relative; display: inline-block; max-width: 100%; border: 1px solid var(--line); border-radius: var(--r-sm); line-height: 0; }
 .figmap img { display: block; max-width: 100%; max-height: 720px; height: auto; border-radius: calc(var(--r-sm) - 1px); }
@@ -557,9 +574,9 @@ table.t td.id.copy:hover .idchip { color: var(--accent-text); background: var(--
 .tablebox { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; box-shadow: var(--shadow-sm); }
 /* Tables scroll inside their box, so the header row can stick to its top. */
 .scroll { overflow: auto; max-width: 100%; max-height: calc(100vh - var(--top) - 32px); overscroll-behavior-x: contain; }
-/* A page with capTables (NPC pages: shops, gifts, upgrades, quests): each table is a short box that
-   scrolls, so one long list doesn't push the rest of the page away. The header stays put. */
-.capt .tablebox .scroll { max-height: min(420px, calc(100vh - var(--top) - 32px)); }
+/* Every table on an entry's page (never a list, category or subcategory page's own table) is a box a
+   little over half the screen tall that scrolls, so one long table doesn't push the rest away. */
+.sec .tablebox .scroll { max-height: calc((100vh - var(--top) - 32px) * .5625); }
 table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
 .t th { position: sticky; top: 0; z-index: 2; text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
   color: var(--muted); padding: 10px 12px; background: var(--surface-2); box-shadow: 0 1px 0 var(--line); white-space: nowrap; }
@@ -586,6 +603,8 @@ table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.t td.ptg { display: none; }
 .t td.nm a:hover { color: var(--accent-hover); text-decoration: underline; text-underline-offset: 2px; }
 .t td.nm small { display: block; color: var(--muted); font-size: 12px; }
+/* A list whose Name column is narrow (nameWidth: the Manuals list): long names wrap, the rest gets the room. */
+.t th.nmh.nmfix, .t td.nm.nmfix { width: 200px; min-width: 200px; max-width: 200px; white-space: normal; }
 .t td.nw { white-space: nowrap; }
 .t td { overflow-wrap: break-word; }
 .t td.long { min-width: 10em; }
@@ -703,6 +722,22 @@ a.gcard:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line))
   font: 400 13px/1.45 var(--font); color: var(--text); letter-spacing: 0; text-transform: none; white-space: normal; }
 .sec > h2 .orn-d { width: 7px; height: 7px; transform: rotate(45deg); background: var(--gold); flex: none; border-radius: 1px; }
 .secbody { --pad: 18px; padding: var(--pad); min-width: 0; }
+/* When the info box is taller than the page's own sections (an item with only a 3D model above the
+   wide sections), the last section stretches down to meet it, and a 3D stage in it grows to fill: no
+   gap before the sections below. A longer left column is unaffected. */
+.article:not(.solo) > .body { align-self: stretch; display: flex; flex-direction: column; }
+.article:not(.solo) > .body > .sec:last-child { flex: 1 1 auto; display: flex; flex-direction: column; margin-bottom: 0; }
+.article:not(.solo) > .body > .sec:last-child > .secbody { flex: 1 1 auto; display: flex; flex-direction: column; }
+.article:not(.solo) > .body > .sec:last-child > .secbody > .blk:last-child:has(> .stage) { flex: 1 1 auto; display: flex; flex-direction: column; }
+.article:not(.solo) > .body > .sec:last-child > .secbody > .blk:last-child > .stage { flex: 1 1 auto; }
+/* One column (narrow screens): the description first, then the info box, then the rest in order (the 3D
+   model, the item's numbers, the sections). The body's parts join the column so the box can sit among them. */
+@media (max-width: 1100px) {
+  .article:not(.solo) { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+  .article:not(.solo) > .body { display: contents; }
+  .article:not(.solo) > .aside { order: -1; margin-bottom: var(--s5); }
+  .article:not(.solo) > .body > .sec:last-child { display: block; }
+}
 /* Inside a section: a sub-heading reads as one (sentence case, the text's own colour), not like the
    small uppercase labels of table columns and fields, and it gets room above it. */
 .secbody .blk > h3 { text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: var(--s2);
@@ -821,9 +856,11 @@ ol.lst.steps li::marker { color: var(--gold-text); font-weight: 600; }
 .stage .model3d { color: var(--muted); font-size: 13.5px; max-width: 100%; }
 .stage .model3d:empty { display: none; }
 /* open: the viewer fills the stage, its controls in a pill toolbar along the top edge */
-.stage:has(.mwv) { display: block; padding: 0; min-height: 0; text-align: left; }
+/* (a flex column down to the view, so a stage stretched beside a taller infobox stretches the view too) */
+.stage:has(.mwv) { display: flex; flex-direction: column; align-items: stretch; padding: 0; min-height: 0; text-align: left; }
 .stage:has(.mwv)::after, .stage:has(.mwv) .cube, .stage:has(.mwv) .cap { display: none; }
-.stage:has(.mwv) .embed { display: block; position: static; }
+.stage:has(.mwv) .embed { display: flex; flex-direction: column; align-items: stretch; flex: 1 1 auto; position: static; }
+.stage:has(.mwv) .model3d, .stage .mwv { display: flex; flex-direction: column; flex: 1 1 auto; }
 .stage:has(.mwv) .embed > .btn { position: absolute; right: 12px; bottom: 12px; z-index: 4; height: 32px; padding: 0 12px; font-size: 13px;
   background: var(--surface); border-color: var(--line-2); color: var(--text); }
 .stage:has(.mwv) .embed > .btn::before { display: none; }
@@ -866,6 +903,11 @@ ol.lst.steps li::marker { color: var(--gold-text); font-weight: 600; }
 .infobox dl > div:last-child { border-bottom: 0; }
 .infobox dt { color: var(--muted); flex: none; max-width: 48%; }
 .infobox dd { margin: 0; font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+/* A long value under its label, across the box. */
+.infobox dl > div.stack { flex-direction: column; gap: 3px; }
+.infobox dl > div.stack dt { max-width: none; }
+.infobox dl > div.stack dd { text-align: left; font-weight: 500; line-height: 1.45; }
+.infobox dl > div.stack dd .vline.divide + .vline.divide { margin-top: 3px; padding-top: 3px; }
 .infobox .more { display: block; margin: 0; padding: 10px var(--s4); border-top: 1px solid var(--line); font-size: 13.5px; background: var(--surface-2); }
 
 /* tabs (a skill's ranks per race) */
@@ -1057,9 +1099,13 @@ ol.lst.steps li::marker { color: var(--gold-text); font-weight: 600; }
   .statbar { grid-template-columns: 1fr 1fr; margin-bottom: var(--s5); }
   .statbar > div.wide { grid-column: 1 / -1; }
   .statbar b { font-size: 18px; }
-  .infobox { display: grid; grid-template-columns: 116px minmax(0, 1fr); }
-  .infobox .art { height: auto; min-height: 100%; border-bottom: 0; border-right: 1px solid var(--line); padding: var(--s2); }
-  .infobox .art.item, .infobox .art.skill { height: auto; }
+  /* The picture above the details, its own height: a big icon (2x2 gloves) never spills into a narrow
+     side column over the text. */
+  .infobox { display: block; }
+  .infobox .art { height: auto; padding: var(--s3); overflow: hidden; }
+  .infobox .art.item { height: 252px; } /* its picture is drawn in a box up to 220px */
+  .infobox .art.skill { height: 120px; }
+  .infobox .art img, .infobox .art .foot { max-height: 100%; }
   .infobox .art.skill .ibox { width: 76px; height: 76px; }
   .infobox .art .sz { display: none; }
   .infobox > :only-child, .infobox > dl:first-child { grid-column: 1 / -1; }
