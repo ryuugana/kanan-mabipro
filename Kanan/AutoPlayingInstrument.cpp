@@ -15,12 +15,7 @@ namespace kanan {
 	}
 
 	void AutoPlayingInstrument::onUI() {
-		if (ImGui::TreeNode(getName().c_str())) {
-			ImGui::TextWrapped("Track instrument playing events.");
-
-			ImGui::Checkbox("Auto Playing Instrument", &m_isEnabled);
-			ImGui::TreePop();
-		}
+			ImGui::Checkbox(getName().c_str(), &m_isEnabled);
 	}
 
 	void AutoPlayingInstrument::onConfigLoad(const Config& cfg) {

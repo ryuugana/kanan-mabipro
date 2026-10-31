@@ -37,7 +37,7 @@ namespace kanan {
 		m_isEnabled = false;
 		m_op.push_back(0x4E25); // Disconnect Request
 		m_op.push_back(0x520E); // Tick sync packet; 0x5BD5 for durability update
-		m_op.push_back(0x701F); // Character unlock
+		m_op.push_back(0x909A); // Character login Nao count
 
 		g_tickTimerSeconds = 0;
 		m_timerId = NULL;
