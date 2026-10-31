@@ -345,6 +345,12 @@
     <ClCompile Include="CookingOverlay.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="MabiWiki.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AutoPlayingInstrument.cpp">
+      <Filter>Source Files\MessageMods</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3D9Hook.hpp">
@@ -713,6 +719,12 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MabiWiki.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AutoPlayingInstrument.hpp">
+      <Filter>Header Files\MessageMods</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="Patches.json" />
@@ -734,5 +746,8 @@
     <Image Include="cook.bmp">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="MabiWiki\make-standalone.ps1" />
   </ItemGroup>
 </Project>

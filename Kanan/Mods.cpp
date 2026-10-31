@@ -69,6 +69,7 @@
 // Message Mods
 #include "AutoLoginChannel.hpp"
 #include "AutoMount.hpp"
+#include "AutoPlayingInstrument.hpp"
 #include "BlockSpam.hpp"
 #include "DpsMeter.hpp"
 #include "GetInfo.hpp"
@@ -222,6 +223,8 @@ namespace kanan {
             "Logs in to the channel you choose automatically.");
         addMessageMod(make_unique<AutoMount>(), convenience, "Auto Mount",
             "Accepts mount requests automatically.");
+        addMessageMod(make_unique<AutoPlayingInstrument>(), convenience, "Auto Playing Instrument",
+            "Plays instrument in a loop for training.");
         addMessageMod(make_unique<BlockSpam>(), chat, "Block Spam", "Hides spam messages from chat.");
         addMod(make_unique<CookingOverlay>(), ui, "Cooking Overlay", "Opens a new ImGui window with a cooking overlay.");
         addMessageMod(make_unique<DpsMeter>(), combat, "DPS Meter", "Shows your damage per second.");
