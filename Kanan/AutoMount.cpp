@@ -13,12 +13,7 @@ namespace kanan {
 	}
 
 	void AutoMount::onUI() {
-		if (ImGui::TreeNode(getName().c_str())) {
-			ImGui::TextWrapped("Accept mount requests automatically.");
-
-			ImGui::Checkbox("Auto Accept Mount Request", &m_isEnabled);
-			ImGui::TreePop();
-		}
+			ImGui::Checkbox(getName().c_str(), &m_isEnabled);
 	}
 
 	void AutoMount::onConfigLoad(const Config& cfg) {
