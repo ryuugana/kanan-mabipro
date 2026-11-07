@@ -236,6 +236,18 @@
     ]
   },
   {
+    "name": "Blacksmith Cursor Fix",
+    "desc": "Stops the cursor jumping in the blacksmith minigame.",
+    "category": "Convenience",
+    "patches": [
+      {
+        "location": "Pleione.dll",
+        "pattern": "55 8B EC A1 ? ? ? ? 8B 40 2C 83 EC 0C 53 56 57 8B 78 04 8B F1 ? ? ? ? ? ? 8B 5D 0C 3B",
+        "patch": "C2 08 00"
+      }
+    ]
+  },
+  {
     "name": "Uncap Flying Height",
     "desc": "No restrictions on how high mounts can fly",
     "category": "Convenience",
