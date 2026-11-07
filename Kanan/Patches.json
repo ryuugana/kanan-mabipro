@@ -60,6 +60,18 @@
     ]
   },
   {
+    "name": "Disable Screen Flash",
+    "desc": "Disables most effects that flash the entire screen white",
+    "category": "Graphics & Camera",
+    "patches": [
+      {
+        "location": "Pleione.dll",
+        "pattern": "0F 84 ? ? ? ? 6A 01 83 EC 0C",
+        "patch": "90 E9"
+      }
+    ]
+  },
+  {
     "name": "Keep Pet Window Open",
     "desc": "After summoning a pet, prevent the pet window from closing.",
     "category": "Interface",
