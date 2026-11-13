@@ -39,9 +39,10 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 
 **Interface**
 * Assistant Character Location: shows where your assistant characters were last
-* Chain Cylinder Condition: shows the Chain Cylinder condition icon or tints the character when it's active
+* Chain Cylinder Tint: shows the Chain Cylinder condition icon or tints the character when it's active
 * Clear Dungeon Fog: removes the fog of war from dungeon minimaps
 * Cooking Overlay: shows a cooking ruler in a see-through window, with adjustable size and color
+* Disable Underground Maze Fog: shows the whole map in the underground mazes, keeping the trail of where you have been
 * Display Names From Far: shows character, guild and item names from much farther away, without fading
 * Dungeon Map Resize: lets you resize the dungeon map
 * Enable Minimap Zoom: lets you zoom the minimap on every map
@@ -55,7 +56,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Gold Format: shows gold with commas (46,500), periods (46.500), short (46.5k) or money letters (46k500)
 * Keep Pet Window Open: keeps the pet window open after summoning a pet
 * Large Clock Text: shows the in-game clock in large text
-* Meditation Condition: tints characters that are meditating, and can show a Meditation condition icon
+* Meditation Tint: tints characters that are meditating, and can show a Meditation condition icon
 * Name Coloring: colors character names by type (player, NPC, pet, enemy)
 * No Window Close On Talk: open windows, like your inventory, stay open when you talk to an NPC
 * Party Board To Housing: the party board and party buttons open the housing board instead
@@ -80,6 +81,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Show Unknown Upgrades: shows the requirements of skill ranks you haven't unlocked yet
 
 **Graphics & Camera**
+* Bigger L-Rod Lights: makes the light the L-Rod gives off when it detects an artifact much bigger
 * Block Critical Hit Effects: hides Critical Hit effects
 * Borderless Window: runs the game in a borderless window or borderless fullscreen
 * Disable Auto Camera: turns off the automatic camera, handy in Tower Cylinder
@@ -91,6 +93,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Disable Inventory Flashy: shows flashy items in your inventory and on the ground as their plain color
 * Disable Lights: turns off most light props, for more FPS in places like Emain Macha
 * Disable Player Effects: turns off most player effects, for more FPS in places like Tara's castle
+* Disable Screen Flash: disables most effects that flash the whole screen white
 * Disable Screen Shake: stops the camera from shaking
 * Disable Sunlight Glare: removes the bright sunlight glare and glow
 * Display Scaling: makes the game sharp instead of blurry on high resolution screens (1440p, 4K, laptops) with Windows display scaling above 100%
@@ -137,6 +140,8 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 * Auto Login Channel: logs in to the channel you choose automatically
 * Auto Mount: accepts requests from other players to ride their mount automatically
 * Auto Mute: mutes the game while it's in the background
+* Auto Playing Instrument: plays an instrument in a loop for training
+* Blacksmith Cursor Fix: stops the cursor jumping in the blacksmith minigame
 * Block Ending Ads: stops the ad popup when you close the game
 * Enable Cutscene Skip: lets you skip cutscenes
 * Enter Remote Shop: opens player shops from any distance
@@ -178,7 +183,7 @@ Every mod is off until you turn it on, except those in the recommended set if yo
 **Fun**
 * Basic Ghost Lock: aim and use non-target skills on other players
 * Derandomize Login Screen: always shows the Morrighan statue on the login screen
-* Enable Naked Mode: draws characters without their clothes and heads
+* Naked Mode: draws characters without their clothes, but keeps their face and hair
 * Far Dice Throw: throw dice much farther away
 
 **Debug**
