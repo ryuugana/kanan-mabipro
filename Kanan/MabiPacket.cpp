@@ -214,24 +214,18 @@ namespace kanan {
 			data.int32 = *(reinterpret_cast<const long*>(buf));
 			break;
 		case 6: {
-			int mb_len;
-			int wc_len;
+			// The protocol's string type carries UTF-8, and UTF-8 is what ImGui and the log
+			// want, so the bytes are copied as they came. Converting them to CP_ACP (which is
+			// what this used to do) maps every character outside the system code page to '?',
+			// which is why Hangul, kana and CJK ideographs showed up as question marks.
 			data.len = ntohs(*(reinterpret_cast<const short*>(buf)));
 			len = 3 + data.len;
 			buf += 2;
-			wc_len = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(buf), data.len, NULL, 0) + 1;
-			if (wc_tmp_buff_len_ < wc_len) {
-				delete[] wc_tmp_buff_;
-				wc_tmp_buff_ = (LPWSTR)new _WCHAR[wc_len];
-				wc_tmp_buff_len_ = wc_len;
-			}
-			MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(buf), data.len, wc_tmp_buff_, wc_len);
-			wc_tmp_buff_[wc_len - 1] = 0;
-			mb_len = WideCharToMultiByte(0, 0, wc_tmp_buff_, -1, NULL, 0, NULL, NULL) + 1;
-			data.str = new char[mb_len];
-			WideCharToMultiByte(CP_ACP, 0, wc_tmp_buff_, -1, data.str, mb_len, NULL, NULL);
-			data.str[mb_len - 1] = 0;
-			data.len = mb_len;
+			data.str = new char[data.len + 1];
+			memcpy(data.str, buf, data.len);
+			data.str[data.len] = 0;
+			// Keep the convention the rest of the file uses: len includes the terminating NUL.
+			data.len = static_cast<int>(strlen(data.str)) + 1;
 			break;
 		}
 		case 7:
@@ -297,19 +291,8 @@ namespace kanan {
 				break;
 			case 6:
 			{
-				data_len += 3;
-				int wc_len;
-				// 変換元サイズを指定すると終端NULL分は加算されないので+1
-				wc_len = MultiByteToWideChar(CP_ACP, 0, pdata[i].str, pdata[i].len, NULL, 0) + 1;
-				if (wc_tmp_buff_len_ < wc_len) {
-					delete[] wc_tmp_buff_;
-					wc_tmp_buff_ = (LPWSTR)new _WCHAR[wc_len];
-					wc_tmp_buff_len_ = wc_len;
-				}
-				MultiByteToWideChar(CP_ACP, 0, pdata[i].str, pdata[i].len, wc_tmp_buff_, wc_len - 1);
-				wc_tmp_buff_[wc_len - 1] = 0;
-				//変換元サイズを-1にすると終端NULL分が加算されているので+0
-				data_len += WideCharToMultiByte(CP_UTF8, 0, wc_tmp_buff_, -1, NULL, 0, NULL, NULL);
+				// pdata[i].str is UTF-8; the payload carries the bytes plus the terminating NUL.
+				data_len += 3 + static_cast<int>(strlen(pdata[i].str)) + 1;
 				break;
 			}
 			case 7:
@@ -390,34 +373,14 @@ namespace kanan {
 				break;
 			case 6:
 			{
-				char* utf8;
-				int utf_len;
-				int wc_len;
-				if (*(pdata[i].str) == 0) {
-					*(raw_data_ + pos) = 0;
-					*(raw_data_ + pos + 1) = 1;
-					*(raw_data_ + pos + 2) = 0;
-					pos += 3;
-				}
-				else {
-					wc_len = MultiByteToWideChar(CP_ACP, 0, pdata[i].str, pdata[i].len, NULL, 0) + 1;
-					if (wc_tmp_buff_len_ < wc_len) {
-						delete[] wc_tmp_buff_;
-						wc_tmp_buff_ = (LPWSTR)new _WCHAR[wc_len];
-						wc_tmp_buff_len_ = wc_len;
-					}
-					MultiByteToWideChar(CP_ACP, 0, pdata[i].str, pdata[i].len, wc_tmp_buff_, wc_len);
-					wc_tmp_buff_[wc_len - 1] = 0;
-					utf_len = WideCharToMultiByte(CP_UTF8, 0, wc_tmp_buff_, -1, NULL, 0, NULL, NULL);
-					utf8 = new char[utf_len];
-					WideCharToMultiByte(CP_UTF8, 0, wc_tmp_buff_, -1, utf8, utf_len, NULL, NULL);
-					utf8[utf_len - 1] = 0;
-					*((unsigned short*)(raw_data_ + pos)) = htons(utf_len);
-					pos += 2;
-					memcpy(raw_data_ + pos, utf8, utf_len);
-					delete[] utf8;
-					pos += utf_len;
-				}
+				// pdata[i].str is UTF-8, so it goes into the packet as it is.
+				const char* utf8 = pdata[i].str;
+				int utf_len = static_cast<int>(strlen(utf8)) + 1;    // the wire format carries the NUL
+
+				*((unsigned short*)(raw_data_ + pos)) = htons(utf_len);
+				pos += 2;
+				memcpy(raw_data_ + pos, utf8, utf_len);
+				pos += utf_len;
 				break;
 			}
 			case 7:
