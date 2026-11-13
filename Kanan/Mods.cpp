@@ -65,6 +65,7 @@
 #include "DisableFlashy.h"
 #include "FontStyle.hpp"
 #include "SelectiveNakedMode.hpp"
+#include "BiggerLRodLights.hpp"
 
 // Message Mods
 #include "AutoLoginChannel.hpp"
@@ -190,6 +191,8 @@ namespace kanan {
         addPatchMod(graphics, make_unique<DisableFlashyDyes>());
         addPatchMod(graphics, make_unique<DisableNighttime>());
         addPatchMod(ui, make_unique<DisplayNamesFar>());
+        addPatchMod(graphics, make_unique<BiggerLRodLights>(), "",
+            "Makes the light the L-Rod gives off when it detects an artifact much bigger.");
         addPatchMod(ui, make_unique<NameColoring>(), "", "Colors character names by type (player, NPC, pet, enemy).");
         addPatchMod(ui, make_unique<LargeClockText>(), "", "Shows the in-game clock in large text.");
         addPatchMod(fun, make_unique<FarDiceThrow>(), "", "Throw dice much farther away.");
