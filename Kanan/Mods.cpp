@@ -39,6 +39,7 @@
 #include "CombatMasterySwap.hpp"
 #include "DefaultRangedSwap.hpp"
 #include "DisableFlashyDyes.hpp"
+#include "DisableUndergroundMazeFog.hpp"
 #include "DisableNighttime.hpp"
 #include "DisplayNamesFar.hpp"
 #include "FarDiceThrow.hpp"
@@ -190,6 +191,7 @@ namespace kanan {
             "Mirage Missile, Crash Shot.");
         addPatchMod(graphics, make_unique<DisableFlashyDyes>());
         addPatchMod(graphics, make_unique<DisableNighttime>());
+        addPatchMod(ui, make_unique<DisableUndergroundMazeFog>());
         addPatchMod(ui, make_unique<DisplayNamesFar>());
         addPatchMod(graphics, make_unique<BiggerLRodLights>(), "",
             "Makes the light the L-Rod gives off when it detects an artifact much bigger.");

@@ -165,6 +165,7 @@
     <ClCompile Include="Currtarget.cpp" />
     <ClCompile Include="D3D9Hook.cpp" />
     <ClCompile Include="DInputHook.cpp" />
+    <ClCompile Include="DisableUndergroundMazeFog.cpp" />
     <ClCompile Include="DisableNagle.cpp" />
     <ClCompile Include="DontMoveToSquadChat.cpp" />
     <ClCompile Include="EnableMultiClient.cpp" />
@@ -261,6 +262,7 @@
     <ClInclude Include="Currtarget.hpp" />
     <ClInclude Include="D3D9Hook.hpp" />
     <ClInclude Include="DInputHook.hpp" />
+    <ClInclude Include="DisableUndergroundMazeFog.hpp" />
     <ClInclude Include="DisableNagle.hpp" />
     <ClInclude Include="DontMoveToSquadChat.hpp" />
     <ClInclude Include="EnableMultiClient.hpp" />

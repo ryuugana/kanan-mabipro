@@ -90,6 +90,9 @@
     <ClCompile Include="BorderlessWindow.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
+    <ClCompile Include="DisableUndergroundMazeFog.cpp">
+      <Filter>Source Files\Mods</Filter>
+    </ClCompile>
     <ClCompile Include="DisableNagle.cpp">
       <Filter>Source Files\Mods</Filter>
     </ClCompile>
@@ -393,6 +396,9 @@
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="BorderlessWindow.hpp">
+      <Filter>Header Files\Mods</Filter>
+    </ClInclude>
+    <ClInclude Include="DisableUndergroundMazeFog.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
     <ClInclude Include="DisableNagle.hpp">
