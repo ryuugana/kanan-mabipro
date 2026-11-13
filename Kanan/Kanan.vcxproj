@@ -269,7 +269,6 @@
     <ClInclude Include="NaoCounter.hpp" />
     <ClInclude Include="Prop.hpp" />
     <ClInclude Include="FieldOfView.hpp" />
-    <ClInclude Include="FontData.hpp" />
     <ClInclude Include="FreezeTimeOfDay.hpp" />
     <ClInclude Include="EntityHP.hpp" />
     <ClInclude Include="CrashDiagnostics.hpp" />

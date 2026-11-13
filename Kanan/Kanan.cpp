@@ -16,7 +16,6 @@
 #include <Utility.hpp>
 #include <fstream>
 
-#include "FontData.hpp"
 #include "GoldFormat.hpp"
 #include "Log.hpp"
 #include "Kanan.hpp"
@@ -305,6 +304,109 @@ namespace kanan {
         m_areModsReady = true;
     }
 
+    // Reads a font file into an IM_ALLOC'ed block, which is what AddFontFromMemoryTTF wants. The
+    // wide Win32 API is used so an install path with non-ASCII characters still resolves.
+    static void* readFontFile(const std::string& path, int* size) {
+        auto widePath = widen(path);
+        auto file = CreateFileW(widePath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL, nullptr);
+
+        if (file == INVALID_HANDLE_VALUE) {
+            return nullptr;
+        }
+
+        LARGE_INTEGER length{};
+        auto fits = GetFileSizeEx(file, &length) && length.QuadPart > 0 && length.QuadPart <= 0x7FFFFFFF;
+
+        if (!fits) {
+            CloseHandle(file);
+            return nullptr;
+        }
+
+        auto data = IM_ALLOC((size_t)length.QuadPart);
+        auto read = DWORD{};
+
+        if (data == nullptr || !ReadFile(file, data, (DWORD)length.QuadPart, &read, nullptr) ||
+            read != (DWORD)length.QuadPart) {
+            IM_FREE(data);
+            CloseHandle(file);
+            return nullptr;
+        }
+
+        CloseHandle(file);
+
+        *size = (int)length.QuadPart;
+
+        return data;
+    }
+
+    // Builds the font atlas around a font that has the glyphs the game's text uses. The client's
+    // own fonts come first (they are the ones its TrueType text path loads), then the system's CJK
+    // fonts. The first font added becomes Fonts[0], which is the one the UI pushes at its size.
+    static void loadUIFont(const std::string& gamePath) {
+        auto& io = ImGui::GetIO();
+
+        // Japanese, Korean and Chinese, plus the two blocks the client's text actually contains:
+        // Hangul compatibility jamo past 0x3163 (the client composes Hangul out of jamo) and CJK
+        // Compatibility Ideographs (the client normalises those before drawing, so strings can
+        // hold them). 1.92 rasterises glyphs on demand, so the width of these ranges is free.
+        static const ImWchar extraRanges[] = {
+            0x3130, 0x318F, // Hangul compatibility jamo
+            0xF900, 0xFAFF, // CJK Compatibility Ideographs
+            0
+        };
+
+        ImFontGlyphRangesBuilder rangesBuilder;
+        rangesBuilder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+        rangesBuilder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+        rangesBuilder.AddRanges(io.Fonts->GetGlyphRangesChineseFull());
+        rangesBuilder.AddRanges(extraRanges);
+
+        // ImGui only copies the pointer to the ranges and rasterises glyphs on demand, so the
+        // list has to outlive this call.
+        static ImVector<ImWchar> ranges;
+        ranges.clear();
+        rangesBuilder.BuildRanges(&ranges);
+
+        vector<string> candidates{
+            gamePath + "/data/gfx/font/japanese.ttf",
+            gamePath + "/data/gfx/font/korean.ttf",
+            gamePath + "/data/gfx/font/chinese.ttf",
+        };
+
+        wchar_t windowsDir[MAX_PATH]{};
+
+        if (GetWindowsDirectoryW(windowsDir, MAX_PATH) > 0) {
+            auto fonts = narrow(windowsDir) + "/Fonts/";
+
+            for (auto&& name : { "meiryo.ttc", "msgothic.ttc", "YuGothM.ttc", "malgun.ttf", "msyh.ttc", "msjh.ttc" }) {
+                candidates.push_back(fonts + name);
+            }
+        }
+
+        ImFontConfig fontConfig;
+        fontConfig.OversampleH = 1;
+        fontConfig.OversampleV = 1;
+
+        for (auto&& candidate : candidates) {
+            auto size = 0;
+            auto data = readFontFile(candidate, &size);
+
+            if (data == nullptr) {
+                continue;
+            }
+
+            // The atlas takes ownership of the data and keeps it for on-demand glyphs.
+            if (io.Fonts->AddFontFromMemoryTTF(data, size, 16.0f, &fontConfig, ranges.Data) != nullptr) {
+                log("[Kanan] Interface font: %s", candidate.c_str());
+                return;
+            }
+        }
+
+        io.Fonts->AddFontDefault();
+        log("[Kanan] No CJK-capable font found; CJK text will draw as '?'");
+    }
+
     void Kanan::onInitialize() {
         if (m_isInitialized) {
             return;
@@ -333,10 +435,12 @@ namespace kanan {
         auto& io = ImGui::GetIO();
 
         io.IniFilename = m_uiConfigPath.c_str();
-        ImFontConfig config;
-        config.MergeMode = false;
         io.FontAllowUserScaling = true;
-        io.Fonts->AddFontFromMemoryCompressedTTF(g_font_compressed_data, g_font_compressed_size, m_fontSize);
+
+        // ImGui's own font only has Latin glyphs and draws '?' for anything it has no glyph
+        // for, so the game's text - ordinary UTF-16, but full of Hangul, kana and CJK
+        // ideographs - came out as question marks. Load a font that has them.
+        loadUIFont(m_path);
 
         if (!ImGui_ImplWin32_Init(m_wnd)) {
             error("Failed to initialize ImGui.");

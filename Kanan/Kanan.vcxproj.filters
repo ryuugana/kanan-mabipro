@@ -554,9 +554,6 @@
     <ClInclude Include="SelectiveNakedMode.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
-    <ClInclude Include="FontData.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="StatusUI.hpp">
       <Filter>Header Files\Mods</Filter>
     </ClInclude>
